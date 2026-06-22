@@ -1,0 +1,22 @@
+{
+  "id": "urn:ngsi-ld:WorkCenter:WC-Assembly",
+  "type": "WorkCenter",
+  "name": "Assembly",
+  "code": "WC-ASM",
+  "state": "active",
+  "capacity": 8,
+  "timeEfficiency": 0.85,
+  "costPerHour": 45.0,
+  "oeeTarget": 0.80,
+  "calendarId": "CAL-2SHIFT",
+  "locatedIn": "urn:ngsi-ld:Plant:PLT-BCN-001",
+  "hasMachine": [
+    "urn:ngsi-ld:Machine:MCH-ASM-01",
+    "urn:ngsi-ld:Machine:MCH-ASM-02"
+  ],
+  "alternativeWorkCenter": "urn:ngsi-ld:WorkCenter:WC-Assembly-B",
+  "@context": [
+    "https://smartdatamodels.org/context.jsonld",
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

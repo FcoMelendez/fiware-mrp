@@ -1,0 +1,57 @@
+{
+  "id": "urn:ngsi-ld:WorkCenter:WC-Assembly",
+  "type": "WorkCenter",
+  "name": {
+    "type": "Property",
+    "value": "Assembly"
+  },
+  "code": {
+    "type": "Property",
+    "value": "WC-ASM"
+  },
+  "state": {
+    "type": "Property",
+    "value": "active"
+  },
+  "capacity": {
+    "type": "Property",
+    "value": 8,
+    "unitCode": "HUR"
+  },
+  "timeEfficiency": {
+    "type": "Property",
+    "value": 0.85
+  },
+  "costPerHour": {
+    "type": "Property",
+    "value": 45.0,
+    "unitCode": "EUR"
+  },
+  "oeeTarget": {
+    "type": "Property",
+    "value": 0.80
+  },
+  "calendarId": {
+    "type": "Property",
+    "value": "CAL-2SHIFT"
+  },
+  "locatedIn": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:Plant:PLT-BCN-001"
+  },
+  "hasMachine": {
+    "type": "Relationship",
+    "object": [
+      "urn:ngsi-ld:Machine:MCH-ASM-01",
+      "urn:ngsi-ld:Machine:MCH-ASM-02"
+    ]
+  },
+  "alternativeWorkCenter": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:WorkCenter:WC-Assembly-B"
+  },
+  "@context": [
+    "https://smartdatamodels.org/context.jsonld",
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

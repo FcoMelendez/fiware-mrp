@@ -1,0 +1,17 @@
+{
+  "id": "urn:ngsi-ld:Product:HydraulicPump-P100",
+  "type": "Product",
+  "name": "Hydraulic Pump P100",
+  "sku": "P100",
+  "productType": "manufactured",
+  "trackingPolicy": "serial",
+  "defaultUnitCode": "EA",
+  "standardCost": 245.50,
+  "active": true,
+  "description": "High-pressure hydraulic pump rated at 100 bar, used in industrial press assemblies.",
+  "company": "urn:ngsi-ld:Company:Acme-Corp",
+  "defaultBom": "urn:ngsi-ld:BillOfMaterials:BOM-P100-v1",
+  "@context": [
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

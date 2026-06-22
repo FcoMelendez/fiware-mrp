@@ -1,0 +1,125 @@
+version: "3.8"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FIWARE-based MRP Reference Implementation
+# Single docker-compose file — services are added incrementally each tutorial.
+# Run: make start | make seed | make demo-01 | make test-01 | make stop
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-common-python: &common-python
+  restart: unless-stopped
+  networks:
+    - mrp-net
+
+services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  mongo:
+    image: mongo:5.0
+    container_name: mrp-mongo
+    command: mongod --nojournal
+    networks:
+      - mrp-net
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  orion-ld:
+    image: fiware/orion-ld:1.6.0
+    container_name: mrp-orion-ld
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - mrp-net
+    ports:
+      - "${ORION_PORT:-1026}:1026"
+    command: -dbhost mongo -logLevel INFO
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:1026/ngsi-ld/ex/v1/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+
+  # ── Context server ──────────────────────────────────────────────────────────
+
+  context-server:
+    <<: *common-python
+    build:
+      context: ./services/context-server
+    container_name: mrp-context-server
+    ports:
+      - "${CONTEXT_SERVER_PORT:-3000}:3000"
+    volumes:
+      - ./contexts:/app/contexts:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── MRP API (grows each tutorial) ───────────────────────────────────────────
+
+  mrp-api:
+    <<: *common-python
+    build:
+      context: ./services/mrp-api
+    container_name: mrp-api
+    depends_on:
+      orion-ld:
+        condition: service_healthy
+      context-server:
+        condition: service_healthy
+    ports:
+      - "${MRP_API_PORT:-8080}:8080"
+    environment:
+      ORION_URL: http://orion-ld:1026
+      CONTEXT_URL: http://context-server:3000/contexts/mrp/v0.1/context.jsonld
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Seed loader (invoked via: docker compose run --rm seed) ─────────────────
+
+  seed:
+    build:
+      context: ./services/seed-loader
+    container_name: mrp-seed
+    depends_on:
+      orion-ld:
+        condition: service_healthy
+      context-server:
+        condition: service_healthy
+    networks:
+      - mrp-net
+    environment:
+      ORION_URL: http://orion-ld:1026
+      CONTEXT_URL: http://context-server:3000/contexts/mrp/v0.1/context.jsonld
+      TUTORIAL: "01"
+    profiles:
+      - tools
+
+  # ── Future services (added in later tutorials) ───────────────────────────────
+  # inventory-service  → Tutorial 02
+  # bom-service        → Tutorial 03
+  # scheduler-service  → Tutorial 06
+  # shopfloor-service  → Tutorial 07
+  # quality-service    → Tutorial 09
+  # mps-service        → Tutorial 10
+  # iot-simulator      → Tutorial 11
+
+networks:
+  mrp-net:
+    driver: bridge
+
+volumes:
+  mongo-data:

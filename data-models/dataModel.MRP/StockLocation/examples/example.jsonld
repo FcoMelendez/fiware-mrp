@@ -1,0 +1,13 @@
+{
+  "id": "urn:ngsi-ld:StockLocation:WH-STOCK",
+  "type": "StockLocation",
+  "name": "Main Warehouse Stock",
+  "locationCode": "WH-STOCK",
+  "locationType": "internal",
+  "state": "active",
+  "locatedIn": "urn:ngsi-ld:Plant:Plant-Barcelona-01",
+  "parentLocation": "urn:ngsi-ld:StockLocation:WH-MAIN",
+  "@context": [
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

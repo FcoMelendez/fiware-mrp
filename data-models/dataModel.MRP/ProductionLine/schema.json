@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "$schemaVersion": "0.0.1",
+  "$id": "https://smart-data-models.github.io/dataModel.MRP/ProductionLine/schema.json",
+  "title": "ProductionLine",
+  "description": "A Production Line groups an ordered set of Work Centers that collaborate to manufacture a product family. It has a defined takt time that governs the throughput rate and belongs to a Plant.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^urn:ngsi-ld:ProductionLine:.+",
+          "description": "Unique identifier for the ProductionLine entity"
+        },
+        "type": {
+          "type": "string",
+          "const": "ProductionLine",
+          "description": "NGSI-LD entity type"
+        },
+        "name": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {"type": "string", "description": "Human-readable name of the production line"}
+          },
+          "description": "Name of the production line"
+        },
+        "lineCode": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {
+              "type": "string",
+              "pattern": "^[A-Z0-9_-]+$",
+              "description": "Alphanumeric business code for the production line"
+            }
+          },
+          "description": "Short business code identifying the production line"
+        },
+        "state": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {
+              "type": "string",
+              "enum": ["active", "inactive", "maintenance"],
+              "description": "Operational state of the production line"
+            }
+          },
+          "description": "Current operational state of the production line"
+        },
+        "taktTime": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Takt time in seconds — the rate at which finished units must be produced"
+            },
+            "unitCode": {
+              "type": "string",
+              "const": "SEC",
+              "description": "UN/CEFACT unit code for seconds"
+            }
+          },
+          "description": "Takt time expressed in seconds"
+        },
+        "locatedIn": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": {"type": "string", "const": "Relationship"},
+            "object": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^urn:ngsi-ld:Plant:.+",
+              "description": "URN of the parent Plant entity"
+            }
+          },
+          "description": "Relationship to the Plant in which this production line is located"
+        },
+        "hasWorkCenter": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": {"type": "string", "const": "Relationship"},
+            "object": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^urn:ngsi-ld:WorkCenter:.+"
+              },
+              "description": "Array of WorkCenter URNs that form this production line"
+            }
+          },
+          "description": "Relationship to the WorkCenters that are part of this production line"
+        }
+      }
+    }
+  ],
+  "required": ["id", "type", "name", "lineCode", "state", "locatedIn"],
+  "@context": [
+    "https://smartdatamodels.org/context.jsonld",
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

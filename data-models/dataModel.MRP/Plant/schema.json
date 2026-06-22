@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://smart-data-models.github.io/dataModel.MRP/Plant/schema.json",
+  "title": "Plant",
+  "description": "A manufacturing facility (plant) operated by a Company in the MRP system.",
+  "modelVersion": "0.1.0",
+  "type": "object",
+  "required": ["id", "type", "name", "plantCode", "timezone", "state", "ownedBy"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the Plant entity.",
+      "pattern": "^urn:ngsi-ld:Plant:.+$"
+    },
+    "type": {
+      "type": "string",
+      "description": "NGSI-LD entity type.",
+      "const": "Plant"
+    },
+    "name": {
+      "type": "object",
+      "description": "Plant display name.",
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Property"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "plantCode": {
+      "type": "object",
+      "description": "Short alphanumeric code identifying the plant.",
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Property"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Z0-9_-]+$"
+        }
+      }
+    },
+    "timezone": {
+      "type": "object",
+      "description": "IANA timezone string for the plant's local time.",
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Property"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "description": "Lifecycle state of the plant.",
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Property"
+        },
+        "value": {
+          "type": "string",
+          "enum": ["active", "inactive", "archived"]
+        }
+      }
+    },
+    "ownedBy": {
+      "type": "object",
+      "description": "Relationship to the Company that owns this plant.",
+      "required": ["type", "object"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Relationship"
+        },
+        "object": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "hasProductionLine": {
+      "type": "object",
+      "description": "Relationship to one or more ProductionLine entities within this plant.",
+      "required": ["type", "object"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Relationship"
+        },
+        "object": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "hasStockLocation": {
+      "type": "object",
+      "description": "Relationship to one or more StockLocation entities within this plant.",
+      "required": ["type", "object"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Relationship"
+        },
+        "object": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

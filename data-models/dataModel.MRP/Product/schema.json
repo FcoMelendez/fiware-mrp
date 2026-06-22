@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "$schemaVersion": "0.1.0",
+  "modelTags": "MRP",
+  "$id": "https://smart-data-models.github.io/dataModel.MRP/Product/schema.json",
+  "title": "Smart Data Models - MRP Product",
+  "description": "A product master record used in Manufacturing Resource Planning. Represents any item that can be manufactured, purchased, consumed, or delivered as a service.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^urn:ngsi-ld:Product:.+",
+          "description": "Unique identifier of the Product entity."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Product"],
+          "description": "NGSI-LD Entity type. Must be Product."
+        },
+        "name": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "description": "Human-readable name of the product."
+            }
+          },
+          "description": "Name of the product."
+        },
+        "sku": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "description": "Stock-Keeping Unit code. Must be unique within a company."
+            }
+          },
+          "description": "Unique SKU identifier for the product."
+        },
+        "productType": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "enum": ["manufactured", "purchased", "consumable", "service", "byproduct"],
+              "description": "Classification of the product within MRP flows."
+            }
+          },
+          "description": "Type of the product determining how it is sourced and planned."
+        },
+        "trackingPolicy": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "enum": ["none", "lot", "serial"],
+              "description": "Inventory tracking granularity for this product."
+            }
+          },
+          "description": "Defines how individual stock moves are tracked."
+        },
+        "defaultUnitCode": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "description": "UN/CEFACT common code representing the default unit of measure (e.g. 'KGM', 'EA', 'LTR')."
+            }
+          },
+          "description": "Default unit of measure for stock quantities, expressed as a UN/CEFACT unit code."
+        },
+        "standardCost": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Standard cost per unit in the company's base currency."
+            },
+            "unitCode": {
+              "type": "string",
+              "description": "ISO 4217 currency code (e.g. 'USD', 'EUR')."
+            }
+          },
+          "description": "Standard cost per unit used for inventory valuation."
+        },
+        "active": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "boolean",
+              "description": "Whether the product is active and available for use in orders and BOMs."
+            }
+          },
+          "description": "Activation status of the product."
+        },
+        "description": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "description": "Free-text description of the product."
+            }
+          },
+          "description": "Detailed description of the product."
+        },
+        "company": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": {
+              "type": "string",
+              "format": "uri",
+              "description": "URN of the Company entity that owns this product."
+            }
+          },
+          "description": "Reference to the owning Company."
+        },
+        "defaultBom": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": {
+              "type": "string",
+              "format": "uri",
+              "description": "URN of the default BillOfMaterials entity for this product."
+            }
+          },
+          "description": "Reference to the default Bill of Materials used when manufacturing this product."
+        }
+      }
+    }
+  ],
+  "required": ["id", "type", "name", "sku", "productType", "trackingPolicy", "defaultUnitCode", "active"],
+  "@context": [
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

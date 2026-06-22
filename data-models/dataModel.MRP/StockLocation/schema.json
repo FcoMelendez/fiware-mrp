@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "$schemaVersion": "0.1.0",
+  "modelTags": "MRP",
+  "$id": "https://smart-data-models.github.io/dataModel.MRP/StockLocation/schema.json",
+  "title": "Smart Data Models - MRP StockLocation",
+  "description": "A physical or virtual location that holds or routes inventory within a Manufacturing Resource Planning system. Locations form a hierarchy and are classified by type to drive MRP valuation and traceability rules.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^urn:ngsi-ld:StockLocation:.+",
+          "description": "Unique identifier of the StockLocation entity."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["StockLocation"],
+          "description": "NGSI-LD Entity type. Must be StockLocation."
+        },
+        "name": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "description": "Human-readable name of the stock location."
+            }
+          },
+          "description": "Name of the stock location."
+        },
+        "locationCode": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "pattern": "^[A-Z0-9_-]+$",
+              "description": "Short alphanumeric code uniquely identifying this location within the plant or company."
+            }
+          },
+          "description": "Unique location code composed of uppercase letters, digits, underscores, and hyphens."
+        },
+        "locationType": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "enum": ["internal", "customer", "supplier", "transit", "scrap", "virtual"],
+              "description": "Classification of the location determining its role in MRP inventory flows."
+            }
+          },
+          "description": "Type of the stock location."
+        },
+        "state": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "enum": ["active", "inactive", "archived"],
+              "description": "Operational state of the location."
+            }
+          },
+          "description": "Current state of the stock location."
+        },
+        "locatedIn": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": {
+              "type": "string",
+              "format": "uri",
+              "description": "URN of the Plant entity where this location physically resides."
+            }
+          },
+          "description": "Reference to the Plant that contains this stock location."
+        },
+        "parentLocation": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^urn:ngsi-ld:StockLocation:.+",
+              "description": "URN of the parent StockLocation in the location hierarchy."
+            }
+          },
+          "description": "Reference to the parent StockLocation, enabling hierarchical location trees (e.g. warehouse > aisle > rack > bin)."
+        }
+      }
+    }
+  ],
+  "required": ["id", "type", "name", "locationCode", "locationType", "state"],
+  "@context": [
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

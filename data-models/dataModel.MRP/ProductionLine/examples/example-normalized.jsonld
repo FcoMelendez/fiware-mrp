@@ -1,0 +1,37 @@
+{
+  "id": "urn:ngsi-ld:ProductionLine:PL-BCN-001",
+  "type": "ProductionLine",
+  "name": {
+    "type": "Property",
+    "value": "Barcelona Assembly Line 1"
+  },
+  "lineCode": {
+    "type": "Property",
+    "value": "PL-BCN-001"
+  },
+  "state": {
+    "type": "Property",
+    "value": "active"
+  },
+  "taktTime": {
+    "type": "Property",
+    "value": 60,
+    "unitCode": "SEC"
+  },
+  "locatedIn": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:Plant:PLT-BCN-001"
+  },
+  "hasWorkCenter": {
+    "type": "Relationship",
+    "object": [
+      "urn:ngsi-ld:WorkCenter:WC-Assembly",
+      "urn:ngsi-ld:WorkCenter:WC-QualityCheck",
+      "urn:ngsi-ld:WorkCenter:WC-Packaging"
+    ]
+  },
+  "@context": [
+    "https://smartdatamodels.org/context.jsonld",
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld",
+  "id": "urn:ngsi-ld:Plant:Plant-BCN",
+  "type": "Plant",
+  "name": "Barcelona Plant",
+  "plantCode": "BCN",
+  "timezone": "Europe/Madrid",
+  "state": "active",
+  "ownedBy": "urn:ngsi-ld:Company:HPC",
+  "hasProductionLine": [
+    "urn:ngsi-ld:ProductionLine:PL-BCN-01",
+    "urn:ngsi-ld:ProductionLine:PL-BCN-02"
+  ],
+  "hasStockLocation": [
+    "urn:ngsi-ld:StockLocation:SL-BCN-WH01"
+  ]
+}

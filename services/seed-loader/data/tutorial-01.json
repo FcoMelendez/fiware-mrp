@@ -1,0 +1,133 @@
+[
+  {
+    "id": "urn:ngsi-ld:Company:HydraulicPartsCo",
+    "type": "Company",
+    "name":        { "type": "Property", "value": "Hydraulic Parts Co." },
+    "legalName":   { "type": "Property", "value": "Hydraulic Parts Company S.L." },
+    "companyCode": { "type": "Property", "value": "HPC" },
+    "state":       { "type": "Property", "value": "active" }
+  },
+  {
+    "id": "urn:ngsi-ld:Plant:Plant-BCN",
+    "type": "Plant",
+    "name":      { "type": "Property", "value": "Barcelona Plant" },
+    "plantCode": { "type": "Property", "value": "BCN" },
+    "timezone":  { "type": "Property", "value": "Europe/Madrid" },
+    "state":     { "type": "Property", "value": "active" },
+    "ownedBy":   { "type": "Relationship", "object": "urn:ngsi-ld:Company:HydraulicPartsCo" }
+  },
+  {
+    "id": "urn:ngsi-ld:WorkCenter:WC-Assembly",
+    "type": "WorkCenter",
+    "name":           { "type": "Property", "value": "Assembly" },
+    "code":           { "type": "Property", "value": "WC-ASM" },
+    "state":          { "type": "Property", "value": "active" },
+    "capacity":       { "type": "Property", "value": 1, "unitCode": "C62" },
+    "timeEfficiency": { "type": "Property", "value": 0.85 },
+    "costPerHour":    { "type": "Property", "value": 45.0, "unitCode": "EUR" },
+    "oeeTarget":      { "type": "Property", "value": 0.80 },
+    "locatedIn":      { "type": "Relationship", "object": "urn:ngsi-ld:Plant:Plant-BCN" }
+  },
+  {
+    "id": "urn:ngsi-ld:WorkCenter:WC-LeakTest",
+    "type": "WorkCenter",
+    "name":           { "type": "Property", "value": "Leak Test Bench" },
+    "code":           { "type": "Property", "value": "WC-LTB" },
+    "state":          { "type": "Property", "value": "active" },
+    "capacity":       { "type": "Property", "value": 1, "unitCode": "C62" },
+    "timeEfficiency": { "type": "Property", "value": 0.90 },
+    "costPerHour":    { "type": "Property", "value": 30.0, "unitCode": "EUR" },
+    "oeeTarget":      { "type": "Property", "value": 0.85 },
+    "locatedIn":      { "type": "Relationship", "object": "urn:ngsi-ld:Plant:Plant-BCN" }
+  },
+  {
+    "id": "urn:ngsi-ld:WorkCenter:WC-Packaging",
+    "type": "WorkCenter",
+    "name":           { "type": "Property", "value": "Packaging" },
+    "code":           { "type": "Property", "value": "WC-PKG" },
+    "state":          { "type": "Property", "value": "active" },
+    "capacity":       { "type": "Property", "value": 2, "unitCode": "C62" },
+    "timeEfficiency": { "type": "Property", "value": 0.95 },
+    "costPerHour":    { "type": "Property", "value": 20.0, "unitCode": "EUR" },
+    "oeeTarget":      { "type": "Property", "value": 0.90 },
+    "locatedIn":      { "type": "Relationship", "object": "urn:ngsi-ld:Plant:Plant-BCN" }
+  },
+  {
+    "id": "urn:ngsi-ld:Product:HydraulicPump-P100",
+    "type": "Product",
+    "name":            { "type": "Property", "value": "Hydraulic Pump P100" },
+    "sku":             { "type": "Property", "value": "HP-P100" },
+    "productType":     { "type": "Property", "value": "manufactured" },
+    "trackingPolicy":  { "type": "Property", "value": "lot" },
+    "defaultUnitCode": { "type": "Property", "value": "C62" },
+    "standardCost":    { "type": "Property", "value": 250.0, "unitCode": "EUR" },
+    "active":          { "type": "Property", "value": true },
+    "company":         { "type": "Relationship", "object": "urn:ngsi-ld:Company:HydraulicPartsCo" }
+  },
+  {
+    "id": "urn:ngsi-ld:Product:PumpCasing",
+    "type": "Product",
+    "name":            { "type": "Property", "value": "Pump Casing" },
+    "sku":             { "type": "Property", "value": "PC-001" },
+    "productType":     { "type": "Property", "value": "purchased" },
+    "trackingPolicy":  { "type": "Property", "value": "lot" },
+    "defaultUnitCode": { "type": "Property", "value": "C62" },
+    "standardCost":    { "type": "Property", "value": 80.0, "unitCode": "EUR" },
+    "active":          { "type": "Property", "value": true },
+    "company":         { "type": "Relationship", "object": "urn:ngsi-ld:Company:HydraulicPartsCo" }
+  },
+  {
+    "id": "urn:ngsi-ld:Product:Impeller",
+    "type": "Product",
+    "name":            { "type": "Property", "value": "Impeller" },
+    "sku":             { "type": "Property", "value": "IMP-001" },
+    "productType":     { "type": "Property", "value": "purchased" },
+    "trackingPolicy":  { "type": "Property", "value": "lot" },
+    "defaultUnitCode": { "type": "Property", "value": "C62" },
+    "standardCost":    { "type": "Property", "value": 45.0, "unitCode": "EUR" },
+    "active":          { "type": "Property", "value": true },
+    "company":         { "type": "Relationship", "object": "urn:ngsi-ld:Company:HydraulicPartsCo" }
+  },
+  {
+    "id": "urn:ngsi-ld:Product:ElectricMotor",
+    "type": "Product",
+    "name":            { "type": "Property", "value": "Electric Motor 2.2kW" },
+    "sku":             { "type": "Property", "value": "EM-2200" },
+    "productType":     { "type": "Property", "value": "purchased" },
+    "trackingPolicy":  { "type": "Property", "value": "serial" },
+    "defaultUnitCode": { "type": "Property", "value": "C62" },
+    "standardCost":    { "type": "Property", "value": 95.0, "unitCode": "EUR" },
+    "active":          { "type": "Property", "value": true },
+    "company":         { "type": "Relationship", "object": "urn:ngsi-ld:Company:HydraulicPartsCo" }
+  },
+  {
+    "id": "urn:ngsi-ld:Product:SealKit",
+    "type": "Product",
+    "name":            { "type": "Property", "value": "Seal Kit P100" },
+    "sku":             { "type": "Property", "value": "SK-P100" },
+    "productType":     { "type": "Property", "value": "purchased" },
+    "trackingPolicy":  { "type": "Property", "value": "none" },
+    "defaultUnitCode": { "type": "Property", "value": "C62" },
+    "standardCost":    { "type": "Property", "value": 12.0, "unitCode": "EUR" },
+    "active":          { "type": "Property", "value": true },
+    "company":         { "type": "Relationship", "object": "urn:ngsi-ld:Company:HydraulicPartsCo" }
+  },
+  {
+    "id": "urn:ngsi-ld:StockLocation:WH-STOCK",
+    "type": "StockLocation",
+    "name":         { "type": "Property", "value": "Raw Materials Warehouse" },
+    "locationCode": { "type": "Property", "value": "WH-STOCK" },
+    "locationType": { "type": "Property", "value": "internal" },
+    "state":        { "type": "Property", "value": "active" },
+    "locatedIn":    { "type": "Relationship", "object": "urn:ngsi-ld:Plant:Plant-BCN" }
+  },
+  {
+    "id": "urn:ngsi-ld:StockLocation:WH-FINISHED",
+    "type": "StockLocation",
+    "name":         { "type": "Property", "value": "Finished Goods Warehouse" },
+    "locationCode": { "type": "Property", "value": "WH-FINISHED" },
+    "locationType": { "type": "Property", "value": "internal" },
+    "state":        { "type": "Property", "value": "active" },
+    "locatedIn":    { "type": "Relationship", "object": "urn:ngsi-ld:Plant:Plant-BCN" }
+  }
+]

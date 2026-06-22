@@ -1,0 +1,13 @@
+{
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld",
+  "id": "urn:ngsi-ld:Company:HPC",
+  "type": "Company",
+  "name": "Hydraulic Parts Co.",
+  "legalName": "Hydraulic Parts Co. S.A.",
+  "companyCode": "HPC",
+  "state": "active",
+  "hasPlant": [
+    "urn:ngsi-ld:Plant:Plant-BCN",
+    "urn:ngsi-ld:Plant:Plant-MAD"
+  ]
+}

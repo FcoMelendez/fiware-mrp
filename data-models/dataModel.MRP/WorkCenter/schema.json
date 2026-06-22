@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "$schemaVersion": "0.0.1",
+  "$id": "https://smart-data-models.github.io/dataModel.MRP/WorkCenter/schema.json",
+  "title": "WorkCenter",
+  "description": "A Work Center represents a manufacturing resource (machine, cell, or area) where production operations are performed. It has a defined capacity and belongs to a Plant.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^urn:ngsi-ld:WorkCenter:.+",
+          "description": "Unique identifier for the WorkCenter entity"
+        },
+        "type": {
+          "type": "string",
+          "const": "WorkCenter",
+          "description": "NGSI-LD entity type"
+        },
+        "name": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {"type": "string", "description": "Human-readable name of the work center"}
+          },
+          "description": "Name of the work center"
+        },
+        "code": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {
+              "type": "string",
+              "pattern": "^[A-Z0-9_-]+$",
+              "description": "Alphanumeric business code for the work center"
+            }
+          },
+          "description": "Short business code identifying the work center"
+        },
+        "state": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {
+              "type": "string",
+              "enum": ["active", "inactive", "maintenance"],
+              "description": "Operational state of the work center"
+            }
+          },
+          "description": "Current operational state of the work center"
+        },
+        "capacity": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Available production capacity"
+            },
+            "unitCode": {
+              "type": "string",
+              "description": "UN/CEFACT unit code, e.g. HUR for hours"
+            }
+          },
+          "description": "Nominal production capacity with unit"
+        },
+        "timeEfficiency": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Ratio of productive time to scheduled time (0–1)"
+            }
+          },
+          "description": "Time efficiency factor, between 0 and 1"
+        },
+        "costPerHour": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Operating cost per hour"
+            },
+            "unitCode": {
+              "type": "string",
+              "description": "ISO 4217 currency code, e.g. EUR"
+            }
+          },
+          "description": "Operating cost per hour with currency unit"
+        },
+        "oeeTarget": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Target Overall Equipment Effectiveness (0–1)"
+            }
+          },
+          "description": "Target OEE value between 0 and 1"
+        },
+        "calendarId": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"type": "string", "const": "Property"},
+            "value": {
+              "type": "string",
+              "description": "Identifier referencing the working-time calendar"
+            }
+          },
+          "description": "Reference to the shift or working-time calendar"
+        },
+        "locatedIn": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": {"type": "string", "const": "Relationship"},
+            "object": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^urn:ngsi-ld:Plant:.+",
+              "description": "URN of the parent Plant entity"
+            }
+          },
+          "description": "Relationship to the Plant in which this work center resides"
+        },
+        "hasMachine": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": {"type": "string", "const": "Relationship"},
+            "object": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^urn:ngsi-ld:Machine:.+"
+              },
+              "description": "Array of Machine URNs assigned to this work center"
+            }
+          },
+          "description": "Relationship to the Machines operated within this work center"
+        },
+        "alternativeWorkCenter": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": {"type": "string", "const": "Relationship"},
+            "object": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^urn:ngsi-ld:WorkCenter:.+",
+              "description": "URN of an alternative WorkCenter entity"
+            }
+          },
+          "description": "Relationship to an alternative WorkCenter that can substitute this one"
+        }
+      }
+    }
+  ],
+  "required": ["id", "type", "name", "code", "state", "capacity", "locatedIn"],
+  "@context": [
+    "https://smartdatamodels.org/context.jsonld",
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

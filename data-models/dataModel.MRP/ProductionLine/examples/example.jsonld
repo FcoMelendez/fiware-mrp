@@ -1,0 +1,18 @@
+{
+  "id": "urn:ngsi-ld:ProductionLine:PL-BCN-001",
+  "type": "ProductionLine",
+  "name": "Barcelona Assembly Line 1",
+  "lineCode": "PL-BCN-001",
+  "state": "active",
+  "taktTime": 60,
+  "locatedIn": "urn:ngsi-ld:Plant:PLT-BCN-001",
+  "hasWorkCenter": [
+    "urn:ngsi-ld:WorkCenter:WC-Assembly",
+    "urn:ngsi-ld:WorkCenter:WC-QualityCheck",
+    "urn:ngsi-ld:WorkCenter:WC-Packaging"
+  ],
+  "@context": [
+    "https://smartdatamodels.org/context.jsonld",
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

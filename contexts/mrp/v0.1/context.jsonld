@@ -1,0 +1,221 @@
+{
+  "@context": {
+    "mrp":    "https://fiware-mrp.io/ontology/mrp#",
+    "ngsi-ld": "https://uri.etsi.org/ngsi-ld/",
+
+    "@vocab": "https://fiware-mrp.io/ontology/mrp#",
+
+    "id":   "@id",
+    "type": "@type",
+
+    "Property":    "ngsi-ld:Property",
+    "Relationship": "ngsi-ld:Relationship",
+    "GeoProperty": "ngsi-ld:GeoProperty",
+    "value":       "ngsi-ld:hasValue",
+    "object":      { "@id": "ngsi-ld:hasObject", "@type": "@id" },
+    "observedAt":  { "@id": "ngsi-ld:observedAt", "@type": "ngsi-ld:DateTime" },
+    "unitCode":    "ngsi-ld:unitCode",
+    "datasetId":   "ngsi-ld:datasetId",
+
+    "Company":                      "mrp:Company",
+    "Plant":                        "mrp:Plant",
+    "ProductionLine":               "mrp:ProductionLine",
+    "WorkCenter":                   "mrp:WorkCenter",
+    "Machine":                      "mrp:Machine",
+    "Operator":                     "mrp:Operator",
+
+    "Product":                      "mrp:Product",
+    "UnitOfMeasure":                "mrp:UnitOfMeasure",
+    "BillOfMaterials":              "mrp:BillOfMaterials",
+    "BillOfMaterialsLine":          "mrp:BillOfMaterialsLine",
+    "ByProductLine":                "mrp:ByProductLine",
+    "RoutingOperation":             "mrp:RoutingOperation",
+
+    "StockLocation":                "mrp:StockLocation",
+    "InventoryBalance":             "mrp:InventoryBalance",
+    "Lot":                          "mrp:Lot",
+    "StockMove":                    "mrp:StockMove",
+    "StockMoveLine":                "mrp:StockMoveLine",
+    "InventoryReservation":         "mrp:InventoryReservation",
+
+    "ManufacturingOrder":           "mrp:ManufacturingOrder",
+    "WorkOrder":                    "mrp:WorkOrder",
+    "MaterialRequirement":          "mrp:MaterialRequirement",
+    "ProcurementRequest":           "mrp:ProcurementRequest",
+    "ReworkOrder":                  "mrp:ReworkOrder",
+
+    "DemandForecast":               "mrp:DemandForecast",
+    "MasterProductionScheduleLine": "mrp:MasterProductionScheduleLine",
+    "ReorderingRule":               "mrp:ReorderingRule",
+
+    "ProductionEvent":              "mrp:ProductionEvent",
+    "MachineSignal":                "mrp:MachineSignal",
+    "MachineState":                 "mrp:MachineState",
+    "OperatorAssignment":           "mrp:OperatorAssignment",
+
+    "QualityCheck":                 "mrp:QualityCheck",
+    "QualityAlert":                 "mrp:QualityAlert",
+    "ScrapEvent":                   "mrp:ScrapEvent",
+    "MaintenanceRequest":           "mrp:MaintenanceRequest",
+
+    "ProductionTraceabilityRecord": "mrp:ProductionTraceabilityRecord",
+    "FinishedGoodsReceipt":         "mrp:FinishedGoodsReceipt",
+    "ManufacturingCostRecord":      "mrp:ManufacturingCostRecord",
+    "KPIObservation":               "mrp:KPIObservation",
+
+    "name":                 "mrp:name",
+    "description":          "mrp:description",
+    "state":                "mrp:state",
+    "active":               "mrp:active",
+
+    "companyCode":          "mrp:companyCode",
+    "legalName":            "mrp:legalName",
+
+    "plantCode":            "mrp:plantCode",
+    "timezone":             "mrp:timezone",
+
+    "lineCode":             "mrp:lineCode",
+    "taktTime":             "mrp:taktTime",
+
+    "code":                 "mrp:code",
+    "capacity":             "mrp:capacity",
+    "timeEfficiency":       "mrp:timeEfficiency",
+    "costPerHour":          "mrp:costPerHour",
+    "oeeTarget":            "mrp:oeeTarget",
+    "calendarId":           "mrp:calendarId",
+
+    "serialNumber":         "mrp:serialNumber",
+    "availabilityState":    "mrp:availabilityState",
+
+    "operatorCode":         "mrp:operatorCode",
+    "role":                 "mrp:role",
+    "shift":                "mrp:shift",
+    "authorizationLevel":   "mrp:authorizationLevel",
+
+    "sku":                  "mrp:sku",
+    "productType":          "mrp:productType",
+    "trackingPolicy":       "mrp:trackingPolicy",
+    "defaultUnitCode":      "mrp:defaultUnitCode",
+    "standardCost":         "mrp:standardCost",
+
+    "unitName":             "mrp:unitName",
+    "category":             "mrp:category",
+    "ratioToReference":     "mrp:ratioToReference",
+
+    "bomCode":              "mrp:bomCode",
+    "version":              "mrp:version",
+    "bomType":              "mrp:bomType",
+    "quantity":             "mrp:quantity",
+    "validFrom":            "mrp:validFrom",
+    "validTo":              "mrp:validTo",
+
+    "sequence":             "mrp:sequence",
+    "scrapFactor":          "mrp:scrapFactor",
+    "issuePolicy":          "mrp:issuePolicy",
+    "costShare":            "mrp:costShare",
+
+    "operationCode":        "mrp:operationCode",
+    "expectedDuration":     "mrp:expectedDuration",
+    "setupDuration":        "mrp:setupDuration",
+    "cleanupDuration":      "mrp:cleanupDuration",
+    "dependencyPolicy":     "mrp:dependencyPolicy",
+    "instructions":         "mrp:instructions",
+
+    "locationCode":         "mrp:locationCode",
+    "locationType":         "mrp:locationType",
+
+    "quantityOnHand":       "mrp:quantityOnHand",
+    "reservedQuantity":     "mrp:reservedQuantity",
+    "availableQuantity":    "mrp:availableQuantity",
+    "inventoryDate":        "mrp:inventoryDate",
+
+    "lotCode":              "mrp:lotCode",
+    "lotType":              "mrp:lotType",
+    "qualityStatus":        "mrp:qualityStatus",
+    "expirationDate":       "mrp:expirationDate",
+
+    "moveType":             "mrp:moveType",
+    "plannedQuantity":      "mrp:plannedQuantity",
+    "doneQuantity":         "mrp:doneQuantity",
+    "scheduledDate":        "mrp:scheduledDate",
+    "actualDate":           "mrp:actualDate",
+    "quantityDone":         "mrp:quantityDone",
+
+    "requestedQuantity":    "mrp:requestedQuantity",
+    "reservedAt":           "mrp:reservedAt",
+    "releasedAt":           "mrp:releasedAt",
+
+    "origin":               "mrp:origin",
+    "priority":             "mrp:priority",
+    "reservationState":     "mrp:reservationState",
+    "componentsAvailabilityState": "mrp:componentsAvailabilityState",
+    "quantityToProduce":    "mrp:quantityToProduce",
+    "quantityProduced":     "mrp:quantityProduced",
+    "scheduledStart":       "mrp:scheduledStart",
+    "scheduledEnd":         "mrp:scheduledEnd",
+    "actualStart":          "mrp:actualStart",
+    "actualEnd":            "mrp:actualEnd",
+
+    "requirementType":      "mrp:requirementType",
+    "requiredQuantity":     "mrp:requiredQuantity",
+    "shortageQuantity":     "mrp:shortageQuantity",
+    "dueDate":              "mrp:dueDate",
+
+    "requestType":          "mrp:requestType",
+    "requiredBy":           "mrp:requiredBy",
+
+    "timerStatus":          "mrp:timerStatus",
+    "actualDuration":       "mrp:actualDuration",
+
+    "bucketStart":          "mrp:bucketStart",
+    "bucketEnd":            "mrp:bucketEnd",
+    "forecastQuantity":     "mrp:forecastQuantity",
+    "confidence":           "mrp:confidence",
+
+    "projectedInventory":            "mrp:projectedInventory",
+    "suggestedProductionQuantity":   "mrp:suggestedProductionQuantity",
+    "confirmedProductionQuantity":   "mrp:confirmedProductionQuantity",
+
+    "safetyStock":          "mrp:safetyStock",
+    "minimumQuantity":      "mrp:minimumQuantity",
+    "maximumQuantity":      "mrp:maximumQuantity",
+    "lotSize":              "mrp:lotSize",
+    "leadTimeDays":         "mrp:leadTimeDays",
+    "routePolicy":          "mrp:routePolicy",
+
+    "eventType":            "mrp:eventType",
+    "eventTime":            "mrp:eventTime",
+    "reasonCode":           "mrp:reasonCode",
+    "comment":              "mrp:comment",
+
+    "signalType":           "mrp:signalType",
+    "quality":              "mrp:quality",
+
+    "checkType":            "mrp:checkType",
+    "result":               "mrp:result",
+    "expectedValue":        "mrp:expectedValue",
+    "actualValue":          "mrp:actualValue",
+    "tolerance":            "mrp:tolerance",
+    "required":             "mrp:required",
+
+    "severity":             "mrp:severity",
+    "detectedAt":           "mrp:detectedAt",
+    "disposition":          "mrp:disposition",
+
+    "scrapCost":            "mrp:scrapCost",
+
+    "requestedAt":          "mrp:requestedAt",
+    "completedAt":          "mrp:completedAt",
+
+    "recordType":           "mrp:recordType",
+    "createdAt":            "mrp:createdAt",
+
+    "materialCost":         "mrp:materialCost",
+    "laborCost":            "mrp:laborCost",
+    "machineCost":          "mrp:machineCost",
+    "overheadCost":         "mrp:overheadCost",
+    "totalCost":            "mrp:totalCost",
+    "currency":             "mrp:currency",
+    "calculationTime":      "mrp:calculationTime"
+  }
+}

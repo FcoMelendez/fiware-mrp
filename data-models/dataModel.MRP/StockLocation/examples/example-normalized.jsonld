@@ -1,0 +1,31 @@
+{
+  "id": "urn:ngsi-ld:StockLocation:WH-STOCK",
+  "type": "StockLocation",
+  "name": {
+    "type": "Property",
+    "value": "Main Warehouse Stock"
+  },
+  "locationCode": {
+    "type": "Property",
+    "value": "WH-STOCK"
+  },
+  "locationType": {
+    "type": "Property",
+    "value": "internal"
+  },
+  "state": {
+    "type": "Property",
+    "value": "active"
+  },
+  "locatedIn": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:Plant:Plant-Barcelona-01"
+  },
+  "parentLocation": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:StockLocation:WH-MAIN"
+  },
+  "@context": [
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

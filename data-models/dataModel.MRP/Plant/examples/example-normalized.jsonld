@@ -1,0 +1,38 @@
+{
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld",
+  "id": "urn:ngsi-ld:Plant:Plant-BCN",
+  "type": "Plant",
+  "name": {
+    "type": "Property",
+    "value": "Barcelona Plant"
+  },
+  "plantCode": {
+    "type": "Property",
+    "value": "BCN"
+  },
+  "timezone": {
+    "type": "Property",
+    "value": "Europe/Madrid"
+  },
+  "state": {
+    "type": "Property",
+    "value": "active"
+  },
+  "ownedBy": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:Company:HPC"
+  },
+  "hasProductionLine": {
+    "type": "Relationship",
+    "object": [
+      "urn:ngsi-ld:ProductionLine:PL-BCN-01",
+      "urn:ngsi-ld:ProductionLine:PL-BCN-02"
+    ]
+  },
+  "hasStockLocation": {
+    "type": "Relationship",
+    "object": [
+      "urn:ngsi-ld:StockLocation:SL-BCN-WH01"
+    ]
+  }
+}

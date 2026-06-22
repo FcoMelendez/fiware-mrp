@@ -1,0 +1,28 @@
+{
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld",
+  "id": "urn:ngsi-ld:Company:HPC",
+  "type": "Company",
+  "name": {
+    "type": "Property",
+    "value": "Hydraulic Parts Co."
+  },
+  "legalName": {
+    "type": "Property",
+    "value": "Hydraulic Parts Co. S.A."
+  },
+  "companyCode": {
+    "type": "Property",
+    "value": "HPC"
+  },
+  "state": {
+    "type": "Property",
+    "value": "active"
+  },
+  "hasPlant": {
+    "type": "Relationship",
+    "object": [
+      "urn:ngsi-ld:Plant:Plant-BCN",
+      "urn:ngsi-ld:Plant:Plant-MAD"
+    ]
+  }
+}

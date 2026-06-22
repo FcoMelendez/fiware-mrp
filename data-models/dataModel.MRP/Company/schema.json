@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://smart-data-models.github.io/dataModel.MRP/Company/schema.json",
+  "title": "Company",
+  "description": "A legal entity that owns one or more manufacturing plants in the MRP system.",
+  "modelVersion": "0.1.0",
+  "type": "object",
+  "required": ["id", "type", "name", "companyCode", "state"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the Company entity.",
+      "pattern": "^urn:ngsi-ld:Company:.+$"
+    },
+    "type": {
+      "type": "string",
+      "description": "NGSI-LD entity type.",
+      "const": "Company"
+    },
+    "name": {
+      "type": "object",
+      "description": "Company display name.",
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Property"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "legalName": {
+      "type": "object",
+      "description": "Full legal name of the company.",
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Property"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "companyCode": {
+      "type": "object",
+      "description": "Short alphanumeric code identifying the company.",
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Property"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Z0-9_-]+$"
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "description": "Lifecycle state of the company.",
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Property"
+        },
+        "value": {
+          "type": "string",
+          "enum": ["active", "inactive", "archived"]
+        }
+      }
+    },
+    "hasPlant": {
+      "type": "object",
+      "description": "Relationship to one or more Plant entities owned by this company.",
+      "required": ["type", "object"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "Relationship"
+        },
+        "object": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
