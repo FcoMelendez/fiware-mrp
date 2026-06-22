@@ -1,7 +1,9 @@
 .PHONY: start stop reset seed logs lint \
         demo-01 test-01 \
         demo-02 test-02 \
-        test-all help
+        test-all \
+        docs docs-live docs-clean \
+        help
 
 COMPOSE = docker compose
 TUTORIAL ?= 01
@@ -65,6 +67,18 @@ lint-shell:
 	@which shellcheck > /dev/null 2>&1 && shellcheck scripts/*.sh tutorials/**/*.sh \
 	  || echo "shellcheck not installed — skipping shell linting"
 
+# ── Documentation ─────────────────────────────────────────────────────────────
+
+docs:
+	@cd docs && $(MAKE) html
+	@echo "Open: docs/_build/html/index.html"
+
+docs-live:
+	@cd docs && $(MAKE) livehtml
+
+docs-clean:
+	@cd docs && $(MAKE) clean
+
 # ── Help ──────────────────────────────────────────────────────────────────────
 
 help:
@@ -80,4 +94,7 @@ help:
 	@echo "  make test-all     Run all tutorial tests"
 	@echo "  make lint         Validate JSON schemas and shell scripts"
 	@echo "  make logs         Follow container logs"
+	@echo "  make docs         Build Sphinx HTML documentation"
+	@echo "  make docs-live    Live-reload docs server on http://127.0.0.1:8000"
+	@echo "  make docs-clean   Remove docs build directory"
 	@echo ""

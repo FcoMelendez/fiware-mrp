@@ -2,7 +2,9 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+.venv-docs/
 venv/
+docs/_build/
 dist/
 build/
 .pytest_cache/
