@@ -1,5 +1,7 @@
 # FIWARE-based MRP Reference Implementation
 
+[![Documentation Status](https://readthedocs.org/projects/fiware-mrp/badge/?version=latest)](https://fiware-mrp.readthedocs.io/en/latest/)
+
 A tutorial-driven Proof of Concept for a **Manufacturing Resource Planning (MRP) module** built on
 [NGSI-LD](https://ngsi-ld.org/) and the [Orion-LD Context Broker](https://github.com/FIWARE/context.Orion-LD).
 
@@ -14,8 +16,8 @@ the transaction engine.
 
 ```bash
 # 1. Clone
-git clone https://github.com/<org>/arise-fiware-mrp-reference.git
-cd arise-fiware-mrp-reference
+git clone https://github.com/FcoMelendez/fiware-mrp.git
+cd fiware-mrp
 
 # 2. Start the stack
 make start

@@ -170,8 +170,8 @@ Clone the repository (or use your existing working copy) and start the stack:
 
 .. code-block:: bash
 
-   git clone https://github.com/<org>/arise-fiware-mrp-reference.git
-   cd arise-fiware-mrp-reference
+   git clone https://github.com/FcoMelendez/fiware-mrp.git
+   cd fiware-mrp
 
    make start
 
