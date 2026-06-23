@@ -239,6 +239,61 @@ make reset
 
 This stops all containers and removes the MongoDB volume so the next run starts clean.
 
+## Optional: Visual guided tour
+
+Tutorial 01 ships a **Phaser 3 browser emulator** that lets you explore the
+same 12 entities through an interactive factory floor canvas with step-by-step
+guidance.
+
+### Prerequisites
+
+Node.js 18+ on the host (only needed to install npm dependencies once).
+
+### Start in mock mode (no Orion-LD required)
+
+```bash
+make install-emulator   # installs npm deps in packages/ — run once
+make start-mock         # starts emulator-gateway + emulator-ui in mock mode
+```
+
+Open **http://localhost:5173** in your browser.
+
+### Start against a live broker
+
+```bash
+make start              # core stack must already be running
+make seed               # seed data must be loaded
+make start-emulator     # adds emulator-gateway and emulator-ui
+```
+
+### What you can do
+
+The left panel walks through six guided steps:
+
+| Step | Action |
+|------|--------|
+| Verify the stack | Health check — confirms gateway, mrp-api, Orion-LD |
+| Load seed data | Batch-upserts the 12 NGSI-LD entities |
+| Inspect the Plant | Click any canvas zone to open its entity in the inspector |
+| Query WorkCenters | Fetches all 3 WorkCenters and highlights them on the canvas |
+| Browse Products | Fetches the 5-item product catalogue |
+| Inspect StockLocations | Fetches the 2 warehouse zones |
+
+Each step shows the underlying HTTP request ("Under the hood"), lets you copy
+the equivalent `curl` command, and logs the API response in the console at the
+bottom of the panel.
+
+The right panel shows a live SSE event timeline — hover a card to read what
+the event is, why it was triggered, and what it means for the system state.
+
+### Stop the emulator
+
+```bash
+make stop-emulator      # stops emulator containers, leaves core stack running
+```
+
+---
+
 ## What comes next
 
 **Tutorial 02 — Inventory balances and material receipts.**  

@@ -36,6 +36,32 @@ Everything runs from a **single `docker compose`** — no extra tooling required
 
 ---
 
+## Visual factory emulator
+
+Tutorial 01 ships a **Phaser 3 browser emulator** that lets you explore the same
+12 NGSI-LD entities through an interactive factory floor canvas instead of curl.
+
+```bash
+# No backend required — mock mode runs entirely in Docker
+make install-emulator   # once: installs npm deps
+make start-mock         # starts emulator-gateway + emulator-ui in mock mode
+
+# Open the guided tour
+open http://localhost:5173
+```
+
+The guided tour walks through six steps (health check → seed entities → explore
+the plant → query WorkCenters / Products / StockLocations) with live HTTP traces,
+an entity inspector, a data model viewer, and an SSE event timeline.
+
+To run against a live Orion-LD broker instead of fixtures:
+
+```bash
+make start-emulator     # starts the full stack + emulator
+```
+
+---
+
 ## Twelve-week tutorial roadmap
 
 | Tag | Tutorial | Business capability |
@@ -58,10 +84,13 @@ Everything runs from a **single `docker compose`** — no extra tooling required
 ## Repository structure
 
 ```
-arise-fiware-mrp-reference/
+fiware-mrp/
   contexts/mrp/v0.1/       JSON-LD @context (versioned, immutable after release)
   data-models/dataModel.MRP/<Type>/
                             JSON Schema + NGSI-LD examples per entity type
+  packages/
+    emulator-gateway/       Node.js + Express SSE gateway (scenario engine, NGSI-LD proxy)
+    emulator-ui/            Phaser 3 + TypeScript interactive factory emulator
   services/
     context-server/         Serves JSON-LD context files (FastAPI)
     mrp-api/                Business command API (FastAPI, grows each week)
@@ -75,7 +104,7 @@ arise-fiware-mrp-reference/
     iot-simulator/          Added in Tutorial 11
   tutorials/01-…12-/        Self-contained tutorial README + tests
   scripts/                  wait-for-orion.sh and helpers
-  docs/                     Architecture diagrams and adopter guide
+  docs/                     Sphinx RST documentation (published on ReadTheDocs)
   postman/                  Postman collection (complete in Week 12)
 ```
 
@@ -93,6 +122,12 @@ arise-fiware-mrp-reference/
 | `make test-01` | Run Tutorial 01 automated assertions |
 | `make test-all` | Run all tutorial tests |
 | `make lint` | Validate JSON schemas and shell scripts |
+| `make install-emulator` | Install npm dependencies for the emulator packages (run once) |
+| `make start-emulator` | Start the full stack + Phaser visual emulator (`http://localhost:5173`) |
+| `make start-mock` | Start the emulator in mock mode — no MRP backend required |
+| `make stop-emulator` | Stop emulator containers only |
+| `make docs` | Build Sphinx HTML documentation |
+| `make docs-live` | Live-reload docs server on `http://127.0.0.1:8000` |
 
 ---
 

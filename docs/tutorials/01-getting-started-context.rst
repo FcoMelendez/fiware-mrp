@@ -2,8 +2,8 @@ Tutorial 01 — Getting started with the FIWARE MRP context
 ===========================================================
 
 **Tag:** ``v0.1`` |
-**Effort:** ~30 minutes |
-**Stack additions:** Orion-LD, MongoDB, context-server, mrp-api
+**Effort:** ~30 minutes (CLI path) or ~20 minutes (visual emulator) |
+**Stack additions:** Orion-LD, MongoDB, context-server, mrp-api, emulator-gateway *(optional)*, emulator-ui *(optional)*
 
 ----
 
@@ -21,6 +21,7 @@ By the end of this tutorial you can:
 * Query entities by type and by attribute value.
 * Inspect normalized NGSI-LD format (Properties and Relationships).
 * Run automated assertions that verify the seed data is correct.
+* *(Optional)* Explore the same 12 entities through the Phaser 3 visual factory emulator.
 
 ----
 
@@ -107,6 +108,12 @@ Architecture of this tutorial
    * - ``mongo``
      - *(internal)*
      - Orion-LD persistence
+   * - ``emulator-gateway`` *(optional)*
+     - 8090
+     - Node.js + Express SSE gateway — proxies NGSI-LD calls and streams entity events
+   * - ``emulator-ui`` *(optional)*
+     - 5173
+     - Phaser 3 + TypeScript visual factory emulator (served by Vite)
 
 ----
 
@@ -500,6 +507,94 @@ Expected output:
 
 ----
 
+Optional — Visual guided tour
+------------------------------
+
+Tutorial 01 ships a **Phaser 3 browser emulator** that wraps the same six API
+calls in a step-by-step guided tour.  You can use it instead of, or alongside,
+the curl exercises above.
+
+.. note::
+
+   Node.js 18 or later must be installed on the host to install npm dependencies
+   (one-time setup).  Docker is still the only runtime requirement.
+
+Mock mode (no Orion-LD required)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Mock mode runs the emulator entirely from in-memory fixtures — the core
+stack does not need to be running:
+
+.. code-block:: bash
+
+   make install-emulator   # install npm deps in packages/ — run once
+   make start-mock         # starts emulator-gateway + emulator-ui
+
+Then open the emulator in your browser:
+
+.. code-block:: text
+
+   http://localhost:5173
+
+Live mode (against a running broker)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If the core stack is already running and seeded:
+
+.. code-block:: bash
+
+   make start-emulator     # adds emulator-gateway and emulator-ui to the stack
+
+The guided tour
+~~~~~~~~~~~~~~~
+
+The left panel contains six guided steps:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Step
+     - What it does
+   * - Verify the stack
+     - Health check — confirms gateway, mrp-api, and Orion-LD are responding
+   * - Load seed data
+     - Batch-upserts all 12 NGSI-LD entities and broadcasts them to the canvas
+   * - Inspect the Plant
+     - Click any canvas zone to open its entity in the right-panel inspector
+   * - Query WorkCenters
+     - Fetches all 3 WorkCenters and highlights them on the factory canvas
+   * - Browse Products
+     - Fetches the 5-item product catalogue
+   * - Inspect StockLocations
+     - Fetches the 2 warehouse zones
+
+Each step exposes:
+
+* **Under the hood** — the HTTP method, URL and expected status code for the
+  underlying NGSI-LD call, with a one-click ``curl`` copy button.
+* **Response console** — the full API response shown as raw JSON after
+  execution, with a copy button.
+* **↺ Retry** — re-execute the step without restarting the scenario.
+* **↺ Restart** — reset the entire scenario and canvas to the initial state.
+
+The right panel shows a live **SSE event timeline**.  Hover a card to read
+what the event is, why it was triggered, and what it means for system state.
+Click a card to expand the raw payload.
+
+The centre canvas highlights active zones in amber when a query returns
+matching entities.  Grey zones have no entity bound to them at the current
+scenario stage.  Click any zone to open its NGSI-LD entity in the inspector.
+
+Stop the emulator
+~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   make stop-emulator      # stops emulator containers, leaves core stack running
+
+----
+
 Troubleshooting
 ---------------
 
@@ -524,6 +619,13 @@ Troubleshooting
    * - Port conflict on 1026, 3000 or 8080
      - Stop the conflicting process or change the port in ``.env`` (copy
        ``.env.example`` and edit).
+   * - Emulator UI shows "Connecting…" and never loads
+     - Check ``docker compose logs emulator-gateway``.  In mock mode the
+       gateway does not need Orion-LD, but it must be healthy before the UI
+       container starts.  Run ``docker compose ps`` to confirm.
+   * - Port conflict on 5173 or 8090
+     - Set ``EMULATOR_UI_PORT`` or ``EMULATOR_GATEWAY_PORT`` in ``.env`` and
+       restart with ``make start-mock`` or ``make start-emulator``.
 
 ----
 
