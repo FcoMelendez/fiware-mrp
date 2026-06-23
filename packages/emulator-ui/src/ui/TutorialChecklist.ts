@@ -84,8 +84,23 @@ export class TutorialChecklist {
   switchTutorial(tutorialId: string): void {
     if (this.tutorialId === tutorialId) return;
     this.tutorialId = tutorialId;
-    this.reset();
     this.updateTopBar(tutorialId);
+    this.expandedIds.clear();
+
+    // Reset canvas overlay, welcome banner, and console
+    document.getElementById('canvas-overlay')?.classList.remove('hidden');
+    document.getElementById('welcome-banner')?.classList.remove('hidden');
+    const consoleEl = document.getElementById('tutorial-console');
+    if (consoleEl) {
+      const pre = consoleEl.querySelector<HTMLElement>('.console-pre');
+      const resultEl = consoleEl.querySelector<HTMLElement>('.console-result');
+      if (pre) pre.innerHTML = '<span class="console-empty">Run a step to see the response here…</span>';
+      if (resultEl) resultEl.textContent = '';
+    }
+    bus.emit(BUS.SCENARIO_RESET, undefined);
+
+    // Reload steps for the new tutorial, then render
+    this.loadSteps().then(() => this.render());
   }
 
   private updateTopBar(tutorialId: string): void {
