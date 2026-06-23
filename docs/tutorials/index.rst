@@ -17,7 +17,7 @@ self-contained: reset, seed, execute, assert and stop.
      - :doc:`01-getting-started-context`
      - NGSI-LD context, factory master data
    * - v0.2
-     - Tutorial 02 *(coming soon)*
+     - :doc:`02-inventory`
      - Inventory balances and material receipts
    * - v0.3
      - Tutorial 03 *(coming soon)*
@@ -54,3 +54,4 @@ self-contained: reset, seed, execute, assert and stop.
    :hidden:
 
    01-getting-started-context
+   02-inventory
