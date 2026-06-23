@@ -322,8 +322,9 @@ Expected output:
    [PASS] Lot LOT-240001 state in Orion-LD: expected active, got active
    [PASS] InventoryBalance count: expected 2, got 2
    [PASS] StockMove count (receipt moves): expected 2, got 2
+   [PASS] Second PumpCasing receipt accumulates to 70: expected 70, got 70
 
-   Results: 7 passed, 0 failed.
+   Results: 8 passed, 0 failed.
 
 .. note::
 
@@ -360,6 +361,9 @@ Expected output:
    * - StockMove count in Orion-LD
      - ``2``
      - One audit record per receipt
+   * - Second PumpCasing receipt accumulates to 70
+     - ``70``
+     - 50 + 20 — balance is patched, not replaced
 
 ----
 

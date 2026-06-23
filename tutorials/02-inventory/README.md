@@ -177,7 +177,7 @@ curl -s -X POST http://localhost:8081/commands/receive-material \
 make test-02
 ```
 
-Expected: 7 assertions, all `[PASS]`.
+Expected: 8 assertions, all `[PASS]`.
 
 ## Clean up
 
