@@ -2,6 +2,8 @@
         demo-01 test-01 \
         demo-02 test-02 \
         test-all \
+        start-emulator start-mock stop-emulator \
+        install-emulator \
         docs docs-live docs-clean \
         help
 
@@ -32,6 +34,25 @@ logs-ci:
 seed:
 	TUTORIAL=$(TUTORIAL) $(COMPOSE) run --rm --build \
 	  -e TUTORIAL=$(TUTORIAL) seed
+
+# ── Emulator ──────────────────────────────────────────────────────────────────
+
+install-emulator:
+	cd packages/emulator-gateway && npm install
+	cd packages/emulator-ui && npm install
+
+start-emulator:
+	$(COMPOSE) up -d --build mongo orion-ld context-server mrp-api emulator-gateway emulator-ui
+	@echo "Emulator UI → http://localhost:5173"
+	@echo "Gateway API → http://localhost:8090/api/health"
+
+start-mock:
+	EMULATOR_MODE=mock $(COMPOSE) up -d --build emulator-gateway emulator-ui
+	@echo "Mock mode — no backend required."
+	@echo "Emulator UI → http://localhost:5173"
+
+stop-emulator:
+	$(COMPOSE) stop emulator-gateway emulator-ui
 
 # ── Tutorial demos ────────────────────────────────────────────────────────────
 
@@ -92,6 +113,10 @@ help:
 	@echo "  make demo-01      Run Tutorial 01 demo script"
 	@echo "  make test-01      Run Tutorial 01 automated assertions"
 	@echo "  make test-all     Run all tutorial tests"
+	@echo "  make start-emulator  Start full stack + Phaser emulator (http://localhost:5173)"
+	@echo "  make start-mock      Start emulator in mock mode (no MRP backend needed)"
+	@echo "  make stop-emulator   Stop emulator containers only"
+	@echo "  make install-emulator  Install npm deps (run once before docker)"
 	@echo "  make lint         Validate JSON schemas and shell scripts"
 	@echo "  make logs         Follow container logs"
 	@echo "  make docs         Build Sphinx HTML documentation"

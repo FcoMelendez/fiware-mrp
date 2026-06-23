@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FIWARE MRP Emulator — Tutorial 01</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        background: #f1f5f9;
+        color: #1e293b;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-size: 13px;
+      }
+
+      /* ── Top bar ──────────────────────────────────────────────────────────── */
+      #top-bar {
+        background: #0f172a;
+        color: #f1f5f9;
+        padding: 8px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+        border-bottom: 2px solid #1d4ed8;
+      }
+      .top-title { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+      .top-subtitle { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+      #status-badge-wrap {
+        display: flex; align-items: center; gap: 6px;
+        background: #1e293b; border-radius: 999px;
+        padding: 5px 12px; font-size: 12px; font-weight: 700; color: #f1f5f9;
+      }
+      #status-dot { width: 9px; height: 9px; border-radius: 50%; background: #f59e0b; flex-shrink: 0; }
+
+      /* ── Main layout ──────────────────────────────────────────────────────── */
+      #main {
+        display: grid;
+        grid-template-columns: 310px 1fr 290px;
+        flex: 1;
+        min-height: 0;   /* allow flex child to shrink */
+        overflow: hidden;
+      }
+
+      /* ── Left panel — guided tour ─────────────────────────────────────────── */
+      #left-panel {
+        background: #ffffff;
+        border-right: 1px solid #e2e8f0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      #left-panel-header {
+        padding: 12px 14px 8px;
+        border-bottom: 1px solid #e2e8f0;
+        flex-shrink: 0;
+        background: #f8fafc;
+      }
+      #left-panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+      #left-panel-header-text h2 { font-size: 13px; font-weight: 700; color: #1e293b; }
+      #left-panel-header-text p  { font-size: 11px; color: #64748b; margin-top: 2px; }
+      #restart-scenario-btn {
+        flex-shrink: 0; background: none; border: 1px solid #e2e8f0; border-radius: 6px;
+        color: #64748b; font-size: 11px; font-weight: 700; cursor: pointer; padding: 4px 8px;
+        transition: background 0.15s, color 0.15s;
+      }
+      #restart-scenario-btn:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+
+      .btn-retry {
+        background: none; border: 1px solid #cbd5e1; border-radius: 6px;
+        color: #64748b; font-size: 11px; font-weight: 700; cursor: pointer;
+        padding: 4px 10px; transition: background 0.15s;
+      }
+      .btn-retry:hover { background: #f1f5f9; }
+
+      /* Welcome banner — shown before first step executes */
+      #welcome-banner {
+        margin: 10px 12px;
+        background: linear-gradient(135deg, #eff6ff, #dbeafe);
+        border: 1px solid #93c5fd;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 12px;
+        color: #1e40af;
+        line-height: 1.5;
+      }
+      #welcome-banner strong { display: block; font-size: 13px; margin-bottom: 4px; }
+      #welcome-banner.hidden { display: none; }
+
+      #tutorial-steps { padding: 8px 10px; flex: 1; overflow-y: auto; }
+
+      /* ── Step cards ───────────────────────────────────────────────────────── */
+      .step-card {
+        border-radius: 10px;
+        margin-bottom: 8px;
+        border: 1.5px solid #e2e8f0;
+        background: #f8fafc;
+        overflow: hidden;
+        transition: border-color 0.2s;
+      }
+      .step-card.step-active    { border-color: #3b82f6; background: #fff; box-shadow: 0 1px 6px rgba(59,130,246,0.12); }
+      .step-card.step-completed { border-color: #bbf7d0; background: #f0fdf4; }
+      .step-card.step-failed    { border-color: #fecaca; background: #fff5f5; }
+      .step-card.step-running   { border-color: #7dd3fc; background: #fff; }
+      .step-card.step-pending   { opacity: 0.7; }
+
+      .step-header {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 12px; cursor: pointer; user-select: none;
+      }
+      .step-header:hover { background: rgba(0,0,0,0.02); }
+
+      .step-indicator {
+        width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 700;
+        background: #e2e8f0; color: #64748b;
+      }
+      .step-active .step-indicator    { background: #3b82f6; color: #fff; }
+      .step-completed .step-indicator { background: #22c55e; color: #fff; }
+      .step-failed .step-indicator    { background: #ef4444; color: #fff; }
+      .step-running .step-indicator   { background: #7dd3fc; color: #0c4a6e; animation: spin 1s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      .step-info { flex: 1; min-width: 0; }
+      .step-title { font-weight: 700; font-size: 12px; color: #1e293b; }
+      .step-short { font-size: 11px; color: #64748b; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .step-chevron { font-size: 10px; color: #94a3b8; flex-shrink: 0; }
+
+      .step-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+      .step-body.hidden { display: none; }
+
+      .step-desc { font-size: 12px; color: #374151; line-height: 1.5; padding-top: 4px; }
+
+      /* Under the hood */
+      .hood-toggle {
+        font-size: 11px; font-weight: 700; color: #3b82f6; cursor: pointer;
+        padding: 4px 8px; background: #eff6ff; border-radius: 6px;
+        display: inline-flex; align-items: center; gap: 4px;
+        border: 1px solid #bfdbfe; width: fit-content;
+      }
+      .hood-toggle:hover { background: #dbeafe; }
+
+      .hood-content {
+        background: #0f172a; border-radius: 8px; padding: 10px;
+        font-family: monospace; font-size: 11px;
+        display: flex; flex-direction: column; gap: 4px;
+      }
+      .hood-content.hidden { display: none; }
+
+      .api-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+      .api-method {
+        padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;
+        color: #fff; flex-shrink: 0;
+      }
+      .api-url { color: #e2e8f0; word-break: break-all; font-size: 10px; }
+      .api-body { color: #94a3b8; font-size: 10px; padding-left: 2px; }
+      .api-expected { color: #6ee7b7; font-size: 10px; }
+
+      /* Result */
+      .step-result {
+        background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+        padding: 8px 10px; display: flex; flex-direction: column; gap: 4px;
+      }
+      .result-label { font-size: 10px; font-weight: 700; color: #64748b; letter-spacing: 0.5px; text-transform: uppercase; }
+
+      .trace-row {
+        display: flex; align-items: center; gap: 6px; font-family: monospace; font-size: 11px;
+        flex-wrap: wrap;
+      }
+      .trace-status { font-weight: 700; }
+      .trace-status.ok  { color: #16a34a; }
+      .trace-status.err { color: #dc2626; }
+      .trace-summary { color: #374151; flex: 1; }
+      .trace-ms { color: #94a3b8; font-size: 10px; }
+
+      .result-text  { font-size: 11px; color: #374151; line-height: 1.5; }
+      .result-count { font-size: 11px; color: #16a34a; font-weight: 700; }
+
+      /* Action elements */
+      .btn-execute {
+        background: #2563eb; color: #fff; border: none; border-radius: 8px;
+        padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer;
+        display: flex; align-items: center; gap: 6px; width: fit-content;
+        transition: background 0.15s;
+      }
+      .btn-execute:hover { background: #1d4ed8; }
+      .btn-execute:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      .step-running-label {
+        font-size: 12px; color: #3b82f6; font-weight: 700;
+        display: flex; align-items: center; gap: 6px;
+      }
+      .step-prompt {
+        background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;
+        padding: 8px 10px; font-size: 12px; color: #92400e; font-weight: 600;
+      }
+
+      /* ── Center — Phaser canvas ───────────────────────────────────────────── */
+      #game-container {
+        overflow: hidden; position: relative; background: #f1f5f9;
+        min-width: 0; min-height: 0;  /* prevent grid cell from expanding beyond its track */
+      }
+      #game-container canvas { display: block; }
+
+      /* Overlay prompt when scene is empty */
+      #canvas-overlay {
+        position: absolute; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; pointer-events: none;
+        transition: opacity 0.4s;
+      }
+      #canvas-overlay.hidden { opacity: 0; }
+      .canvas-hint {
+        background: rgba(255,255,255,0.9); border: 1px dashed #cbd5e1;
+        border-radius: 12px; padding: 20px 28px; text-align: center;
+        max-width: 280px;
+      }
+      .canvas-hint h3 { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+      .canvas-hint p  { font-size: 12px; color: #64748b; line-height: 1.5; }
+
+      /* ── Right panel ──────────────────────────────────────────────────────── */
+      #right-panel {
+        background: #ffffff; border-left: 1px solid #e2e8f0;
+        overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 14px;
+      }
+      #right-panel h2 { font-size: 13px; font-weight: 700; color: #1e293b; }
+
+      /* Inspector — type badge (colored border+text, transparent bg) */
+      .inspector-type-badge {
+        display: inline-flex; align-items: center; border-radius: 6px;
+        border: 1.5px solid; padding: 2px 8px; font-size: 11px; font-weight: 700;
+        cursor: pointer; background: transparent; transition: opacity 0.15s;
+      }
+      .inspector-type-badge:hover { opacity: 0.75; }
+
+      /* Inspector header row */
+      .inspector-type-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+      .inspector-raw-toggle { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #64748b; cursor: pointer; }
+      .inspector-raw-toggle input { cursor: pointer; accent-color: #3b82f6; }
+
+      .inspector-id {
+        font-size: 10px; color: #64748b; word-break: break-all;
+        margin-bottom: 8px; font-family: monospace;
+      }
+      .inspector-empty { font-size: 12px; color: #94a3b8; font-style: italic; padding: 8px 0; }
+
+      /* Attribute table */
+      .attr-table { display: flex; flex-direction: column; }
+      .attr-row {
+        display: flex; gap: 10px; padding: 4px 0;
+        border-bottom: 1px solid #f1f5f9; font-size: 11px; align-items: baseline;
+      }
+      .attr-name { font-family: monospace; font-weight: 700; min-width: 90px; flex-shrink: 0; }
+      .attr-value-prop  { color: #1e293b; font-family: monospace; word-break: break-all; }
+      .attr-value-rel   { color: #6366f1; font-style: italic; font-family: monospace; }
+      .attr-value-other { color: #9ca3af; font-family: monospace; word-break: break-all; }
+
+      /* Raw JSON-LD view */
+      .inspector-json-raw {
+        background: #0f172a; color: #e2e8f0; font-size: 10px;
+        padding: 10px; border-radius: 8px; overflow: auto;
+        white-space: pre; font-family: monospace; line-height: 1.6;
+        max-height: 260px; margin: 0;
+      }
+
+      /* Back nav button */
+      .btn-inspector-nav {
+        background: none; border: 1px solid #e2e8f0; border-radius: 6px;
+        font-size: 11px; font-weight: 700; color: #64748b; cursor: pointer;
+        padding: 3px 8px; margin-bottom: 8px; transition: background 0.15s;
+      }
+      .btn-inspector-nav:hover { background: #f1f5f9; }
+
+      /* Entity list (multi-result) */
+      .entity-list-item {
+        display: flex; align-items: center; gap: 8px;
+        padding: 6px 8px; border-radius: 6px; cursor: pointer;
+        border: 1px solid #e2e8f0; background: #f8fafc; margin-bottom: 4px;
+      }
+      .entity-list-item:hover { background: #eff6ff; border-color: #93c5fd; }
+      .entity-list-type {
+        font-size: 10px; font-weight: 700; border-radius: 4px;
+        padding: 1px 6px; border: 1px solid; flex-shrink: 0;
+      }
+      .entity-list-name { font-size: 11px; color: #1e293b; flex: 1; font-weight: 600; }
+      .entity-list-id   { font-size: 10px; color: #94a3b8; font-family: monospace; }
+
+      /* Data model table */
+      .dm-desc { font-size: 11px; color: #64748b; margin-bottom: 8px; line-height: 1.5; }
+      .data-model-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+      .data-model-table th {
+        text-align: left; padding: 4px 6px; background: #f8fafc;
+        color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+        border-bottom: 2px solid #e2e8f0;
+      }
+      .data-model-table td { padding: 4px 6px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+      .dm-attr-name  { font-family: monospace; font-weight: 700; }
+      .dm-ngsi-prop  { color: #2563eb; font-size: 10px; }
+      .dm-ngsi-rel   { color: #7c3aed; font-size: 10px; }
+      .dm-value-type { color: #374151; }
+
+      /* Copy curl button (inside hood-content) */
+      .btn-copy-curl {
+        background: none; border: 1px solid #475569; border-radius: 4px;
+        color: #94a3b8; font-size: 10px; padding: 1px 5px; cursor: pointer;
+        flex-shrink: 0; margin-left: auto; transition: all 0.15s;
+      }
+      .btn-copy-curl:hover  { background: #1e293b; color: #e2e8f0; }
+      .btn-copy-curl.copied { color: #22c55e; border-color: #22c55e; }
+
+      /* Available actions */
+      #available-actions h3 { font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+      #command-panel-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+      /* Context freshness */
+      #context-freshness-section h3 { font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+      #context-freshness { font-size: 11px; color: #22c55e; }
+
+      /* ── Buttons ──────────────────────────────────────────────────────────── */
+      .btn {
+        padding: 7px 10px; border: none; border-radius: 6px;
+        font-size: 11px; font-weight: 700; cursor: pointer;
+        color: #fff; text-align: center; transition: opacity 0.15s;
+      }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btn:hover:not(:disabled) { opacity: 0.85; }
+      .btn-green  { background: #16a34a; }
+      .btn-blue   { background: #2563eb; }
+      .btn-amber  { background: #d97706; }
+      .btn-secondary { background: #64748b; }
+      .btn-sm { font-size: 10px; padding: 4px 8px; }
+
+      /* ── Bottom — event timeline ──────────────────────────────────────────── */
+      #bottom-bar {
+        background: #ffffff; border-top: 1px solid #e2e8f0;
+        padding: 8px 14px; flex-shrink: 0;
+        display: flex; align-items: flex-start; gap: 10px;
+        overflow-x: auto; height: 140px; align-items: flex-start;
+      }
+      #bottom-bar h2 { font-size: 12px; font-weight: 700; color: #374151; flex-shrink: 0; line-height: 1; margin-top: 2px; }
+      #timeline-events { display: flex; gap: 8px; overflow-x: auto; flex: 1; }
+
+      .timeline-card {
+        background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+        padding: 6px 10px; min-width: 160px; flex-shrink: 0; cursor: pointer;
+        transition: border-color 0.15s;
+      }
+      .timeline-card:hover         { border-color: #93c5fd; }
+      .timeline-card.expanded      { border-color: #3b82f6; background: #fff; min-width: 260px; }
+      .timeline-card-header        { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+      .timeline-chevron            { font-size: 9px; color: #94a3b8; margin-top: 3px; flex-shrink: 0; }
+      .timeline-time               { font-size: 10px; color: #94a3b8; font-family: monospace; }
+      .timeline-title              { font-size: 11px; font-weight: 700; color: #1e293b; margin: 2px 0; }
+      .timeline-subtitle           { font-size: 10px; color: #3b82f6; }
+      .timeline-payload            { margin-top: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; }
+      .timeline-entity-link {
+        font-size: 11px; font-weight: 700; color: #2563eb; cursor: pointer;
+        margin-bottom: 4px; text-decoration: underline;
+      }
+      .timeline-entity-link:hover  { color: #1d4ed8; }
+      .timeline-json {
+        font-family: monospace; font-size: 10px; color: #374151;
+        background: #f1f5f9; border-radius: 4px; padding: 4px 6px;
+        white-space: pre-wrap; max-height: 100px; overflow-y: auto; margin: 0;
+      }
+
+      /* ── Tutorial console (bottom of left panel) ─────────────────────────── */
+      #tutorial-console {
+        flex-shrink: 0; border-top: 2px solid #334155;
+        background: #0f172a; padding: 8px 12px 10px;
+      }
+      #tutorial-console.hidden { display: none; }
+      .console-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 6px;
+      }
+      .console-label  { font-size: 10px; font-weight: 700; color: #60a5fa; letter-spacing: 0.6px; text-transform: uppercase; }
+      .console-result { font-size: 10px; color: #94a3b8; font-family: monospace; margin-bottom: 4px; }
+      .console-pre {
+        font-family: monospace; font-size: 10px; color: #e2e8f0;
+        max-height: 130px; overflow-y: auto; white-space: pre-wrap;
+        word-break: break-all; margin: 0; line-height: 1.5;
+      }
+      .btn-copy-answer {
+        background: none; border: 1px solid #334155; border-radius: 4px;
+        color: #94a3b8; font-size: 10px; padding: 2px 7px; cursor: pointer;
+        transition: all 0.15s; white-space: nowrap;
+      }
+      .btn-copy-answer:hover  { background: #1e293b; color: #e2e8f0; }
+      .btn-copy-answer.copied { color: #22c55e; border-color: #22c55e; }
+      .console-empty { font-style: italic; color: #475569; font-size: 10px; }
+
+      /* ── Event tooltip ────────────────────────────────────────────────────── */
+      #event-tooltip {
+        position: fixed; z-index: 9999; width: 290px;
+        background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+        padding: 12px 14px; font-size: 11px; line-height: 1.5;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4); pointer-events: none;
+      }
+      #event-tooltip.hidden { display: none; }
+      .tt-section { margin-bottom: 8px; }
+      .tt-section:last-child { margin-bottom: 0; }
+      .tt-label {
+        font-size: 9px; font-weight: 700; color: #60a5fa;
+        text-transform: uppercase; letter-spacing: 0.6px; display: block; margin-bottom: 2px;
+      }
+      .tt-text { color: #cbd5e1; }
+
+      #attr-tooltip {
+        position: fixed; z-index: 9999; width: 300px;
+        background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+        padding: 12px 14px; font-size: 11px; line-height: 1.5;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4); pointer-events: none;
+      }
+      #attr-tooltip.hidden { display: none; }
+
+      /* Update copy-curl button to show text */
+      .btn-copy-curl {
+        background: none; border: 1px solid #475569; border-radius: 4px;
+        color: #94a3b8; font-size: 10px; padding: 2px 7px; cursor: pointer;
+        flex-shrink: 0; margin-left: auto; transition: all 0.15s; white-space: nowrap;
+      }
+      .btn-copy-curl:hover  { background: #1e293b; color: #e2e8f0; }
+      .btn-copy-curl.copied { color: #22c55e; border-color: #22c55e; }
+
+      .hidden { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <!-- Top bar -->
+    <header id="top-bar">
+      <div>
+        <div class="top-title">FIWARE MRP Interactive Emulator</div>
+        <div class="top-subtitle">Tutorial 01 – Getting started with the FIWARE MRP context</div>
+      </div>
+      <div id="status-badge-wrap">
+        <span id="status-dot"></span>
+        <span id="status-badge">CONNECTING</span>
+      </div>
+    </header>
+
+    <!-- Main 3-column layout -->
+    <main id="main">
+
+      <!-- Left: guided tour -->
+      <aside id="left-panel">
+        <div id="left-panel-header">
+          <div id="left-panel-header-text">
+            <h2>Guided Tour</h2>
+            <p>Follow the steps to build your first FIWARE MRP context.</p>
+          </div>
+          <button id="restart-scenario-btn" title="Restart scenario from the beginning">↺ Restart</button>
+        </div>
+
+        <div id="welcome-banner">
+          <strong>Welcome to Tutorial 01</strong>
+          Start with <em>Verify the stack</em> to check all services are up, then load
+          the seed data to populate the factory canvas with real NGSI-LD entities.
+          Each step shows you the exact API call made under the hood.
+        </div>
+
+        <div id="tutorial-steps"></div>
+
+        <!-- Response console — always visible -->
+        <div id="tutorial-console">
+          <div class="console-header">
+            <span class="console-label">Response</span>
+            <button class="btn-copy-answer">📋 Copy full answer</button>
+          </div>
+          <div class="console-result"></div>
+          <pre class="console-pre"><span class="console-empty">Run a step to see the response here…</span></pre>
+        </div>
+      </aside>
+
+      <!-- Center: Phaser factory canvas -->
+      <div id="game-container">
+        <div id="canvas-overlay">
+          <div class="canvas-hint">
+            <h3>Factory canvas</h3>
+            <p>Run <strong>Seed entities</strong> in the guided tour to populate this canvas with your NGSI-LD factory graph.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: entity inspector + commands -->
+      <aside id="right-panel">
+
+        <div>
+          <h2>Entity Inspector</h2>
+          <div id="inspector-content">
+            <p class="inspector-empty">Click a zone on the canvas or run a step to inspect an NGSI-LD entity.</p>
+          </div>
+        </div>
+
+        <div id="available-actions">
+          <h3>Available actions</h3>
+          <div id="command-panel-actions"></div>
+        </div>
+
+        <div id="context-freshness-section">
+          <h3>Context freshness</h3>
+          <p id="context-freshness">No events yet</p>
+        </div>
+
+      </aside>
+    </main>
+
+    <!-- Bottom: event timeline -->
+    <footer id="bottom-bar">
+      <h2>Live event timeline</h2>
+      <div id="timeline-events"></div>
+    </footer>
+
+    <!-- Shared event hover tooltip -->
+    <div id="event-tooltip" class="hidden">
+      <div class="tt-section"><span class="tt-label">What</span><span class="tt-text" id="tt-what"></span></div>
+      <div class="tt-section"><span class="tt-label">Why triggered</span><span class="tt-text" id="tt-why"></span></div>
+      <div class="tt-section"><span class="tt-label">What it means for the UI</span><span class="tt-text" id="tt-note"></span></div>
+    </div>
+
+    <!-- Data model attribute hover tooltip -->
+    <div id="attr-tooltip" class="hidden">
+      <div class="tt-section"><span class="tt-label">Attribute</span><span class="tt-text" id="at-name" style="font-family:monospace;font-weight:700"></span></div>
+      <div class="tt-section"><span class="tt-label">Semantic</span><span class="tt-text" id="at-semantic"></span></div>
+      <div class="tt-section" id="at-structure-row"><span class="tt-label">Type / Structure</span><span class="tt-text"><span id="at-type" style="color:#60a5fa"></span> — <span id="at-structure"></span></span></div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
