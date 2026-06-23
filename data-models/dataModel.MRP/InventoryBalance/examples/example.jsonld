@@ -1,0 +1,12 @@
+{
+  "id": "urn:ngsi-ld:InventoryBalance:IB-PumpCasing-WH-STOCK",
+  "type": "InventoryBalance",
+  "quantityOnHand": 50,
+  "reservedQuantity": 0,
+  "availableQuantity": 50,
+  "inventoryDate": "2024-01-15T08:30:00Z",
+  "state": "active",
+  "product": "urn:ngsi-ld:Product:PumpCasing",
+  "location": "urn:ngsi-ld:StockLocation:WH-STOCK",
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+}

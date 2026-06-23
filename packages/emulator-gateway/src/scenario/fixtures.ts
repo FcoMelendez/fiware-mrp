@@ -1,6 +1,6 @@
-import type { SceneSnapshot, TutorialStep } from '../types.js';
+import type { SceneSnapshot } from '../types.js';
 
-// ── Tutorial 01 entities (mirrors services/seed-loader/data/tutorial-01.json) ──
+// ── Tutorial 01 entities ───────────────────────────────────────────────────────
 
 export const TUTORIAL_01_ENTITIES = [
   {
@@ -130,12 +130,47 @@ export const TUTORIAL_01_ENTITIES = [
   },
 ];
 
-// ── Scene snapshot (empty until seeded) ───────────────────────────────────────
+// ── Tutorial 02 additional mock entities ───────────────────────────────────────
+
+export const MOCK_IB_PUMP_CASING = {
+  id: 'urn:ngsi-ld:InventoryBalance:IB-PumpCasing-WH-STOCK',
+  type: 'InventoryBalance',
+  quantityOnHand: { type: 'Property', value: 50, unitCode: 'EA' },
+  reservedQuantity: { type: 'Property', value: 0, unitCode: 'EA' },
+  availableQuantity: { type: 'Property', value: 50, unitCode: 'EA' },
+  state: { type: 'Property', value: 'active' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:PumpCasing' },
+  location: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+};
+
+export const MOCK_IB_IMPELLER = {
+  id: 'urn:ngsi-ld:InventoryBalance:IB-Impeller-WH-STOCK-LOT-240001',
+  type: 'InventoryBalance',
+  quantityOnHand: { type: 'Property', value: 30, unitCode: 'EA' },
+  reservedQuantity: { type: 'Property', value: 0, unitCode: 'EA' },
+  availableQuantity: { type: 'Property', value: 30, unitCode: 'EA' },
+  state: { type: 'Property', value: 'active' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:Impeller' },
+  location: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+  lot: { type: 'Relationship', object: 'urn:ngsi-ld:Lot:LOT-240001' },
+};
+
+export const MOCK_LOT_240001 = {
+  id: 'urn:ngsi-ld:Lot:LOT-240001',
+  type: 'Lot',
+  lotCode: { type: 'Property', value: 'LOT-240001' },
+  origin: { type: 'Property', value: 'PO-2024-002' },
+  qualityStatus: { type: 'Property', value: 'approved' },
+  state: { type: 'Property', value: 'active' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:Impeller' },
+};
+
+// ── Shared scene layout ────────────────────────────────────────────────────────
 
 export const MOCK_SCENE: SceneSnapshot = {
   sceneId: 'mrp-demo-cell',
   mode: 'mock',
-  entities: [],          // populated by seed step
+  entities: [],
   layout: {
     zones: [
       {
@@ -186,11 +221,11 @@ export const MOCK_SCENE: SceneSnapshot = {
         entityId: 'urn:ngsi-ld:WorkCenter:WC-Packaging',
       },
     ],
-    bindings: [],  // no WO bindings in Tutorial 01
+    bindings: [],
   },
 };
 
-// ── Tutorial 01 guided-tour step definitions ───────────────────────────────────
+// ── Shared GuidedStep interface ────────────────────────────────────────────────
 
 export interface GuidedStep {
   id: string;
@@ -204,8 +239,10 @@ export interface GuidedStep {
     expectedStatus: number;
   };
   actionLabel?: string;
-  promptLabel?: string;   // shown instead of button when user must click on canvas
+  promptLabel?: string;
 }
+
+// ── Tutorial 01 step definitions ───────────────────────────────────────────────
 
 export const TUTORIAL_01_STEPS: GuidedStep[] = [
   {
@@ -213,11 +250,7 @@ export const TUTORIAL_01_STEPS: GuidedStep[] = [
     title: 'Verify the stack',
     shortDesc: 'Check that all services are healthy',
     desc: 'Before loading data the emulator verifies that Orion-LD, the context server and the MRP API are all responding. In live mode it polls each service health endpoint.',
-    hood: {
-      method: 'GET',
-      url: '/api/ready',
-      expectedStatus: 200,
-    },
+    hood: { method: 'GET', url: '/api/ready', expectedStatus: 200 },
     actionLabel: 'Check health',
   },
   {
@@ -283,4 +316,94 @@ export const TUTORIAL_01_STEPS: GuidedStep[] = [
   },
 ];
 
+// ── Tutorial 02 step definitions ───────────────────────────────────────────────
+
+export const TUTORIAL_02_STEPS: GuidedStep[] = [
+  {
+    id: 'check-inventory-service',
+    title: 'Verify inventory service',
+    shortDesc: 'Health-check the inventory-service',
+    desc: 'Tutorial 02 adds the inventory-service to the stack. This step confirms it is running and can reach Orion-LD.',
+    hood: { method: 'GET', url: 'http://inventory-service:8081/health', expectedStatus: 200 },
+    actionLabel: 'Check health',
+  },
+  {
+    id: 'seed-context',
+    title: 'Load seed data',
+    shortDesc: 'Re-seed the 12 Tutorial 01 master-data entities',
+    desc: 'Tutorial 02 starts from the same factory graph as Tutorial 01. Seeding is idempotent — running it again is always safe.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
+      body: '12 entities  •  application/ld+json',
+      expectedStatus: 201,
+    },
+    actionLabel: 'Seed entities',
+  },
+  {
+    id: 'query-initial-inventory',
+    title: 'Query initial inventory',
+    shortDesc: 'Expect zero InventoryBalance entities',
+    desc: 'Before any material receipts there are no InventoryBalance entities in the broker. The inventory-service returns an empty list.',
+    hood: {
+      method: 'GET',
+      url: 'http://inventory-service:8081/inventory',
+      expectedStatus: 200,
+    },
+    actionLabel: 'Query inventory',
+  },
+  {
+    id: 'receive-pump-casings',
+    title: 'Receive PumpCasing',
+    shortDesc: 'POST receive-material — 50 PumpCasing into WH-STOCK',
+    desc: 'The receive-material command creates a StockMove (moveType=receipt, state=done) and upserts an InventoryBalance for the product/location pair. quantityOnHand accumulates across multiple receipts.',
+    hood: {
+      method: 'POST',
+      url: 'http://inventory-service:8081/commands/receive-material',
+      body: JSON.stringify({
+        product_id: 'urn:ngsi-ld:Product:PumpCasing',
+        location_id: 'urn:ngsi-ld:StockLocation:WH-STOCK',
+        quantity: 50,
+        unit: 'EA',
+        reference: 'PO-2024-001',
+      }, null, 2),
+      expectedStatus: 200,
+    },
+    actionLabel: 'Receive PumpCasing',
+  },
+  {
+    id: 'receive-impellers',
+    title: 'Receive Impeller (lot-tracked)',
+    shortDesc: 'POST receive-material — 30 Impeller, lot LOT-240001',
+    desc: 'When lot_code is provided the service creates a Lot entity and keys the InventoryBalance to that lot. This enables traceability: you can later query "how much Impeller is in lot LOT-240001?"',
+    hood: {
+      method: 'POST',
+      url: 'http://inventory-service:8081/commands/receive-material',
+      body: JSON.stringify({
+        product_id: 'urn:ngsi-ld:Product:Impeller',
+        location_id: 'urn:ngsi-ld:StockLocation:WH-STOCK',
+        quantity: 30,
+        unit: 'EA',
+        lot_code: 'LOT-240001',
+        reference: 'PO-2024-002',
+      }, null, 2),
+      expectedStatus: 200,
+    },
+    actionLabel: 'Receive Impeller',
+  },
+  {
+    id: 'query-all-balances',
+    title: 'Query all balances',
+    shortDesc: 'GET /inventory — see 2 InventoryBalance entities',
+    desc: 'After the two receipts, the inventory-service returns 2 InventoryBalance entities. Inspect each one in the entity inspector to see quantityOnHand, the product Relationship, and — for Impeller — the lot Relationship.',
+    hood: {
+      method: 'GET',
+      url: 'http://inventory-service:8081/inventory',
+      expectedStatus: 200,
+    },
+    actionLabel: 'Query all balances',
+  },
+];
+
 export const TUTORIAL_01_STEP_IDS = TUTORIAL_01_STEPS.map((s) => s.id);
+export const TUTORIAL_02_STEP_IDS = TUTORIAL_02_STEPS.map((s) => s.id);

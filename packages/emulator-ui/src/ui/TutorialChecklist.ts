@@ -37,33 +37,76 @@ const METHOD_COLOR: Record<string, string> = {
   DELETE: '#ef4444',
 };
 
+const TUTORIAL_SUBTITLES: Record<string, string> = {
+  'tutorial-01': 'Tutorial 01 – Getting started with the FIWARE MRP context',
+  'tutorial-02': 'Tutorial 02 – Inventory balances and material receipts',
+};
+
+const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
+  'tutorial-01': {
+    title: 'Welcome to Tutorial 01',
+    body: 'Start with <em>Verify the stack</em> to check all services are up, then load the seed data to populate the factory canvas with real NGSI-LD entities. Each step shows you the exact API call made under the hood.',
+  },
+  'tutorial-02': {
+    title: 'Welcome to Tutorial 02',
+    body: 'This tutorial adds the <em>inventory-service</em> to the stack. You will receive raw materials into WH-STOCK and build up InventoryBalance entities via the <em>receive-material</em> command.',
+  },
+};
+
 export class TutorialChecklist {
   private el: HTMLElement;
   private steps: StepState[] = [];
   private expandedIds = new Set<string>();
+  private tutorialId = 'tutorial-01';
 
   constructor(containerId: string) {
     const el = document.getElementById(containerId);
     if (!el) throw new Error(`TutorialChecklist: #${containerId} not found`);
     this.el = el;
 
-    // Load step definitions from gateway, fall back to built-in defaults
     this.loadSteps().then(() => this.render());
 
-    // When a zone is clicked and entity changes, advance explore-plant step
     bus.on<string>(BUS.ENTITY_SELECTED, () => {
       this.maybeCompletePromptStep('explore-plant');
     });
 
-    // Restart button in the panel header
     document.getElementById('restart-scenario-btn')?.addEventListener('click', () => {
       this.reset();
     });
+
+    // Tutorial selector in top bar
+    const selector = document.getElementById('tutorial-selector') as HTMLSelectElement | null;
+    selector?.addEventListener('change', () => {
+      this.switchTutorial(selector.value);
+    });
+  }
+
+  switchTutorial(tutorialId: string): void {
+    if (this.tutorialId === tutorialId) return;
+    this.tutorialId = tutorialId;
+    this.reset();
+    this.updateTopBar(tutorialId);
+  }
+
+  private updateTopBar(tutorialId: string): void {
+    const subtitle = document.getElementById('top-subtitle');
+    if (subtitle) subtitle.textContent = TUTORIAL_SUBTITLES[tutorialId] ?? tutorialId;
+
+    const welcomeTitle = document.getElementById('welcome-title');
+    const welcomeBody  = document.getElementById('welcome-body');
+    const info = TUTORIAL_WELCOME[tutorialId];
+    if (info) {
+      if (welcomeTitle) welcomeTitle.textContent = info.title;
+      if (welcomeBody)  welcomeBody.innerHTML = info.body;
+    }
+
+    const panelTitle = document.querySelector<HTMLElement>('#left-panel-header-text h2');
+    if (panelTitle) panelTitle.textContent = `Guided Tour — ${tutorialId === 'tutorial-01' ? 'T01' : 'T02'}`;
   }
 
   private async loadSteps(): Promise<void> {
     try {
-      const res = await fetch('/api/scenarios/tutorial-01/steps');
+      const res = await fetch(`/api/scenarios/${this.tutorialId}/steps`);
       if (res.ok) {
         const defs = (await res.json()) as GuidedStep[];
         this.steps = defs.map((def, i) => ({
@@ -74,7 +117,6 @@ export class TutorialChecklist {
       }
     } catch { /* fall through */ }
 
-    // Built-in fallback
     this.steps = BUILT_IN_STEPS.map((def, i) => ({
       def,
       status: i === 0 ? 'active' : 'pending',
@@ -237,7 +279,7 @@ export class TutorialChecklist {
     this.render();
 
     try {
-      const res = await fetch(`/api/scenarios/tutorial-01/steps/${stepId}/execute`, {
+      const res = await fetch(`/api/scenarios/${this.tutorialId}/steps/${stepId}/execute`, {
         method: 'POST',
       });
       const data = (await res.json()) as {

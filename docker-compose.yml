@@ -108,6 +108,29 @@ services:
     profiles:
       - tools
 
+  # ── Inventory service (Tutorial 02) ────────────────────────────────────────
+
+  inventory-service:
+    <<: *common-python
+    build:
+      context: ./services/inventory-service
+    container_name: mrp-inventory-service
+    depends_on:
+      orion-ld:
+        condition: service_healthy
+      context-server:
+        condition: service_healthy
+    ports:
+      - "${INVENTORY_SERVICE_PORT:-8081}:8081"
+    environment:
+      ORION_URL: http://orion-ld:1026
+      CONTEXT_URL: http://context-server:3000/contexts/mrp/v0.1/context.jsonld
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ── Emulator (Phaser UI + gateway) ─────────────────────────────────────────
 
   emulator-gateway:

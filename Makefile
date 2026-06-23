@@ -7,6 +7,9 @@
         docs docs-live docs-clean \
         help
 
+# Tutorial currently active (set by TUTORIAL=02 make seed, etc.)
+TUTORIAL ?= 01
+
 COMPOSE = docker compose
 TUTORIAL ?= 01
 
@@ -42,9 +45,10 @@ install-emulator:
 	cd packages/emulator-ui && npm install
 
 start-emulator:
-	$(COMPOSE) up -d --build mongo orion-ld context-server mrp-api emulator-gateway emulator-ui
-	@echo "Emulator UI → http://localhost:5173"
-	@echo "Gateway API → http://localhost:8090/api/health"
+	$(COMPOSE) up -d --build mongo orion-ld context-server mrp-api inventory-service emulator-gateway emulator-ui
+	@echo "Emulator UI      → http://localhost:5173"
+	@echo "Gateway API      → http://localhost:8090/api/health"
+	@echo "Inventory API    → http://localhost:8081/health"
 
 start-mock:
 	EMULATOR_MODE=mock $(COMPOSE) up -d --build emulator-gateway emulator-ui
@@ -66,7 +70,11 @@ test-01:
 	@echo "=== Running Tutorial 01 tests ==="
 	@bash tutorials/01-getting-started-context/tests/test-01.sh
 
-test-all: test-01
+test-02:
+	@echo "=== Running Tutorial 02 tests ==="
+	@bash tutorials/02-inventory/tests/test-02.sh
+
+test-all: test-01 test-02
 	@echo "=== All tests passed ==="
 
 # ── Quality gates ─────────────────────────────────────────────────────────────

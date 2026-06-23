@@ -1,0 +1,25 @@
+{
+  "id": "urn:ngsi-ld:Lot:LOT-240001",
+  "type": "Lot",
+  "lotCode": {
+    "type": "Property",
+    "value": "LOT-240001"
+  },
+  "origin": {
+    "type": "Property",
+    "value": "Proveedor Hidráulico S.A."
+  },
+  "qualityStatus": {
+    "type": "Property",
+    "value": "approved"
+  },
+  "state": {
+    "type": "Property",
+    "value": "active"
+  },
+  "product": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:Product:Impeller"
+  },
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+}

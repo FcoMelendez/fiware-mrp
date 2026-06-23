@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "$schemaVersion": "0.2.0",
+  "modelTags": "MRP",
+  "$id": "https://smart-data-models.github.io/dataModel.MRP/Lot/schema.json",
+  "title": "Smart Data Models - MRP Lot",
+  "description": "A traceable batch of product received from a supplier or produced in-house. Lots enable end-to-end traceability from raw material receipt through production to finished-goods shipment. Only products with trackingPolicy 'lot' or 'serial' carry lot references.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^urn:ngsi-ld:Lot:.+",
+          "description": "Unique identifier. Recommended format: urn:ngsi-ld:Lot:{LotCode}"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Lot"],
+          "description": "NGSI-LD Entity type. Must be Lot."
+        },
+        "lotCode": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": { "type": "string", "description": "Human-readable lot or batch number as assigned by the supplier or production system." }
+          },
+          "description": "The lot/batch number. Must be unique within the scope of a product."
+        },
+        "expirationDate": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date" }
+          },
+          "description": "ISO 8601 date after which the lot must not be used. Optional; omit for non-perishable materials."
+        },
+        "origin": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": { "type": "string" }
+          },
+          "description": "Origin of the lot — typically the supplier name or the manufacturing order that produced it."
+        },
+        "qualityStatus": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "enum": ["pending", "approved", "quarantine", "rejected"],
+              "description": "pending: awaiting quality check; approved: cleared for use; quarantine: held pending investigation; rejected: blocked from use."
+            }
+          },
+          "description": "Quality disposition of the lot. Only lots with qualityStatus 'approved' may be issued to production."
+        },
+        "state": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "enum": ["active", "consumed", "expired"],
+              "description": "active: quantity still available; consumed: all stock used; expired: past expiration date."
+            }
+          },
+          "description": "Lifecycle state of the lot."
+        },
+        "product": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "format": "uri", "pattern": "^urn:ngsi-ld:Product:.+" }
+          },
+          "description": "Reference to the Product this lot belongs to."
+        }
+      }
+    }
+  ],
+  "required": ["id", "type", "lotCode", "qualityStatus", "state", "product"],
+  "@context": [
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

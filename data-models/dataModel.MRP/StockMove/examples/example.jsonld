@@ -1,0 +1,12 @@
+{
+  "id": "urn:ngsi-ld:StockMove:SM-20240115-A1B2",
+  "type": "StockMove",
+  "moveType": "receipt",
+  "quantity": 50,
+  "state": "done",
+  "actualDate": "2024-01-15T08:30:00Z",
+  "origin": "PO-2024-001",
+  "product": "urn:ngsi-ld:Product:PumpCasing",
+  "toLocation": "urn:ngsi-ld:StockLocation:WH-STOCK",
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+}

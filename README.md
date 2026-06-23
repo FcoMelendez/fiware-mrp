@@ -67,7 +67,7 @@ make start-emulator     # starts the full stack + emulator
 | Tag | Tutorial | Business capability |
 |-----|----------|-------------------|
 | v0.1 | [01 — Getting started](tutorials/01-getting-started-context/README.md) | NGSI-LD context, factory graph, master data |
-| v0.2 | 02 — Inventory | Material receipts, inventory balances, lots |
+| v0.2 | [02 — Inventory](tutorials/02-inventory/README.md) | Material receipts, inventory balances, lots |
 | v0.3 | 03 — BoM | Bill of Materials, BoM explosion, material requirements |
 | v0.4 | 04 — Manufacturing order | MO confirmation, stock moves, state machine |
 | v0.5 | 05 — Reservations | Component reservations, shortages, procurement |
@@ -120,6 +120,7 @@ fiware-mrp/
 | `make seed` | Load Tutorial 01 seed data |
 | `make demo-01` | Run Tutorial 01 demo walkthrough |
 | `make test-01` | Run Tutorial 01 automated assertions |
+| `make test-02` | Run Tutorial 02 automated assertions |
 | `make test-all` | Run all tutorial tests |
 | `make lint` | Validate JSON schemas and shell scripts |
 | `make install-emulator` | Install npm dependencies for the emulator packages (run once) |

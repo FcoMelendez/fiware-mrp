@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "$schemaVersion": "0.2.0",
+  "modelTags": "MRP",
+  "$id": "https://smart-data-models.github.io/dataModel.MRP/StockMove/schema.json",
+  "title": "Smart Data Models - MRP StockMove",
+  "description": "A single inventory movement that transfers a quantity of a product between two stock locations (or from a supplier to a location for receipts). Every StockMove that reaches the 'done' state updates the InventoryBalance of the affected product/location combinations.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^urn:ngsi-ld:StockMove:.+",
+          "description": "Unique identifier. Recommended format: urn:ngsi-ld:StockMove:SM-{yyyyMMdd}-{random}"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["StockMove"],
+          "description": "NGSI-LD Entity type. Must be StockMove."
+        },
+        "moveType": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "enum": ["receipt", "issue", "transfer", "adjustment", "scrap"],
+              "description": "receipt: goods in from supplier; issue: consumption by production; transfer: location-to-location; adjustment: inventory count correction; scrap: write-off."
+            }
+          },
+          "description": "Category of the stock movement."
+        },
+        "quantity": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": { "type": "number", "exclusiveMinimum": 0 },
+            "unitCode": { "type": "string", "description": "UN/CEFACT unit code (e.g. EA, KGM, LTR)." }
+          },
+          "description": "Quantity moved. Always positive; direction is inferred from moveType and fromLocation/toLocation."
+        },
+        "state": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "enum": ["draft", "done", "cancelled"],
+              "description": "draft: created but not yet validated; done: movement committed and balances updated; cancelled: voided without balance impact."
+            }
+          },
+          "description": "Lifecycle state of the stock move."
+        },
+        "actualDate": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "description": "ISO 8601 timestamp when the physical movement occurred."
+        },
+        "origin": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": { "type": "string" }
+          },
+          "description": "Free-text reference identifying the source document (e.g. purchase order number, manufacturing order ID)."
+        },
+        "product": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "format": "uri", "pattern": "^urn:ngsi-ld:Product:.+" }
+          },
+          "description": "Reference to the Product being moved."
+        },
+        "fromLocation": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "format": "uri" }
+          },
+          "description": "Source location. Absent for supplier receipts (goods originate outside the system)."
+        },
+        "toLocation": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "format": "uri", "pattern": "^urn:ngsi-ld:StockLocation:.+" }
+          },
+          "description": "Destination location."
+        },
+        "lot": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "format": "uri", "pattern": "^urn:ngsi-ld:Lot:.+" }
+          },
+          "description": "Lot assignment. Present only when the product is lot-tracked."
+        }
+      }
+    }
+  ],
+  "required": ["id", "type", "moveType", "quantity", "state", "actualDate", "product", "toLocation"],
+  "@context": [
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

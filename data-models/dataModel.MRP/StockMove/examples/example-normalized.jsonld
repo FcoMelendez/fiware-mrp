@@ -1,0 +1,34 @@
+{
+  "id": "urn:ngsi-ld:StockMove:SM-20240115-A1B2",
+  "type": "StockMove",
+  "moveType": {
+    "type": "Property",
+    "value": "receipt"
+  },
+  "quantity": {
+    "type": "Property",
+    "value": 50,
+    "unitCode": "EA"
+  },
+  "state": {
+    "type": "Property",
+    "value": "done"
+  },
+  "actualDate": {
+    "type": "Property",
+    "value": "2024-01-15T08:30:00Z"
+  },
+  "origin": {
+    "type": "Property",
+    "value": "PO-2024-001"
+  },
+  "product": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:Product:PumpCasing"
+  },
+  "toLocation": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:StockLocation:WH-STOCK"
+  },
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+}

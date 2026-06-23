@@ -1,0 +1,10 @@
+{
+  "id": "urn:ngsi-ld:Lot:LOT-240001",
+  "type": "Lot",
+  "lotCode": "LOT-240001",
+  "origin": "Proveedor Hidráulico S.A.",
+  "qualityStatus": "approved",
+  "state": "active",
+  "product": "urn:ngsi-ld:Product:Impeller",
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+}
