@@ -94,7 +94,7 @@ export class ScenarioEngine {
     switch (stepId) {
       case 'check-inventory-service': return this.stepStackHealth(step, 'tutorial-02');
       case 'seed-context':            return this.stepSeedEntities(step);
-      case 'query-initial-inventory': return this.stepQueryInitialInventory(step);
+      case 'query-initial-inventory': return this.stepQueryEntities(step, 'InventoryBalance');
       case 'receive-pump-casings':    return this.stepReceiveMaterial(step, {
         productId: 'urn:ngsi-ld:Product:PumpCasing',
         locationId: 'urn:ngsi-ld:StockLocation:WH-STOCK',
@@ -110,7 +110,7 @@ export class ScenarioEngine {
         mockSmId: 'urn:ngsi-ld:StockMove:SM-MOCK-IMP30',
         mockLot: MOCK_LOT_240001,
       });
-      case 'query-all-balances': return this.stepQueryAllBalances(step);
+      case 'query-all-balances': return this.stepQueryEntities(step, 'InventoryBalance');
       default: throw new Error(`No executor for step: ${stepId}`);
     }
   }
@@ -199,7 +199,8 @@ export class ScenarioEngine {
         : await this.ngsi.queryEntities([type]);
       if (entities.length === 0) responseStatus = 404;
     } else {
-      entities = TUTORIAL_01_ENTITIES.filter((e) => e.type === type);
+      const mockPool = [...TUTORIAL_01_ENTITIES, MOCK_IB_PUMP_CASING, MOCK_IB_IMPELLER, MOCK_LOT_240001];
+      entities = mockPool.filter((e) => (e as { type: string }).type === type);
     }
 
     const durationMs = Date.now() - t0;
@@ -213,37 +214,6 @@ export class ScenarioEngine {
       stepId: step.id,
       status: 'completed',
       result: `${entities.length} ${type} entit${entities.length === 1 ? 'y' : 'ies'} returned`,
-      apiTrace: [{ method: 'GET', url: step.hood.url, responseStatus, responseSummary: `${entities.length} entities`, durationMs }],
-      entities,
-    };
-  }
-
-  private async stepQueryInitialInventory(step: GuidedStep): Promise<StepResult> {
-    const t0 = Date.now();
-    let entities: unknown[] = [];
-    let responseStatus = 200;
-
-    if (this.mode === 'live') {
-      try {
-        const invUrl = (this.ngsi as unknown as { orionUrl: string }).orionUrl
-          .replace(':1026', ':8081').replace('orion-ld', 'inventory-service');
-        const res = await fetch(`${invUrl}/inventory`, {
-          headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(5_000),
-        });
-        const json = await res.json();
-        entities = Array.isArray(json) ? json : [];
-        responseStatus = res.status;
-      } catch { responseStatus = 503; }
-    }
-
-    const durationMs = Date.now() - t0;
-    return {
-      stepId: step.id,
-      status: 'completed',
-      result: entities.length === 0
-        ? 'No InventoryBalance entities yet — inventory starts empty'
-        : `${entities.length} InventoryBalance entit${entities.length === 1 ? 'y' : 'ies'} found`,
       apiTrace: [{ method: 'GET', url: step.hood.url, responseStatus, responseSummary: `${entities.length} entities`, durationMs }],
       entities,
     };
@@ -324,32 +294,4 @@ export class ScenarioEngine {
     };
   }
 
-  private async stepQueryAllBalances(step: GuidedStep): Promise<StepResult> {
-    const t0 = Date.now();
-    let entities: unknown[] = [MOCK_IB_PUMP_CASING, MOCK_IB_IMPELLER];
-    let responseStatus = 200;
-
-    if (this.mode === 'live') {
-      try {
-        const invUrl = (this.ngsi as unknown as { orionUrl: string }).orionUrl
-          .replace(':1026', ':8081').replace('orion-ld', 'inventory-service');
-        const res = await fetch(`${invUrl}/inventory`, {
-          headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(5_000),
-        });
-        responseStatus = res.status;
-        const json = await res.json();
-        entities = Array.isArray(json) ? json : entities;
-      } catch { responseStatus = 503; }
-    }
-
-    const durationMs = Date.now() - t0;
-    return {
-      stepId: step.id,
-      status: 'completed',
-      result: `${entities.length} InventoryBalance entit${entities.length === 1 ? 'y' : 'ies'} in WH-STOCK`,
-      apiTrace: [{ method: 'GET', url: step.hood.url, responseStatus, responseSummary: `${entities.length} entities`, durationMs }],
-      entities,
-    };
-  }
 }
