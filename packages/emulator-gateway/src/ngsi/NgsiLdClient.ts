@@ -38,7 +38,7 @@ export class NgsiLdClient {
 
   async queryEntities(types: string[]): Promise<NgsiLdEntity[]> {
     try {
-      const params = new URLSearchParams({ type: types.join(',') });
+      const params = new URLSearchParams({ type: types.join(','), limit: '1000' });
       const res = await fetch(
         `${this.orionUrl}/ngsi-ld/v1/entities?${params}`,
         {

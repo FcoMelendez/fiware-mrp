@@ -5,7 +5,9 @@ import { config } from '../config.js';
 
 const MRP_TYPES = [
   'Company', 'Plant', 'WorkCenter', 'Product', 'StockLocation',
-  'InventoryBalance', 'StockMove', 'Lot', 'WorkOrder',
+  'InventoryBalance', 'StockMove', 'Lot',
+  'BillOfMaterials', 'BillOfMaterialsLine',
+  'WorkOrder',
 ];
 
 export function entitiesRouter(ngsi: NgsiLdClient): Router {
