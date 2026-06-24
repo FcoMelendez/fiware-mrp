@@ -70,6 +70,15 @@ export class ScenarioEngine {
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
+  async resetTutorial(tutorialId: string): Promise<{ deleted: number }> {
+    if (this.mode !== 'live') return { deleted: 0 };
+    if (tutorialId === 'tutorial-02') {
+      const deleted = await this.ngsi.deleteEntitiesByType(['InventoryBalance', 'StockMove', 'Lot']);
+      return { deleted };
+    }
+    return { deleted: 0 };
+  }
+
   // ── Tutorial 01 step handlers ──────────────────────────────────────────────
 
   private async executeTutorial01Step(stepId: string): Promise<StepResult> {

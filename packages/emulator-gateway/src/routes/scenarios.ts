@@ -19,6 +19,17 @@ export function scenariosRouter(engine: ScenarioEngine): Router {
     }
   });
 
+  // Reset tutorial — delete transactional entities from the broker
+  router.post('/:tutorialId/reset', async (req, res) => {
+    const { tutorialId } = req.params;
+    try {
+      const result = await engine.resetTutorial(tutorialId);
+      res.json({ status: 'ok', ...result });
+    } catch (err) {
+      res.status(500).json({ error: 'Reset failed', detail: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   // Execute a single step
   router.post('/:tutorialId/steps/:stepId/execute', async (req, res) => {
     const { tutorialId, stepId } = req.params;

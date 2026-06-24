@@ -71,7 +71,9 @@ export class TutorialChecklist {
     });
 
     document.getElementById('restart-scenario-btn')?.addEventListener('click', () => {
-      this.reset();
+      fetch(`/api/scenarios/${this.tutorialId}/reset`, { method: 'POST' })
+        .catch(() => {/* non-fatal: UI resets regardless */})
+        .finally(() => this.reset());
     });
 
     // Tutorial selector in top bar

@@ -56,6 +56,23 @@ export class NgsiLdClient {
     }
   }
 
+  async deleteEntitiesByType(types: string[]): Promise<number> {
+    const entities = await this.queryEntities(types);
+    if (entities.length === 0) return 0;
+    const ids = entities.map((e) => e.id);
+    try {
+      const res = await fetch(`${this.orionUrl}/ngsi-ld/v1/entityOperations/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ids),
+        signal: AbortSignal.timeout(10000),
+      });
+      return res.ok ? ids.length : 0;
+    } catch {
+      return 0;
+    }
+  }
+
   async createSubscription(body: Record<string, unknown>): Promise<string | null> {
     try {
       const res = await fetch(`${this.orionUrl}/ngsi-ld/v1/subscriptions`, {
