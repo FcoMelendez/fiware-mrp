@@ -139,10 +139,14 @@ export class EntityInspector {
     }).join('');
 
     this.el.innerHTML = `
-      <span class="inspector-type-badge" style="color:${typeColor};border-color:${typeColor};background:${typeColor}18;margin-bottom:6px;display:inline-flex">${entities[0].type}</span>
+      <button class="inspector-type-badge" style="color:${typeColor};border-color:${typeColor};background:${typeColor}18;margin-bottom:6px;display:inline-flex" data-type="${entities[0].type}">${entities[0].type}</button>
       <div class="inspector-id" style="margin-bottom:8px">${entities.length} entities — click one to inspect</div>
       ${items}
     `;
+
+    this.el.querySelector<HTMLButtonElement>('.inspector-type-badge')?.addEventListener('click', () => {
+      renderDataModel(this.el, entities[0].type, typeColor, () => this.showList(entities));
+    });
 
     this.el.querySelectorAll<HTMLElement>('.entity-list-item').forEach((row) => {
       row.addEventListener('click', () => {
@@ -400,7 +404,7 @@ export function renderDataModel(
     : '<tr><td colspan="4" style="color:#94a3b8">No data model defined for this type.</td></tr>';
 
   el.innerHTML = `
-    <button id="dm-back" class="btn-inspector-nav">← Back to entity</button>
+    <button id="dm-back" class="btn-inspector-nav">← Back</button>
     <div class="inspector-type-row" style="margin-top:8px">
       <span class="inspector-type-badge" style="color:${typeColor};border-color:${typeColor};background:${typeColor}18">${type}</span>
       <label class="inspector-raw-toggle">

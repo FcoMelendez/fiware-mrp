@@ -89,7 +89,7 @@ export class BrokerExplorer {
       const color = TYPE_COLOR[type] ?? '#64748b';
       html += `<div style="margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-          <span class="entity-list-type" style="color:${color};border-color:${color}">${type}</span>
+          <button class="entity-list-type explorer-type-btn" style="color:${color};border-color:${color};background:${color}18;cursor:pointer" data-type="${type}">${type}</button>
           <span style="font-size:10px;color:#94a3b8">${ents.length}</span>
         </div>`;
       for (const e of ents) {
@@ -107,6 +107,13 @@ export class BrokerExplorer {
       item.addEventListener('click', () => {
         const id = item.dataset['id'];
         if (id) this.showDetail(id);
+      });
+    });
+    this.el.querySelectorAll<HTMLButtonElement>('.explorer-type-btn').forEach((btn) => {
+      const type  = btn.dataset['type'] ?? '';
+      const color = TYPE_COLOR[type] ?? '#64748b';
+      btn.addEventListener('click', () => {
+        renderDataModel(this.el, type, color, () => this.renderList());
       });
     });
   }
