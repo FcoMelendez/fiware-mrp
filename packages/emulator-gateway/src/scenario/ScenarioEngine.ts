@@ -81,16 +81,25 @@ export class ScenarioEngine {
   }
 
   async resetTutorial(tutorialId: string): Promise<{ deleted: number }> {
-    if (this.mode !== 'live') return { deleted: 0 };
-    if (tutorialId === 'tutorial-02') {
-      const deleted = await this.ngsi.deleteEntitiesByType(['InventoryBalance', 'StockMove', 'Lot']);
-      return { deleted };
+    let deleted = 0;
+
+    if (this.mode === 'live') {
+      if (tutorialId === 'tutorial-02') {
+        deleted = await this.ngsi.deleteEntitiesByType(['InventoryBalance', 'StockMove', 'Lot']);
+      } else if (tutorialId === 'tutorial-03') {
+        deleted = await this.ngsi.deleteEntitiesByType(['BillOfMaterials', 'BillOfMaterialsLine']);
+      }
     }
-    if (tutorialId === 'tutorial-03') {
-      const deleted = await this.ngsi.deleteEntitiesByType(['BillOfMaterials', 'BillOfMaterialsLine']);
-      return { deleted };
-    }
-    return { deleted: 0 };
+
+    // Always broadcast the clean starting snapshot so the canvas resets correctly
+    // in both mock and live mode. T02 and T03 need T01 base entities visible from the start.
+    const startingEntities =
+      tutorialId === 'tutorial-02' || tutorialId === 'tutorial-03'
+        ? TUTORIAL_01_ENTITIES
+        : [];
+    this.hub.broadcast({ eventType: 'contextSnapshot', payload: { ...MOCK_SCENE, entities: startingEntities } });
+
+    return { deleted };
   }
 
   // ── Tutorial 01 step handlers ──────────────────────────────────────────────

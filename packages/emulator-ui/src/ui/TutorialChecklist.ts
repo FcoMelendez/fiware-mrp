@@ -77,9 +77,9 @@ export class TutorialChecklist {
     });
 
     document.getElementById('restart-scenario-btn')?.addEventListener('click', () => {
-      fetch(`/api/scenarios/${this.tutorialId}/reset`, { method: 'POST' })
-        .catch(() => {/* non-fatal: UI resets regardless */})
-        .finally(() => this.reset());
+      // Reset UI immediately so overlay shows, then server broadcasts clean snapshot via SSE
+      this.reset();
+      fetch(`/api/scenarios/${this.tutorialId}/reset`, { method: 'POST' }).catch(() => {});
     });
 
     // Tutorial selector in top bar
@@ -95,7 +95,11 @@ export class TutorialChecklist {
     this.updateTopBar(tutorialId);
     this.expandedIds.clear();
 
-    // Reset canvas overlay, welcome banner, and console
+    // Ask the server to broadcast the clean starting snapshot for this tutorial.
+    // The SSE event will update contextStore and repopulate the canvas.
+    fetch(`/api/scenarios/${tutorialId}/reset`, { method: 'POST' }).catch(() => {});
+
+    // Reset canvas overlay, welcome banner, and console locally
     document.getElementById('canvas-overlay')?.classList.remove('hidden');
     document.getElementById('welcome-banner')?.classList.remove('hidden');
     this.clearConsolePanels();
