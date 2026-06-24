@@ -3,6 +3,7 @@ import type { SceneSnapshot, ZoneLayout } from '../../domain/emulator.ts';
 import type { NgsiLdEntity } from '../../domain/ngsi-ld.ts';
 import { propValue } from '../../domain/ngsi-ld.ts';
 import { bus, BUS } from '../../services/EventBus.ts';
+import { contextStore } from '../../services/ContextStore.ts';
 
 // ── Colour palette ─────────────────────────────────────────────────────────
 const P = {
@@ -156,6 +157,13 @@ export class FactorySceneEnhanced extends Phaser.Scene {
         if (this.scene.isActive('FactoryEnhanced')) this.scene.restart();
       }, 250);
     });
+
+    // Bootstrap: SNAPSHOT_LOADED may have fired before this scene was active
+    const alreadyLoaded = contextStore.getAll();
+    if (alreadyLoaded.length > 0) {
+      document.getElementById('canvas-overlay')?.classList.add('hidden');
+      for (const entity of alreadyLoaded) this.onEntityChanged(entity);
+    }
   }
 
   // ── Floor ────────────────────────────────────────────────────────────────
@@ -600,10 +608,28 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     const obj = this.findMachineForEntity(entity.id);
     if (!obj) return;
 
+    const firstLoad = obj.entityLabel.text === '';
     const state = propValue<string>(entity, 'state') ?? 'available';
     const color = P.light[state] ?? P.light.off;
-    obj.lightCircle.setFillStyle(color, 1);
-    obj.lightGlow.setFillStyle(color, 0.3);
+
+    // Animate the status light turning on for the first time
+    if (firstLoad) {
+      obj.lightCircle.setFillStyle(P.light.off, 1);
+      obj.lightGlow.setFillStyle(P.light.off, 0.1);
+      this.tweens.add({
+        targets: obj.lightGlow,
+        alpha: { from: 0, to: 0.5 },
+        duration: 600,
+        ease: 'Sine.easeOut',
+        onComplete: () => {
+          obj.lightCircle.setFillStyle(color, 1);
+          obj.lightGlow.setFillStyle(color, 0.3);
+        },
+      });
+    } else {
+      obj.lightCircle.setFillStyle(color, 1);
+      obj.lightGlow.setFillStyle(color, 0.3);
+    }
 
     // Kill existing tween
     this.lightTweens.get(entity.id)?.stop();

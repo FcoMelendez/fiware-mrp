@@ -3,6 +3,7 @@ import type { SceneSnapshot, ZoneLayout } from '../../domain/emulator.ts';
 import type { NgsiLdEntity } from '../../domain/ngsi-ld.ts';
 import { propValue } from '../../domain/ngsi-ld.ts';
 import { bus, BUS } from '../../services/EventBus.ts';
+import { contextStore } from '../../services/ContextStore.ts';
 
 const ZONE_COLORS: Record<string, number> = {
   warehouse:     0xdcfce7,
@@ -79,6 +80,15 @@ export class FactoryScene extends Phaser.Scene {
         obj.bg.setAlpha(1);
       }
     });
+
+    // Bootstrap: SNAPSHOT_LOADED may have fired before this scene was active
+    const alreadyLoaded = contextStore.getAll();
+    if (alreadyLoaded.length > 0) {
+      document.getElementById('canvas-overlay')?.classList.add('hidden');
+      for (const entity of alreadyLoaded) {
+        this.updateZoneForEntity(entity);
+      }
+    }
   }
 
   private renderZones(): void {
@@ -199,9 +209,29 @@ export class FactoryScene extends Phaser.Scene {
     const obj = this.zoneObjects.get(zone.id);
     if (!obj) return;
 
+    const wasEmpty = !obj.entityLabel?.text;
+
     // Show entity name in zone footer
     const name = propValue<string>(entity, 'name') ?? entity.id.split(':').pop() ?? entity.id;
     obj.entityLabel?.setText(name);
+
+    // Brief green flash when an entity first arrives in the zone
+    if (wasEmpty) {
+      const defaultBorder = ZONE_BORDER[zone.kind] ?? 0x6b7280;
+      obj.bg.setStrokeStyle(3, 0x22c55e);
+      this.tweens.add({
+        targets: obj.bg,
+        alpha: { from: 0.6, to: 1 },
+        duration: 400,
+        yoyo: true,
+        repeat: 1,
+        ease: 'Sine.easeInOut',
+        onComplete: () => {
+          obj.bg.setAlpha(1);
+          obj.bg.setStrokeStyle(2, defaultBorder);
+        },
+      });
+    }
 
     // WorkCenter state → border color
     if (entity.type === 'WorkCenter') {
