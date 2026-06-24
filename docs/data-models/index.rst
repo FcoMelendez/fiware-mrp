@@ -1,33 +1,69 @@
 Data Models
 ===========
 
-.. note::
+The FIWARE MRP data model follows the `Smart Data Models <https://smartdatamodels.org>`_ specification.
+Every entity type is published as a JSON Schema under ``data-models/dataModel.MRP/`` and served
+through the versioned JSON-LD ``@context`` at ``http://context-server:3000/contexts/mrp/v0.1/context.jsonld``.
 
-   Full data model reference pages are being drafted.
-   The Smart Data Models–compatible JSON schema files live in
-   ``data-models/dataModel.MRP/``.
+Click any entity type below to open its full reference page with:
 
-Entity types defined in this project:
+* **Readable view** — attribute table with NGSI-LD kind, type, and description
+* **NGSI-LD template** — normalized example ready to POST to Orion-LD
+* **JSON Schema** — machine-readable validation schema
+* **Examples** — both key-values and normalized representations
+
+----
+
+Tutorial 01 — Master data entities
+------------------------------------
 
 .. list-table::
    :header-rows: 1
    :widths: 30 70
 
-   * - Type
+   * - Entity type
      - Description
-   * - ``Company``
+   * - :doc:`Company <company>`
      - Legal or operating entity that owns one or more plants
-   * - ``Plant``
-     - Factory or production site
-   * - ``ProductionLine``
-     - Ordered sequence of work centres within a plant
-   * - ``WorkCenter``
+   * - :doc:`Plant <plant>`
+     - Manufacturing facility belonging to a Company
+   * - :doc:`ProductionLine <production-line>`
+     - Ordered sequence of Work Centers within a Plant
+   * - :doc:`WorkCenter <work-center>`
      - Logical production resource with capacity and calendar
-   * - ``Product``
-     - Manufactured, purchased or consumable item
-   * - ``StockLocation``
-     - Physical or logical inventory location
+   * - :doc:`Product <product>`
+     - Manufactured, purchased, consumable, or service item
+   * - :doc:`StockLocation <stock-location>`
+     - Physical or logical inventory location (warehouse, scrap zone …)
+
+Tutorial 02 — Inventory entities
+----------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Entity type
+     - Description
+   * - :doc:`InventoryBalance <inventory-balance>`
+     - On-hand quantity of a product at a stock location
+   * - :doc:`StockMove <stock-move>`
+     - Immutable audit record of every inventory movement
+   * - :doc:`Lot <lot>`
+     - Traceable batch of material (lot-tracked products only)
+
+----
 
 .. toctree::
-   :maxdepth: 2
+   :hidden:
+   :maxdepth: 1
 
+   company
+   plant
+   production-line
+   work-center
+   product
+   stock-location
+   inventory-balance
+   stock-move
+   lot
