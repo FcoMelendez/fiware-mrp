@@ -1,5 +1,5 @@
 import type { NgsiLdEntity } from '../domain/ngsi-ld.ts';
-import { TYPE_COLOR } from './EntityInspector.ts';
+import { TYPE_COLOR, renderDataModel } from './EntityInspector.ts';
 
 export class BrokerExplorer {
   private el: HTMLElement;
@@ -138,13 +138,18 @@ export class BrokerExplorer {
     this.el.innerHTML = `
       <button class="btn-inspector-nav" id="explorer-back">← Back to list</button>
       <div class="inspector-type-row">
-        <span class="inspector-type-badge" style="color:${color};border-color:${color}">${entity.type}</span>
+        <button class="inspector-type-badge" style="color:${color};border-color:${color};background:${color}18"
+          data-type="${entity.type}">${entity.type}</button>
       </div>
       <div class="inspector-id">${entity.id}</div>
       ${attrsHtml}
     `;
 
     this.el.querySelector('#explorer-back')?.addEventListener('click', () => this.renderList());
+
+    this.el.querySelector<HTMLButtonElement>('.inspector-type-badge')?.addEventListener('click', () => {
+      renderDataModel(this.el, entity.type, color, () => this.renderDetail(entity));
+    });
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

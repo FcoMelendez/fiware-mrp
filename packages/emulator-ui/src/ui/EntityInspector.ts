@@ -120,120 +120,7 @@ export class EntityInspector {
   }
 
   private showDataModel(type: string, typeColor: string, fromEntity: NgsiLdEntity): void {
-    const model = DATA_MODELS[type];
-    const template = this.buildRawTemplate(type, model);
-
-    const rows = model
-      ? model.attrs.map((a, idx) => `
-          <tr>
-            <td class="dm-attr-name" style="color:${typeColor}" data-attr-idx="${idx}">${a.name}</td>
-            <td class="${a.ngsiType === 'Relationship' ? 'dm-ngsi-rel' : 'dm-ngsi-prop'}">${a.ngsiType}</td>
-            <td class="dm-value-type">${a.valueType}<br><span style="color:#94a3b8;font-size:9px">${a.xsdType}</span></td>
-            <td class="dm-desc">${a.desc}</td>
-          </tr>`).join('')
-      : '<tr><td colspan="4" style="color:#94a3b8">No data model defined for this type.</td></tr>';
-
-    this.el.innerHTML = `
-      <button id="inspector-back-model" class="btn-inspector-nav">← Back to entity</button>
-      <div class="inspector-type-row" style="margin-top:8px">
-        <span class="inspector-type-badge" style="color:${typeColor};border-color:${typeColor};background:${typeColor}18">${type}</span>
-        <label class="inspector-raw-toggle">
-          <input type="checkbox" id="dm-raw-cb"> Raw NGSI-LD template
-        </label>
-      </div>
-      ${model ? `<p class="dm-desc">${model.description}</p>` : ''}
-      <div id="dm-content">
-        <div style="overflow-x:auto">
-          <table class="data-model-table">
-            <thead><tr>
-              <th>Attribute</th><th>NGSI-LD type</th><th>Value type</th><th>Description</th>
-            </tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-      </div>
-    `;
-
-    // Back button
-    this.el.querySelector('#inspector-back-model')?.addEventListener('click', () => {
-      this.show(fromEntity);
-    });
-
-    // Raw template toggle
-    const dmContent = this.el.querySelector<HTMLElement>('#dm-content');
-    this.el.querySelector('#dm-raw-cb')?.addEventListener('change', (e) => {
-      const raw = (e.target as HTMLInputElement).checked;
-      if (!dmContent) return;
-      if (raw) {
-        dmContent.innerHTML = `<pre class="inspector-json-raw">${template}</pre>`;
-      } else {
-        dmContent.innerHTML = `<div style="overflow-x:auto"><table class="data-model-table">
-          <thead><tr><th>Attribute</th><th>NGSI-LD type</th><th>Value type</th><th>Description</th></tr></thead>
-          <tbody>${rows}</tbody></table></div>`;
-        this.attachAttrTooltips(model);
-      }
-    });
-
-    // Attribute hover tooltips (for the table view)
-    this.attachAttrTooltips(model);
-  }
-
-  private buildRawTemplate(type: string, model: ModelDef | undefined): string {
-    if (!model) return `{ "type": "${type}" }`;
-    const attrs: Record<string, unknown> = { id: `urn:ngsi-ld:${type}:example`, type };
-    for (const a of model.attrs) {
-      if (a.ngsiType === 'Property') {
-        const val = a.xsdType === 'xsd:float' || a.xsdType === 'xsd:integer' ? 0
-          : a.xsdType === 'xsd:boolean' ? true
-          : `<${a.valueType}>`;
-        attrs[a.name] = { type: 'Property', value: val };
-      } else {
-        attrs[a.name] = { type: 'Relationship', object: `urn:ngsi-ld:${a.valueType}:*` };
-      }
-    }
-    attrs['@context'] = 'https://uri.fiware.org/ns/data-models';
-    return JSON.stringify(attrs, null, 2);
-  }
-
-  private attachAttrTooltips(model: ModelDef | undefined): void {
-    if (!model) return;
-    const tooltip = document.getElementById('attr-tooltip');
-    if (!tooltip) return;
-
-    this.el.querySelectorAll<HTMLElement>('[data-attr-idx]').forEach((cell) => {
-      const idx = parseInt(cell.dataset['attrIdx'] ?? '0', 10);
-      const attr = model.attrs[idx];
-      if (!attr) return;
-
-      cell.style.cursor = 'help';
-      cell.style.borderBottom = '1px dashed currentColor';
-
-      cell.addEventListener('mouseenter', () => {
-        const nameEl  = tooltip.querySelector<HTMLElement>('#at-name');
-        const semEl   = tooltip.querySelector<HTMLElement>('#at-semantic');
-        const typeEl  = tooltip.querySelector<HTMLElement>('#at-type');
-        const structEl = tooltip.querySelector<HTMLElement>('#at-structure');
-        const structRow = tooltip.querySelector<HTMLElement>('#at-structure-row');
-
-        if (nameEl)   nameEl.textContent  = attr.name;
-        if (semEl)    semEl.textContent   = attr.semantic;
-        if (typeEl)   typeEl.textContent  = `${attr.ngsiType} (${attr.xsdType})`;
-        if (structEl) structEl.textContent = attr.structure ?? 'Scalar value — no internal structure.';
-        if (structRow) structRow.style.display = 'flex';
-
-        tooltip.classList.remove('hidden');
-        const rect = cell.getBoundingClientRect();
-        const tw = tooltip.offsetWidth || 290;
-        const th = tooltip.offsetHeight || 120;
-        const left = Math.min(rect.right + 8, window.innerWidth - tw - 8);
-        tooltip.style.left = `${Math.max(8, left)}px`;
-        tooltip.style.top  = `${Math.max(8, rect.top - th / 2)}px`;
-      });
-
-      cell.addEventListener('mouseleave', () => {
-        tooltip.classList.add('hidden');
-      });
-    });
+    renderDataModel(this.el, type, typeColor, () => this.show(fromEntity));
   }
 
   private showList(entities: NgsiLdEntity[]): void {
@@ -432,3 +319,122 @@ const DATA_MODELS: Record<string, ModelDef> = {
     ],
   },
 };
+
+// ── Shared data-model rendering (used by EntityInspector and BrokerExplorer) ─
+
+function buildRawTemplate(type: string, model: ModelDef | undefined): string {
+  if (!model) return `{ "type": "${type}" }`;
+  const attrs: Record<string, unknown> = { id: `urn:ngsi-ld:${type}:example`, type };
+  for (const a of model.attrs) {
+    if (a.ngsiType === 'Property') {
+      const val = a.xsdType === 'xsd:float' || a.xsdType === 'xsd:integer' ? 0
+        : a.xsdType === 'xsd:boolean' ? true
+        : `<${a.valueType}>`;
+      attrs[a.name] = { type: 'Property', value: val };
+    } else {
+      attrs[a.name] = { type: 'Relationship', object: `urn:ngsi-ld:${a.valueType}:*` };
+    }
+  }
+  attrs['@context'] = 'https://uri.fiware.org/ns/data-models';
+  return JSON.stringify(attrs, null, 2);
+}
+
+function attachAttrTooltips(el: HTMLElement, model: ModelDef | undefined): void {
+  if (!model) return;
+  const tooltip = document.getElementById('attr-tooltip');
+  if (!tooltip) return;
+
+  el.querySelectorAll<HTMLElement>('[data-attr-idx]').forEach((cell) => {
+    const idx = parseInt(cell.dataset['attrIdx'] ?? '0', 10);
+    const attr = model.attrs[idx];
+    if (!attr) return;
+
+    cell.style.cursor = 'help';
+    cell.style.borderBottom = '1px dashed currentColor';
+
+    cell.addEventListener('mouseenter', () => {
+      const nameEl   = tooltip.querySelector<HTMLElement>('#at-name');
+      const semEl    = tooltip.querySelector<HTMLElement>('#at-semantic');
+      const typeEl   = tooltip.querySelector<HTMLElement>('#at-type');
+      const structEl = tooltip.querySelector<HTMLElement>('#at-structure');
+      const structRow = tooltip.querySelector<HTMLElement>('#at-structure-row');
+
+      if (nameEl)    nameEl.textContent   = attr.name;
+      if (semEl)     semEl.textContent    = attr.semantic;
+      if (typeEl)    typeEl.textContent   = `${attr.ngsiType} (${attr.xsdType})`;
+      if (structEl)  structEl.textContent = attr.structure ?? 'Scalar value — no internal structure.';
+      if (structRow) structRow.style.display = 'flex';
+
+      tooltip.classList.remove('hidden');
+      const rect = cell.getBoundingClientRect();
+      const tw = tooltip.offsetWidth || 290;
+      const th = tooltip.offsetHeight || 120;
+      const left = Math.min(rect.right + 8, window.innerWidth - tw - 8);
+      tooltip.style.left = `${Math.max(8, left)}px`;
+      tooltip.style.top  = `${Math.max(8, rect.top - th / 2)}px`;
+    });
+
+    cell.addEventListener('mouseleave', () => {
+      tooltip.classList.add('hidden');
+    });
+  });
+}
+
+export function renderDataModel(
+  el: HTMLElement,
+  type: string,
+  typeColor: string,
+  backFn: () => void,
+): void {
+  const model = DATA_MODELS[type];
+  const template = buildRawTemplate(type, model);
+
+  const rows = model
+    ? model.attrs.map((a, idx) => `
+        <tr>
+          <td class="dm-attr-name" style="color:${typeColor}" data-attr-idx="${idx}">${a.name}</td>
+          <td class="${a.ngsiType === 'Relationship' ? 'dm-ngsi-rel' : 'dm-ngsi-prop'}">${a.ngsiType}</td>
+          <td class="dm-value-type">${a.valueType}<br><span style="color:#94a3b8;font-size:9px">${a.xsdType}</span></td>
+          <td class="dm-desc">${a.desc}</td>
+        </tr>`).join('')
+    : '<tr><td colspan="4" style="color:#94a3b8">No data model defined for this type.</td></tr>';
+
+  el.innerHTML = `
+    <button id="dm-back" class="btn-inspector-nav">← Back to entity</button>
+    <div class="inspector-type-row" style="margin-top:8px">
+      <span class="inspector-type-badge" style="color:${typeColor};border-color:${typeColor};background:${typeColor}18">${type}</span>
+      <label class="inspector-raw-toggle">
+        <input type="checkbox" id="dm-raw-cb"> Raw NGSI-LD template
+      </label>
+    </div>
+    ${model ? `<p class="dm-desc">${model.description}</p>` : ''}
+    <div id="dm-content">
+      <div style="overflow-x:auto">
+        <table class="data-model-table">
+          <thead><tr>
+            <th>Attribute</th><th>NGSI-LD type</th><th>Value type</th><th>Description</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  el.querySelector('#dm-back')?.addEventListener('click', backFn);
+
+  const dmContent = el.querySelector<HTMLElement>('#dm-content');
+  el.querySelector('#dm-raw-cb')?.addEventListener('change', (e) => {
+    const raw = (e.target as HTMLInputElement).checked;
+    if (!dmContent) return;
+    if (raw) {
+      dmContent.innerHTML = `<pre class="inspector-json-raw">${template}</pre>`;
+    } else {
+      dmContent.innerHTML = `<div style="overflow-x:auto"><table class="data-model-table">
+        <thead><tr><th>Attribute</th><th>NGSI-LD type</th><th>Value type</th><th>Description</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+      attachAttrTooltips(el, model);
+    }
+  });
+
+  attachAttrTooltips(el, model);
+}
