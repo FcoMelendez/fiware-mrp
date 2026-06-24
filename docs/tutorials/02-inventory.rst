@@ -398,10 +398,20 @@ Live mode (against a running stack)
 
 Then open ``http://localhost:5173`` and select Tutorial 02.
 
+UI layout
+~~~~~~~~~
+
+The emulator uses the same three-column layout as Tutorial 01 (see
+:ref:`tutorial-01-ui-layout` for a full panel description).  Tutorial 02 adds
+``InventoryBalance``, ``StockMove``, and ``Lot`` to the entity type palette —
+each with its own colour in the inspector and broker explorer.
+
+Select **Tutorial 02 – Inventory** from the top-bar dropdown before executing steps.
+If Tutorial 01 was run previously, click **↺ Restart** to clear the broker state
+before starting Tutorial 02.
+
 The guided tour
 ~~~~~~~~~~~~~~~
-
-The left panel walks through six steps:
 
 .. list-table::
    :header-rows: 1
@@ -410,20 +420,30 @@ The left panel walks through six steps:
    * - Step
      - What it does
    * - Verify inventory service
-     - Health-checks the inventory-service
+     - Health-checks the inventory-service at ``/health``
    * - Load seed data
-     - Re-upserts the 12 Tutorial 01 master-data entities
+     - Re-upserts the 12 Tutorial 01 master-data entities (idempotent)
    * - Query initial inventory
-     - Confirms zero InventoryBalance entities exist
+     - Calls ``GET /inventory`` — confirms zero InventoryBalance entities exist
    * - Receive PumpCasing
-     - POSTs ``receive-material`` for 50 PumpCasing, shows the StockMove and balance
+     - POSTs ``receive-material`` for 50 units; shows the StockMove and InventoryBalance in the inspector
    * - Receive Impeller (lot-tracked)
-     - POSTs ``receive-material`` with ``lot_code``, shows the Lot entity
+     - POSTs ``receive-material`` with ``lot_code``; shows the Lot entity and lot-keyed InventoryBalance
    * - Query all balances
-     - GETs ``/inventory``, lists both InventoryBalance entities in the inspector
+     - Calls ``GET /inventory`` again; lists both InventoryBalance entities in the inspector
 
-Each step shows the exact HTTP call under the hood, the live API trace, and
-the raw JSON-LD response.
+After each step the step card reveals an **Under the hood** narrative tracing the
+full call chain: from the emulator command through ``inventory-service`` to the
+NGSI-LD UPSERT / PATCH written to Orion-LD.
+
+The **REQUEST** console (orange) shows the exact HTTP request sent by the emulator —
+including the ``POST /commands/receive-material`` body — with a Copy curl button.
+The **RESPONSE** console (blue) shows the service's JSON reply.  Both consoles are
+collapsible.
+
+The **Broker Explorer** tab (right panel) is useful after Step 4 and Step 5: click it
+to see ``InventoryBalance``, ``StockMove``, and ``Lot`` entities appear in Orion-LD
+as they are created.  Click ↻ Refresh after each receipt step to update the list.
 
 Stop the emulator
 ~~~~~~~~~~~~~~~~~~

@@ -38,27 +38,49 @@ Everything runs from a **single `docker compose`** — no extra tooling required
 
 ## Visual factory emulator
 
-Tutorial 01 ships a **Phaser 3 browser emulator** that lets you explore the same
-12 NGSI-LD entities through an interactive factory floor canvas instead of curl.
+The interactive emulator (`http://localhost:5173`) lets you explore NGSI-LD entities
+and business commands through a browser UI — without writing curl.  It works in
+**mock mode** (no backend needed) or **live mode** (against a running stack).
 
 ```bash
-# No backend required — mock mode runs entirely in Docker
-make install-emulator   # once: installs npm deps
-make start-mock         # starts emulator-gateway + emulator-ui in mock mode
-
-# Open the guided tour
-open http://localhost:5173
+make install-emulator   # one-time: install npm deps
+make start-mock         # mock mode — no backend required
+# or
+make start-emulator     # live mode — full stack + inventory-service
 ```
 
-The guided tour walks through six steps (health check → seed entities → explore
-the plant → query WorkCenters / Products / StockLocations) with live HTTP traces,
-an entity inspector, a data model viewer, and an SSE event timeline.
+### Layout
 
-To run against a live Orion-LD broker instead of fixtures:
+The emulator uses a three-column layout:
 
-```bash
-make start-emulator     # starts the full stack + emulator
-```
+| Panel | Content |
+|-------|---------|
+| **Left** | **Guided Tour** — step cards with execute / retry controls and ↺ Restart |
+| **Center** | **Factory canvas** — Phaser 3 scene; canvas zones highlight when entities are queried; click any zone to inspect its NGSI-LD entity |
+| **Right** | **Tabbed panel** — Query Inspector and Broker Explorer |
+
+**Query Inspector tab** (default) contains three stacked sections:
+
+- **REQUEST** console (orange) — the outgoing NGSI-LD query or business command, with a Copy curl button; collapsible
+- **RESPONSE** console (blue) — the raw JSON-LD reply with a Copy answer button; collapsible
+- **Entity Inspector** — structured attribute table for the selected entity; click any type badge to open its data model with field definitions and NGSI-LD template
+
+**Broker Explorer tab** — lists all entities currently in Orion-LD grouped by type.
+Click a type badge to read its data model; click an entity row to inspect its attributes.
+
+A **Live event timeline** along the bottom shows every SSE notification broadcast
+from the broker.  Hover a card to read what triggered the event; click to expand the raw payload.
+
+### Under the hood
+
+After a step executes, the step card automatically reveals a numbered **Under the hood**
+narrative that traces the full call chain — from the emulator through each microservice
+to the final Orion-LD write — alongside the HTTP status and timing.
+
+### Tutorial selector
+
+The top-bar dropdown switches between Tutorial 01 (master data) and Tutorial 02 (inventory).
+Tutorial 02 requires `inventory-service`; use `make start-emulator` to include it.
 
 ---
 

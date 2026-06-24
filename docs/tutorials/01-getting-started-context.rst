@@ -545,10 +545,50 @@ If the core stack is already running and seeded:
 
    make start-emulator     # adds emulator-gateway and emulator-ui to the stack
 
+.. _tutorial-01-ui-layout:
+
+UI layout
+~~~~~~~~~
+
+The emulator has a three-column layout:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 80
+
+   * - Panel
+     - Content
+   * - **Left**
+     - **Guided Tour** — six step cards with execute / retry controls and a global ↺ Restart button
+   * - **Center**
+     - **Factory canvas** — Phaser 3 scene; zones highlight in amber when entities are returned; click any zone to open the NGSI-LD entity in the inspector
+   * - **Right**
+     - **Tabbed panel** — *Query Inspector* (default) and *Broker Explorer*
+
+**Query Inspector tab** contains three stacked sections:
+
+* **REQUEST** console (orange header) — shows the outgoing NGSI-LD query: HTTP method,
+  URL, and body (if any).  The *Copy curl* button copies a ready-to-run ``curl``
+  command.  Click the header to collapse or expand the console.
+* **RESPONSE** console (blue header) — shows the raw JSON-LD reply with full
+  formatting.  The *Copy answer* button copies the payload.  Also collapsible.
+* **Entity Inspector** — structured attribute table for the most recently selected
+  entity.  Properties are shown in plain text; Relationships appear in italic purple.
+  Click any coloured **type badge** to open the entity type's data model, which shows
+  every attribute, its NGSI-LD kind (Property / Relationship), value type, and a
+  raw NGSI-LD template you can toggle on.  Click **← Back** to return.
+
+**Broker Explorer tab** — fetches all entities currently in Orion-LD and groups them
+by type.  Click a type badge to read its data model; click an entity row to see its
+attributes.  Use the **↻ Refresh** button to reload after new entities are written.
+
+A **Live event timeline** along the bottom bar scrolls horizontally and shows every
+SSE notification broadcast from the broker.  Hover a card to read what triggered the
+event, why it happened, and what it means for system state.  Click a card to expand
+the raw entity payload and jump to the inspector.
+
 The guided tour
 ~~~~~~~~~~~~~~~
-
-The left panel contains six guided steps:
 
 .. list-table::
    :header-rows: 1
@@ -569,22 +609,16 @@ The left panel contains six guided steps:
    * - Inspect StockLocations
      - Fetches the 2 warehouse zones
 
-Each step exposes:
+After each step executes, the step card automatically reveals an **Under the hood**
+section with a numbered narrative tracing the full call chain — from the emulator
+through the gateway to Orion-LD — together with the HTTP status and timing.
 
-* **Under the hood** — the HTTP method, URL and expected status code for the
-  underlying NGSI-LD call, with a one-click ``curl`` copy button.
-* **Response console** — the full API response shown as raw JSON after
-  execution, with a copy button.
-* **↺ Retry** — re-execute the step without restarting the scenario.
-* **↺ Restart** — reset the entire scenario and canvas to the initial state.
+Controls on each step card:
 
-The right panel shows a live **SSE event timeline**.  Hover a card to read
-what the event is, why it was triggered, and what it means for system state.
-Click a card to expand the raw payload.
-
-The centre canvas highlights active zones in amber when a query returns
-matching entities.  Grey zones have no entity bound to them at the current
-scenario stage.  Click any zone to open its NGSI-LD entity in the inspector.
+* **Execute** button — runs the step.
+* **↺ Retry** — re-runs the step without restarting the scenario.
+* **↺ Restart** (top of panel) — resets the entire scenario and canvas to the
+  initial state, including clearing all entities from the broker.
 
 Stop the emulator
 ~~~~~~~~~~~~~~~~~~
