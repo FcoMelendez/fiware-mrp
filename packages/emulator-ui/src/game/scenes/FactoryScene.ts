@@ -31,6 +31,7 @@ interface ZoneObject {
 export class FactoryScene extends Phaser.Scene {
   private snapshot!: SceneSnapshot;
   private zoneObjects = new Map<string, ZoneObject>();
+  private unsubs: Array<() => void> = [];
 
   constructor() {
     super({ key: 'Factory' });
@@ -52,34 +53,35 @@ export class FactoryScene extends Phaser.Scene {
       }, 250);
     });
 
-    bus.on<NgsiLdEntity>(BUS.ENTITY_CHANGED, (entity) => {
-      this.updateZoneForEntity(entity);
-    });
-
-    bus.on<NgsiLdEntity[]>(BUS.SNAPSHOT_LOADED, (entities) => {
-      document.getElementById('canvas-overlay')?.classList.add('hidden');
-      for (const entity of entities) {
+    this.unsubs.push(
+      bus.on<NgsiLdEntity>(BUS.ENTITY_CHANGED, (entity) => {
         this.updateZoneForEntity(entity);
-      }
-    });
+      }),
 
-    bus.on<string[]>(BUS.ZONES_HIGHLIGHTED, (entityIds) => {
-      this.highlightZones(entityIds);
-    });
+      bus.on<NgsiLdEntity[]>(BUS.SNAPSHOT_LOADED, (entities) => {
+        document.getElementById('canvas-overlay')?.classList.add('hidden');
+        for (const entity of entities) {
+          this.updateZoneForEntity(entity);
+        }
+      }),
 
-    bus.on<string>(BUS.ENTITY_SELECTED, (entityId) => {
-      this.highlightZones([entityId]);
-    });
+      bus.on<string[]>(BUS.ZONES_HIGHLIGHTED, (entityIds) => {
+        this.highlightZones(entityIds);
+      }),
 
-    bus.on<void>(BUS.SCENARIO_RESET, () => {
-      // Clear entity name labels from all zones
-      for (const [, obj] of this.zoneObjects) {
-        obj.entityLabel?.setText('');
-        const defaultBorder = ZONE_BORDER[obj.zone.kind] ?? 0x6b7280;
-        obj.bg.setStrokeStyle(2, defaultBorder);
-        obj.bg.setAlpha(1);
-      }
-    });
+      bus.on<string>(BUS.ENTITY_SELECTED, (entityId) => {
+        this.highlightZones([entityId]);
+      }),
+
+      bus.on<void>(BUS.SCENARIO_RESET, () => {
+        for (const [, obj] of this.zoneObjects) {
+          obj.entityLabel?.setText('');
+          const defaultBorder = ZONE_BORDER[obj.zone.kind] ?? 0x6b7280;
+          obj.bg.setStrokeStyle(2, defaultBorder);
+          obj.bg.setAlpha(1);
+        }
+      }),
+    );
 
     // Bootstrap: SNAPSHOT_LOADED may have fired before this scene was active
     const alreadyLoaded = contextStore.getAll();
@@ -200,6 +202,12 @@ export class FactoryScene extends Phaser.Scene {
         });
       }
     }
+  }
+
+  shutdown(): void {
+    this.unsubs.forEach(u => u());
+    this.unsubs = [];
+    this.zoneObjects.clear();
   }
 
   private updateZoneForEntity(entity: NgsiLdEntity): void {

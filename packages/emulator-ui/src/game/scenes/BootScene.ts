@@ -33,10 +33,6 @@ export class BootScene extends Phaser.Scene {
       this.onConnectionChanged(status);
     });
 
-    bus.on<SceneSnapshot>(BUS.SNAPSHOT_LOADED, () => {
-      this.transitionToFactory();
-    });
-
     // Connect to gateway SSE stream
     gatewayClient.connect();
 
