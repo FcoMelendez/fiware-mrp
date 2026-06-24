@@ -1,0 +1,10 @@
+{
+  "id": "urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-SealKit",
+  "type": "BillOfMaterialsLine",
+  "sequence": 4,
+  "quantity": 2,
+  "scrapFactor": 0.05,
+  "bom": "urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1",
+  "component": "urn:ngsi-ld:Product:SealKit",
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+}

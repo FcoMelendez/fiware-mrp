@@ -52,6 +52,20 @@ Tutorial 02 — Inventory entities
    * - :doc:`Lot <lot>`
      - Traceable batch of material (lot-tracked products only)
 
+Tutorial 03 — Bill of Materials entities
+-----------------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Entity type
+     - Description
+   * - :doc:`BillOfMaterials <bill-of-materials>`
+     - BOM header: links a finished product to its recipe
+   * - :doc:`BillOfMaterialsLine <bill-of-materials-line>`
+     - One component line: quantity, scrapFactor, and component Relationship
+
 ----
 
 .. toctree::
@@ -67,3 +81,5 @@ Tutorial 02 — Inventory entities
    inventory-balance
    stock-move
    lot
+   bill-of-materials
+   bill-of-materials-line

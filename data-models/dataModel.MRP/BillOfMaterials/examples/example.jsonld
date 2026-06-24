@@ -1,0 +1,11 @@
+{
+  "id": "urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1",
+  "type": "BillOfMaterials",
+  "bomCode": "BOM-HP-P100-v1",
+  "bomType": "manufacturing",
+  "version": "1.0",
+  "state": "active",
+  "product": "urn:ngsi-ld:Product:HydraulicPump-P100",
+  "company": "urn:ngsi-ld:Company:HydraulicPartsCo",
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+}

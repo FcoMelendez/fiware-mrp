@@ -481,3 +481,213 @@ export const TUTORIAL_02_STEPS: GuidedStep[] = [
 
 export const TUTORIAL_01_STEP_IDS = TUTORIAL_01_STEPS.map((s) => s.id);
 export const TUTORIAL_02_STEP_IDS = TUTORIAL_02_STEPS.map((s) => s.id);
+
+// ── Tutorial 03 entities ───────────────────────────────────────────────────────
+
+export const TUTORIAL_03_ENTITIES = [
+  {
+    id: 'urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1',
+    type: 'BillOfMaterials',
+    bomCode: { type: 'Property', value: 'BOM-HP-P100-v1' },
+    bomType: { type: 'Property', value: 'manufacturing' },
+    version: { type: 'Property', value: '1.0' },
+    state: { type: 'Property', value: 'active' },
+    product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+    company: { type: 'Relationship', object: 'urn:ngsi-ld:Company:HydraulicPartsCo' },
+  },
+  {
+    id: 'urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-PumpCasing',
+    type: 'BillOfMaterialsLine',
+    sequence: { type: 'Property', value: 1 },
+    quantity: { type: 'Property', value: 1, unitCode: 'EA' },
+    scrapFactor: { type: 'Property', value: 0.02 },
+    bom: { type: 'Relationship', object: 'urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1' },
+    component: { type: 'Relationship', object: 'urn:ngsi-ld:Product:PumpCasing' },
+  },
+  {
+    id: 'urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-Impeller',
+    type: 'BillOfMaterialsLine',
+    sequence: { type: 'Property', value: 2 },
+    quantity: { type: 'Property', value: 1, unitCode: 'EA' },
+    scrapFactor: { type: 'Property', value: 0.01 },
+    bom: { type: 'Relationship', object: 'urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1' },
+    component: { type: 'Relationship', object: 'urn:ngsi-ld:Product:Impeller' },
+  },
+  {
+    id: 'urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-ElectricMotor',
+    type: 'BillOfMaterialsLine',
+    sequence: { type: 'Property', value: 3 },
+    quantity: { type: 'Property', value: 1, unitCode: 'EA' },
+    scrapFactor: { type: 'Property', value: 0.01 },
+    bom: { type: 'Relationship', object: 'urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1' },
+    component: { type: 'Relationship', object: 'urn:ngsi-ld:Product:ElectricMotor' },
+  },
+  {
+    id: 'urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-SealKit',
+    type: 'BillOfMaterialsLine',
+    sequence: { type: 'Property', value: 4 },
+    quantity: { type: 'Property', value: 2, unitCode: 'EA' },
+    scrapFactor: { type: 'Property', value: 0.05 },
+    bom: { type: 'Relationship', object: 'urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1' },
+    component: { type: 'Relationship', object: 'urn:ngsi-ld:Product:SealKit' },
+  },
+];
+
+export const MOCK_EXPLODE_RESULT = {
+  product_id: 'urn:ngsi-ld:Product:HydraulicPump-P100',
+  quantity: 10,
+  bom_id: 'urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1',
+  bom_code: 'BOM-HP-P100-v1',
+  bom_version: '1.0',
+  components: [
+    {
+      line_id: 'urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-PumpCasing',
+      component_id: 'urn:ngsi-ld:Product:PumpCasing',
+      component_code: 'PumpCasing',
+      sequence: 1,
+      required_quantity: 10,
+      unit: 'EA',
+      scrap_factor: 0.02,
+    },
+    {
+      line_id: 'urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-Impeller',
+      component_id: 'urn:ngsi-ld:Product:Impeller',
+      component_code: 'Impeller',
+      sequence: 2,
+      required_quantity: 10,
+      unit: 'EA',
+      scrap_factor: 0.01,
+    },
+    {
+      line_id: 'urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-ElectricMotor',
+      component_id: 'urn:ngsi-ld:Product:ElectricMotor',
+      component_code: 'ElectricMotor',
+      sequence: 3,
+      required_quantity: 10,
+      unit: 'EA',
+      scrap_factor: 0.01,
+    },
+    {
+      line_id: 'urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-SealKit',
+      component_id: 'urn:ngsi-ld:Product:SealKit',
+      component_code: 'SealKit',
+      sequence: 4,
+      required_quantity: 20,
+      unit: 'EA',
+      scrap_factor: 0.05,
+    },
+  ],
+};
+
+// ── Tutorial 03 step definitions ───────────────────────────────────────────────
+
+export const TUTORIAL_03_STEPS: GuidedStep[] = [
+  {
+    id: 'check-bom-service',
+    title: 'Verify BoM service',
+    shortDesc: 'Health-check the bom-service',
+    desc: 'Tutorial 03 adds the bom-service to the stack. This step confirms it is running and can reach Orion-LD.',
+    hood: { method: 'GET', url: 'http://bom-service:8082/health', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /health → bom-service:8082',
+      'bom-service verifies its connection to Orion-LD internally',
+      'Returns { status: ok, service: bom-service, version: 0.3.0 }',
+    ],
+    actionLabel: 'Check health',
+  },
+  {
+    id: 'seed-bom-data',
+    title: 'Load BoM seed data',
+    shortDesc: 'Seed 17 entities: T01 master data + BOM + 4 BOM lines',
+    desc: 'Seeds Orion-LD with the Tutorial 01 factory graph (12 entities) plus the Tutorial 03 Bill of Materials for the Hydraulic Pump P100: 1 BillOfMaterials header and 4 BillOfMaterialsLine components.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
+      body: '17 entities  •  application/ld+json',
+      expectedStatus: 201,
+    },
+    workflow: [
+      'Gateway attaches @context URL to all 17 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD (idempotent)',
+      'Orion-LD stores 12 T01 master-data entities + 1 BillOfMaterials + 4 BillOfMaterialsLine',
+      'BOM links product → HydraulicPump-P100 via NGSI-LD Relationship',
+    ],
+    actionLabel: 'Seed entities',
+  },
+  {
+    id: 'query-boms',
+    title: 'Query Bills of Materials',
+    shortDesc: 'GET /boms — list 1 BillOfMaterials entity',
+    desc: 'The bom-service exposes a /boms endpoint that proxies an NGSI-LD type query to Orion-LD. You can also filter by product_id to retrieve only the BoM for a specific finished good.',
+    hood: {
+      method: 'GET',
+      url: 'http://bom-service:8082/boms',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /boms → bom-service:8082',
+      'bom-service → GET /ngsi-ld/v1/entities?type=BillOfMaterials → Orion-LD',
+      '1 BillOfMaterials returned: BOM-HP-P100-v1 (state: active, type: manufacturing)',
+      'bomCode, version, state, product Relationship visible in the Inspector',
+    ],
+    actionLabel: 'Query BoMs',
+  },
+  {
+    id: 'query-bom-lines',
+    title: 'Query BoM lines',
+    shortDesc: 'GET /boms/{id}/lines — list 4 BillOfMaterialsLine entities',
+    desc: 'Each BillOfMaterialsLine links a component Product to the BOM header via an NGSI-LD Relationship. The line carries quantity, unitCode, and scrapFactor (informational in this tutorial).',
+    hood: {
+      method: 'GET',
+      url: 'http://bom-service:8082/boms/BOM-HP-P100-v1/lines',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /boms/BOM-HP-P100-v1/lines → bom-service:8082',
+      'bom-service → GET /ngsi-ld/v1/entities?type=BillOfMaterialsLine → Orion-LD',
+      'Filter by bom Relationship = urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1',
+      '4 lines returned: PumpCasing×1 · Impeller×1 · ElectricMotor×1 · SealKit×2',
+    ],
+    actionLabel: 'Query BoM lines',
+  },
+  {
+    id: 'explode-bom',
+    title: 'Explode BoM for 10 units',
+    shortDesc: 'POST /commands/explode-bom — compute net requirements',
+    desc: 'The explode-bom command fetches the active BoM for HydraulicPump-P100, multiplies each line quantity by the order quantity (10), and returns the full component requirement list. Net requirements = line_qty × order_qty.',
+    hood: {
+      method: 'POST',
+      url: 'http://bom-service:8082/commands/explode-bom',
+      body: JSON.stringify({ product_id: 'urn:ngsi-ld:Product:HydraulicPump-P100', quantity: 10 }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/explode-bom { product_id, quantity: 10 } → bom-service',
+      'bom-service queries active BOM for HydraulicPump-P100 → BOM-HP-P100-v1',
+      'Fetches 4 BillOfMaterialsLine entities for that BOM from Orion-LD',
+      'Computes: PumpCasing=10 · Impeller=10 · ElectricMotor=10 · SealKit=20',
+      'scrapFactor is informational only — net requirements = line_qty × order_qty',
+    ],
+    actionLabel: 'Explode BoM',
+  },
+  {
+    id: 'inspect-bom-entity',
+    title: 'Inspect the BOM entity',
+    shortDesc: 'Fetch the BillOfMaterials entity directly from the broker',
+    desc: 'You can always fetch any entity directly from Orion-LD. The BillOfMaterials entity carries the product Relationship that links it to HydraulicPump-P100, letting you navigate from finished good to BoM to components.',
+    hood: {
+      method: 'GET',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entities/urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'GET /ngsi-ld/v1/entities/urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1 with Link: <context> → Orion-LD',
+      'Orion-LD returns compacted JSON-LD (short keys via @context)',
+      'product Relationship → urn:ngsi-ld:Product:HydraulicPump-P100',
+      'bomCode: BOM-HP-P100-v1 · version: 1.0 · state: active · bomType: manufacturing',
+    ],
+    actionLabel: 'Inspect BOM',
+  },
+];
+
+export const TUTORIAL_03_STEP_IDS = TUTORIAL_03_STEPS.map((s) => s.id);

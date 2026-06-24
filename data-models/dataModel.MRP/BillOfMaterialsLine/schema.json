@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "$schemaVersion": "0.3.0",
+  "modelTags": "MRP",
+  "$id": "https://smart-data-models.github.io/dataModel.MRP/BillOfMaterialsLine/schema.json",
+  "title": "Smart Data Models - MRP BillOfMaterialsLine",
+  "description": "A single component line within a Bill of Materials. Specifies the product, quantity, unit of measure, and optional scrap factor for one component needed to produce one unit of the parent product.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^urn:ngsi-ld:BillOfMaterialsLine:.+",
+          "description": "Unique identifier. Recommended format: urn:ngsi-ld:BillOfMaterialsLine:BML-{BomCode}-{ComponentCode}"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["BillOfMaterialsLine"],
+          "description": "NGSI-LD Entity type. Must be BillOfMaterialsLine."
+        },
+        "sequence": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": { "type": "integer", "minimum": 1, "description": "Position of this component in the BoM (1-based). Used to sort lines consistently." }
+          },
+          "description": "Ordering sequence of this line within the Bill of Materials."
+        },
+        "quantity": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": { "type": "number", "exclusiveMinimum": 0, "description": "Quantity of the component required to produce exactly one unit of the parent product." },
+            "unitCode": { "type": "string", "description": "UN/CEFACT unit code (e.g. EA, KGM, LTR, MTR)." }
+          },
+          "description": "Component quantity per parent unit."
+        },
+        "scrapFactor": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Expected loss fraction (0–1). The gross requirement is quantity × (1 + scrapFactor). E.g. 0.05 means 5% extra material is ordered to cover scrap."
+            }
+          },
+          "description": "Scrap factor for this component. Applied by the MRP explosion engine to compute gross material requirements."
+        },
+        "bom": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "format": "uri", "pattern": "^urn:ngsi-ld:BillOfMaterials:.+" }
+          },
+          "description": "Reference to the parent BillOfMaterials entity this line belongs to."
+        },
+        "component": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "format": "uri", "pattern": "^urn:ngsi-ld:Product:.+" }
+          },
+          "description": "Reference to the component Product consumed in this line."
+        }
+      }
+    }
+  ],
+  "required": ["id", "type", "sequence", "quantity", "bom", "component"],
+  "@context": [
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

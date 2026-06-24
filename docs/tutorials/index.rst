@@ -20,7 +20,7 @@ self-contained: reset, seed, execute, assert and stop.
      - :doc:`02-inventory`
      - Inventory balances and material receipts
    * - v0.3
-     - Tutorial 03 *(coming soon)*
+     - :doc:`03-bom`
      - Bill of Materials and BoM explosion
    * - v0.4
      - Tutorial 04 *(coming soon)*
@@ -55,3 +55,4 @@ self-contained: reset, seed, execute, assert and stop.
 
    01-getting-started-context
    02-inventory
+   03-bom

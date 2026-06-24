@@ -1,0 +1,26 @@
+{
+  "id": "urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-SealKit",
+  "type": "BillOfMaterialsLine",
+  "sequence": {
+    "type": "Property",
+    "value": 4
+  },
+  "quantity": {
+    "type": "Property",
+    "value": 2,
+    "unitCode": "EA"
+  },
+  "scrapFactor": {
+    "type": "Property",
+    "value": 0.05
+  },
+  "bom": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1"
+  },
+  "component": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:Product:SealKit"
+  },
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+}

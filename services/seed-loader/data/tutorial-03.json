@@ -1,0 +1,48 @@
+[
+  {
+    "id": "urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1",
+    "type": "BillOfMaterials",
+    "bomCode":  { "type": "Property", "value": "BOM-HP-P100-v1" },
+    "bomType":  { "type": "Property", "value": "manufacturing" },
+    "version":  { "type": "Property", "value": "1.0" },
+    "state":    { "type": "Property", "value": "active" },
+    "product":  { "type": "Relationship", "object": "urn:ngsi-ld:Product:HydraulicPump-P100" },
+    "company":  { "type": "Relationship", "object": "urn:ngsi-ld:Company:HydraulicPartsCo" }
+  },
+  {
+    "id": "urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-PumpCasing",
+    "type": "BillOfMaterialsLine",
+    "sequence":    { "type": "Property", "value": 1 },
+    "quantity":    { "type": "Property", "value": 1, "unitCode": "EA" },
+    "scrapFactor": { "type": "Property", "value": 0.02 },
+    "bom":         { "type": "Relationship", "object": "urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1" },
+    "component":   { "type": "Relationship", "object": "urn:ngsi-ld:Product:PumpCasing" }
+  },
+  {
+    "id": "urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-Impeller",
+    "type": "BillOfMaterialsLine",
+    "sequence":    { "type": "Property", "value": 2 },
+    "quantity":    { "type": "Property", "value": 1, "unitCode": "EA" },
+    "scrapFactor": { "type": "Property", "value": 0.01 },
+    "bom":         { "type": "Relationship", "object": "urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1" },
+    "component":   { "type": "Relationship", "object": "urn:ngsi-ld:Product:Impeller" }
+  },
+  {
+    "id": "urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-ElectricMotor",
+    "type": "BillOfMaterialsLine",
+    "sequence":    { "type": "Property", "value": 3 },
+    "quantity":    { "type": "Property", "value": 1, "unitCode": "EA" },
+    "scrapFactor": { "type": "Property", "value": 0.01 },
+    "bom":         { "type": "Relationship", "object": "urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1" },
+    "component":   { "type": "Relationship", "object": "urn:ngsi-ld:Product:ElectricMotor" }
+  },
+  {
+    "id": "urn:ngsi-ld:BillOfMaterialsLine:BML-HP-P100-SealKit",
+    "type": "BillOfMaterialsLine",
+    "sequence":    { "type": "Property", "value": 4 },
+    "quantity":    { "type": "Property", "value": 2, "unitCode": "EA" },
+    "scrapFactor": { "type": "Property", "value": 0.05 },
+    "bom":         { "type": "Relationship", "object": "urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1" },
+    "component":   { "type": "Relationship", "object": "urn:ngsi-ld:Product:SealKit" }
+  }
+]

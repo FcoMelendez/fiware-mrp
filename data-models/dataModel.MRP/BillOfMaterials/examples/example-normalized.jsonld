@@ -1,0 +1,29 @@
+{
+  "id": "urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1",
+  "type": "BillOfMaterials",
+  "bomCode": {
+    "type": "Property",
+    "value": "BOM-HP-P100-v1"
+  },
+  "bomType": {
+    "type": "Property",
+    "value": "manufacturing"
+  },
+  "version": {
+    "type": "Property",
+    "value": "1.0"
+  },
+  "state": {
+    "type": "Property",
+    "value": "active"
+  },
+  "product": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:Product:HydraulicPump-P100"
+  },
+  "company": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:Company:HydraulicPartsCo"
+  },
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+}

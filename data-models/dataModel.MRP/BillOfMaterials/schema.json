@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "$schemaVersion": "0.3.0",
+  "modelTags": "MRP",
+  "$id": "https://smart-data-models.github.io/dataModel.MRP/BillOfMaterials/schema.json",
+  "title": "Smart Data Models - MRP BillOfMaterials",
+  "description": "A Bill of Materials (BoM) defines the components, sub-assemblies and quantities required to manufacture one unit of a finished product. Each BoM has a version and a type that determines how the MRP explosion engine processes it.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^urn:ngsi-ld:BillOfMaterials:.+",
+          "description": "Unique identifier. Recommended format: urn:ngsi-ld:BillOfMaterials:BOM-{ProductCode}-v{N}"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["BillOfMaterials"],
+          "description": "NGSI-LD Entity type. Must be BillOfMaterials."
+        },
+        "bomCode": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": { "type": "string", "description": "Short alphanumeric code identifying this BoM (e.g. BOM-HP-P100-v1)." }
+          },
+          "description": "Unique business code for the Bill of Materials."
+        },
+        "bomType": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "enum": ["manufacturing", "kitting", "phantom"],
+              "description": "manufacturing: produces a stocked finished good; kitting: groups items without production; phantom: virtual assembly exploded through automatically."
+            }
+          },
+          "description": "Type of the Bill of Materials, determining how the MRP explosion engine processes it."
+        },
+        "version": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": { "type": "string", "description": "Version label (e.g. '1.0', '2.1')." }
+          },
+          "description": "Version of the Bill of Materials. Multiple versions may exist for the same product."
+        },
+        "state": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string", "const": "Property" },
+            "value": {
+              "type": "string",
+              "enum": ["active", "draft", "obsolete"],
+              "description": "active: used by MRP planning; draft: under review; obsolete: superseded by a newer version."
+            }
+          },
+          "description": "Lifecycle state of the Bill of Materials."
+        },
+        "product": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "format": "uri", "pattern": "^urn:ngsi-ld:Product:.+" }
+          },
+          "description": "Reference to the finished Product that this BoM defines how to manufacture."
+        },
+        "company": {
+          "type": "object",
+          "required": ["type", "object"],
+          "properties": {
+            "type": { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "format": "uri", "pattern": "^urn:ngsi-ld:Company:.+" }
+          },
+          "description": "Reference to the Company that owns this Bill of Materials."
+        }
+      }
+    }
+  ],
+  "required": ["id", "type", "bomCode", "bomType", "version", "state", "product"],
+  "@context": [
+    "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+  ]
+}

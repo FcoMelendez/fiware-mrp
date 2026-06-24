@@ -205,16 +205,18 @@ export class EntityInspector {
 // ── Type → display color ──────────────────────────────────────────────────────
 
 export const TYPE_COLOR: Record<string, string> = {
-  Company:            '#7c3aed',
-  Plant:              '#0284c7',
-  WorkCenter:         '#2563eb',
-  Product:            '#d97706',
-  StockLocation:      '#16a34a',
-  InventoryBalance:   '#0e7490',
-  StockMove:          '#0369a1',
-  Lot:                '#065f46',
-  WorkOrder:          '#dc2626',
-  ManufacturingOrder: '#9333ea',
+  Company:               '#7c3aed',
+  Plant:                 '#0284c7',
+  WorkCenter:            '#2563eb',
+  Product:               '#d97706',
+  StockLocation:         '#16a34a',
+  InventoryBalance:      '#0e7490',
+  StockMove:             '#0369a1',
+  Lot:                   '#065f46',
+  BillOfMaterials:       '#b45309',
+  BillOfMaterialsLine:   '#92400e',
+  WorkOrder:             '#dc2626',
+  ManufacturingOrder:    '#9333ea',
 };
 
 // ── NGSI-LD data models for Tutorial 01 entity types ─────────────────────────
@@ -320,6 +322,27 @@ const DATA_MODELS: Record<string, ModelDef> = {
       { name: 'qualityStatus', ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:string', desc: 'approved | quarantine | …', semantic: 'Quality disposition. Only "approved" lots may be issued to production. "quarantine" holds the lot for investigation; "rejected" blocks it permanently.', structure: 'Enum: "pending" | "approved" | "quarantine" | "rejected"' },
       { name: 'state',         ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:string', desc: 'active | consumed | expired', semantic: 'Lifecycle state. "consumed" when all stock of this lot has been issued or scrapped; "expired" when past expirationDate.', structure: 'Enum: "active" | "consumed" | "expired"' },
       { name: 'product',       ngsiType: 'Relationship', valueType: 'Product', xsdType: 'URI',        desc: 'Product',            semantic: 'NGSI-LD Relationship to the Product this lot belongs to. All InventoryBalance records for this lot reference the same product.' },
+    ],
+  },
+  BillOfMaterials: {
+    description: 'Header of a Bill of Materials: defines which BOM version applies to a finished product. A product can have multiple BOMs (e.g. different versions), but only one may be "active" at a time.',
+    attrs: [
+      { name: 'bomCode',  ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:string', desc: 'BOM identifier',             semantic: 'Unique alphanumeric code for this BOM (e.g. BOM-HP-P100-v1). Used as a human reference in manufacturing orders and reports.' },
+      { name: 'bomType',  ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:string', desc: 'manufacturing | kitting | phantom', semantic: '"manufacturing" BOMs are used for production orders. "kitting" groups items for assembly without routing. "phantom" BOMs are exploded through during MRP without generating production orders.', structure: 'Enum: "manufacturing" | "kitting" | "phantom"' },
+      { name: 'version',  ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:string', desc: 'Version label',              semantic: 'Human-readable version string (e.g. "1.0", "2.1-ECO-007"). Enables change management: new versions can be drafted while the previous remains active.' },
+      { name: 'state',    ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:string', desc: 'active | draft | obsolete',  semantic: 'Only one BOM per product may be "active" — this is the one used by bom-service for explosion. "draft" allows editing; "obsolete" retains history.', structure: 'Enum: "active" | "draft" | "obsolete"' },
+      { name: 'product',  ngsiType: 'Relationship', valueType: 'Product', xsdType: 'URI',        desc: 'Finished product',           semantic: 'NGSI-LD Relationship to the Product that is the output of this BOM. The bom-service uses this to resolve "which BOM applies to this production order?".' },
+      { name: 'company',  ngsiType: 'Relationship', valueType: 'Company', xsdType: 'URI',        desc: 'Owning company',             semantic: 'NGSI-LD Relationship to the Company that owns this BOM definition. Scopes access in multi-tenant deployments.' },
+    ],
+  },
+  BillOfMaterialsLine: {
+    description: 'One component line within a Bill of Materials. Each line specifies a required quantity of a purchased or manufactured component. The full set of lines for a BOM defines the recipe for the finished product.',
+    attrs: [
+      { name: 'sequence',    ngsiType: 'Property',     valueType: 'Number',  xsdType: 'xsd:integer', desc: 'Line order',             semantic: 'Integer sequence number that determines the display and pick order. Lower numbers appear first. Gaps are allowed (10, 20, 30) to ease future insertion.' },
+      { name: 'quantity',    ngsiType: 'Property',     valueType: 'Number',  xsdType: 'xsd:float',   desc: 'Required qty per unit',  semantic: 'Quantity of the component needed to produce one unit of the finished product. Multiplied by the production order quantity during explosion: required = line_qty × order_qty.' },
+      { name: 'scrapFactor', ngsiType: 'Property',     valueType: 'Number',  xsdType: 'xsd:float',   desc: 'Waste factor 0–1',       semantic: 'Expected scrap rate for this component during production (e.g. 0.02 = 2%). Informational in Tutorial 03 — applied to gross requirements starting in Tutorial 10 MRP planning.' },
+      { name: 'bom',         ngsiType: 'Relationship', valueType: 'BillOfMaterials',    xsdType: 'URI', desc: 'Parent BOM header', semantic: 'NGSI-LD Relationship to the BillOfMaterials header this line belongs to. Used to filter lines when exploding a specific BOM.' },
+      { name: 'component',   ngsiType: 'Relationship', valueType: 'Product', xsdType: 'URI',         desc: 'Component product',      semantic: 'NGSI-LD Relationship to the Product entity that is the component. Can be a purchased part or a manufactured sub-assembly (triggers recursive explosion in MRP).' },
     ],
   },
 };
