@@ -8,6 +8,7 @@ export class EntityInspector {
   private selectedId: string | null = null;
   private lastList: NgsiLdEntity[] | null = null;
   private showRaw = false;
+  private entityHistory: NgsiLdEntity[] = [];
 
   constructor(containerId: string) {
     const el = document.getElementById(containerId);
@@ -18,6 +19,7 @@ export class EntityInspector {
       this.lastList = null;
       this.showRaw = false;
       this.selectedId = entityId;
+      this.entityHistory = [];
       this.loadAndShow(entityId);
     });
 
@@ -35,6 +37,7 @@ export class EntityInspector {
       this.lastList = null;
       this.selectedId = null;
       this.showRaw = false;
+      this.entityHistory = [];
       this.clear();
     });
 
@@ -54,9 +57,15 @@ export class EntityInspector {
 
   private show(entity: NgsiLdEntity): void {
     const typeColor = TYPE_COLOR[entity.type] ?? '#64748b';
-    const backBtn = this.lastList
-      ? `<button id="inspector-back" class="btn-inspector-nav">← Back to list</button>`
-      : '';
+
+    let backBtn = '';
+    if (this.entityHistory.length > 0) {
+      const prev = this.entityHistory[this.entityHistory.length - 1];
+      const prevShort = prev.id.split(':').pop() ?? prev.id;
+      backBtn = `<button id="inspector-back" class="btn-inspector-nav">← ${prevShort}</button>`;
+    } else if (this.lastList) {
+      backBtn = `<button id="inspector-back" class="btn-inspector-nav">← Back to list</button>`;
+    }
 
     this.el.innerHTML = `
       ${backBtn}
@@ -73,11 +82,16 @@ export class EntityInspector {
       }</div>
     `;
 
-    // Back to list
-    if (this.lastList) {
-      const list = this.lastList;
-      this.el.querySelector('#inspector-back')?.addEventListener('click', () => this.showList(list));
-    }
+    // Back: pop entity history or return to list
+    this.el.querySelector('#inspector-back')?.addEventListener('click', () => {
+      if (this.entityHistory.length > 0) {
+        const prev = this.entityHistory.pop()!;
+        this.showRaw = false;
+        this.show(prev);
+      } else if (this.lastList) {
+        this.showList(this.lastList);
+      }
+    });
 
     // Type badge → data model
     this.el.querySelector('.inspector-type-badge')?.addEventListener('click', () => {
@@ -85,13 +99,33 @@ export class EntityInspector {
     });
 
     // Raw JSON-LD toggle
+    const attrsEl = this.el.querySelector<HTMLElement>('#inspector-attrs');
     this.el.querySelector('#inspector-raw-cb')?.addEventListener('change', (e) => {
       this.showRaw = (e.target as HTMLInputElement).checked;
-      const attrsEl = this.el.querySelector<HTMLElement>('#inspector-attrs');
-      if (attrsEl) attrsEl.innerHTML = this.showRaw ? this.renderRaw(entity) : this.renderFormatted(entity, typeColor);
+      if (attrsEl) {
+        attrsEl.innerHTML = this.showRaw ? this.renderRaw(entity) : this.renderFormatted(entity, typeColor);
+        if (!this.showRaw) this.wireRelLinks(attrsEl, entity);
+      }
     });
 
+    // Relationship navigation
+    if (attrsEl && !this.showRaw) this.wireRelLinks(attrsEl, entity);
+
     this.updateCommandPanel(entity);
+  }
+
+  private wireRelLinks(container: HTMLElement, fromEntity: NgsiLdEntity): void {
+    container.querySelectorAll<HTMLButtonElement>('.attr-rel-link').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const relId = btn.dataset['relId'];
+        if (!relId) return;
+        this.entityHistory.push(fromEntity);
+        this.showRaw = false;
+        const cached = contextStore.get(relId);
+        if (cached) { this.show(cached); return; }
+        this.loadAndShow(relId);
+      });
+    });
   }
 
   private renderFormatted(entity: NgsiLdEntity, typeColor: string): string {
@@ -103,8 +137,9 @@ export class EntityInspector {
       if (val?.type === 'Property') {
         valueHtml = `<span class="attr-value-prop">${JSON.stringify(val.value)}</span>`;
       } else if (val?.type === 'Relationship') {
-        const target = String(val.object).split(':').pop();
-        valueHtml = `<span class="attr-value-rel">→ ${target}</span>`;
+        const obj = String(val.object ?? '');
+        const target = obj.split(':').pop() ?? obj;
+        valueHtml = `<button class="attr-rel-link" data-rel-id="${obj}">→ ${target}</button>`;
       } else {
         valueHtml = `<span class="attr-value-other">${JSON.stringify(v)}</span>`;
       }
@@ -125,6 +160,7 @@ export class EntityInspector {
 
   private showList(entities: NgsiLdEntity[]): void {
     this.lastList = entities;
+    this.entityHistory = [];
     if (!entities.length) { this.clear(); return; }
 
     const typeColor = TYPE_COLOR[entities[0].type] ?? '#64748b';

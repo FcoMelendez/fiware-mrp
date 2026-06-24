@@ -4,6 +4,7 @@ import { TYPE_COLOR, renderDataModel } from './EntityInspector.ts';
 export class BrokerExplorer {
   private el: HTMLElement;
   private entities: NgsiLdEntity[] = [];
+  private detailStack: NgsiLdEntity[] = [];
 
   constructor(containerId: string) {
     this.el = document.getElementById(containerId)!;
@@ -16,6 +17,7 @@ export class BrokerExplorer {
 
   private async refresh(): Promise<void> {
     this.renderLoading();
+    this.detailStack = [];
     try {
       const res = await fetch('/api/entities');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -27,6 +29,7 @@ export class BrokerExplorer {
   }
 
   private async showDetail(entityId: string): Promise<void> {
+    this.detailStack = [];
     let entity = this.entities.find((e) => e.id === entityId);
     if (!entity) {
       const res = await fetch(`/api/entities/${encodeURIComponent(entityId)}`);
@@ -128,22 +131,29 @@ export class BrokerExplorer {
       if (typeof val !== 'object' || val === null) continue;
       const attr = val as Record<string, unknown>;
       const attrType = attr['type'] as string | undefined;
-      const isRel = attrType === 'Relationship';
-      const value = isRel
-        ? String(attr['object'] ?? '')
-        : attrType === 'Property'
-          ? String(attr['value'] ?? '')
-          : JSON.stringify(attr);
-      const cls = isRel ? 'attr-value-rel' : 'attr-value-prop';
-      attrsHtml += `<div class="attr-row">
-        <span class="attr-name">${key}</span>
-        <span class="${cls}">${value}</span>
-      </div>`;
+      if (attrType === 'Relationship') {
+        const obj = String(attr['object'] ?? '');
+        const target = obj.split(':').pop() ?? obj;
+        attrsHtml += `<div class="attr-row">
+          <span class="attr-name">${key}</span>
+          <button class="attr-rel-link" data-rel-id="${obj}">→ ${target}</button>
+        </div>`;
+      } else {
+        const value = attrType === 'Property' ? String(attr['value'] ?? '') : JSON.stringify(attr);
+        attrsHtml += `<div class="attr-row">
+          <span class="attr-name">${key}</span>
+          <span class="attr-value-prop">${value}</span>
+        </div>`;
+      }
     }
     attrsHtml += '</div>';
 
+    const backLabel = this.detailStack.length > 0
+      ? `← ${this.detailStack[this.detailStack.length - 1].id.split(':').pop()}`
+      : '← Back to list';
+
     this.el.innerHTML = `
-      <button class="btn-inspector-nav" id="explorer-back">← Back to list</button>
+      <button class="btn-inspector-nav" id="explorer-back">${backLabel}</button>
       <div class="inspector-type-row">
         <button class="inspector-type-badge" style="color:${color};border-color:${color};background:${color}18"
           data-type="${entity.type}">${entity.type}</button>
@@ -152,10 +162,33 @@ export class BrokerExplorer {
       ${attrsHtml}
     `;
 
-    this.el.querySelector('#explorer-back')?.addEventListener('click', () => this.renderList());
+    this.el.querySelector('#explorer-back')?.addEventListener('click', () => {
+      if (this.detailStack.length > 0) {
+        const prev = this.detailStack.pop()!;
+        this.renderDetail(prev);
+      } else {
+        this.renderList();
+      }
+    });
 
     this.el.querySelector<HTMLButtonElement>('.inspector-type-badge')?.addEventListener('click', () => {
       renderDataModel(this.el, entity.type, color, () => this.renderDetail(entity));
+    });
+
+    this.el.querySelectorAll<HTMLButtonElement>('.attr-rel-link').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const relId = btn.dataset['relId'];
+        if (!relId) return;
+        this.detailStack.push(entity);
+        let linked = this.entities.find((e) => e.id === relId);
+        if (!linked) {
+          try {
+            const res = await fetch(`/api/entities/${encodeURIComponent(relId)}`);
+            if (res.ok) linked = (await res.json()) as NgsiLdEntity;
+          } catch { /* entity not in broker */ }
+        }
+        if (linked) this.renderDetail(linked);
+      });
     });
   }
 
