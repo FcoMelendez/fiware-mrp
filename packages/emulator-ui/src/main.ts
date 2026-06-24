@@ -4,6 +4,7 @@ import { EventTimeline } from './ui/EventTimeline.ts';
 import { EntityInspector } from './ui/EntityInspector.ts';
 import { CommandPanel } from './ui/CommandPanel.ts';
 import { BrokerExplorer } from './ui/BrokerExplorer.ts';
+import { DashboardPanel } from './ui/DashboardPanel.ts';
 import { bus, BUS } from './services/EventBus.ts';
 import type { ConnectionStatus } from './domain/emulator.ts';
 
@@ -26,6 +27,7 @@ new TutorialChecklist('tutorial-steps');
 new EventTimeline('timeline-events');
 new EntityInspector('inspector-content');
 new CommandPanel('command-panel-actions');
+new DashboardPanel();
 const explorer = new BrokerExplorer('broker-explorer-content');
 
 // ── Right-panel tab switching ──────────────────────────────────────────────

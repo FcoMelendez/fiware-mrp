@@ -210,10 +210,54 @@
         padding: 8px 10px; font-size: 12px; color: #92400e; font-weight: 600;
       }
 
+      /* ── Center column (wraps dashboard bar + canvas) ───────────────────── */
+      #center-column {
+        display: flex; flex-direction: column;
+        min-width: 0; min-height: 0; overflow: hidden;
+      }
+
+      /* ── Business dashboard bar ──────────────────────────────────────────── */
+      #dashboard-bar {
+        background: #0c1420; border-bottom: 2px solid #1e293b;
+        display: flex; flex-shrink: 0; height: 68px;
+      }
+      .db-card {
+        flex: 1; display: flex; min-width: 0;
+        border-right: 1px solid #1e293b;
+      }
+      .db-card:last-child { border-right: none; }
+      .db-card-strip { width: 3px; flex-shrink: 0; background: #1e293b; transition: background 0.4s; }
+      .db-card-body {
+        flex: 1; padding: 8px 10px; min-width: 0;
+        display: flex; flex-direction: column; justify-content: center; gap: 3px;
+      }
+      .db-card-label {
+        font-size: 9px; font-weight: 700; color: #334155;
+        letter-spacing: 0.7px; text-transform: uppercase; line-height: 1;
+      }
+      .db-card-meta-row { display: flex; align-items: baseline; gap: 6px; }
+      .db-card-val {
+        font-size: 16px; font-weight: 700; color: #475569; line-height: 1.15;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.3s;
+      }
+      .db-card-meta {
+        font-size: 10px; color: #475569; font-style: italic;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .db-card-sub {
+        font-size: 10px; color: #334155; line-height: 1;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .db-wc-dots { display: flex; gap: 8px; align-items: center; overflow: hidden; }
+      .db-wc-dot {
+        display: inline-flex; align-items: center; gap: 3px;
+        font-size: 10px; font-weight: 600; white-space: nowrap;
+      }
+
       /* ── Center — Phaser canvas ───────────────────────────────────────────── */
       #game-container {
-        overflow: hidden; position: relative; background: #f1f5f9;
-        min-width: 0; min-height: 0;  /* prevent grid cell from expanding beyond its track */
+        flex: 1; overflow: hidden; position: relative; background: #f1f5f9;
+        min-width: 0; min-height: 0;
       }
       #game-container canvas { display: block; }
 
@@ -545,21 +589,84 @@
         <div id="tutorial-steps"></div>
       </aside>
 
-      <!-- Center: Phaser factory canvas -->
-      <div id="game-container">
-        <!-- View mode toggle -->
-        <div id="view-toggle-bar">
-          <button class="view-btn view-btn-active" id="view-btn-classic" title="Classic box-based view">▧ Classic</button>
-          <button class="view-btn" id="view-btn-enhanced" title="Enhanced factory floor view">⬡ Factory+</button>
-        </div>
+      <!-- Center: business dashboard + Phaser factory canvas -->
+      <div id="center-column">
 
-        <div id="canvas-overlay">
-          <div class="canvas-hint">
-            <h3>Factory canvas</h3>
-            <p>Run <strong>Seed entities</strong> in the guided tour to populate this canvas with your NGSI-LD factory graph.</p>
+        <!-- Business dashboard KPI bar -->
+        <div id="dashboard-bar">
+
+          <!-- Card 1: Context Graph -->
+          <div class="db-card">
+            <div class="db-card-strip" id="db-ctx-strip"></div>
+            <div class="db-card-body">
+              <div class="db-card-label">Context Graph</div>
+              <div class="db-card-meta-row">
+                <span class="db-card-val" id="db-ctx-val">—</span>
+                <span class="db-card-meta" id="db-ctx-meta"></span>
+              </div>
+              <div class="db-card-sub" id="db-ctx-sub">no data loaded</div>
+            </div>
           </div>
-        </div>
-      </div>
+
+          <!-- Card 2: Shop Floor -->
+          <div class="db-card">
+            <div class="db-card-strip" id="db-wc-strip"></div>
+            <div class="db-card-body">
+              <div class="db-card-label">Shop Floor</div>
+              <div class="db-card-val" id="db-wc-val">—</div>
+              <div class="db-wc-dots" id="db-wc-dots"><span style="color:#334155;font-size:10px">no work centres</span></div>
+            </div>
+          </div>
+
+          <!-- Card 3: Inventory -->
+          <div class="db-card">
+            <div class="db-card-strip" id="db-inv-strip"></div>
+            <div class="db-card-body">
+              <div class="db-card-label">Inventory</div>
+              <div class="db-card-val" id="db-inv-val">—</div>
+              <div class="db-card-sub" id="db-inv-sub">no stock data</div>
+            </div>
+          </div>
+
+          <!-- Card 4: Bill of Materials -->
+          <div class="db-card">
+            <div class="db-card-strip" id="db-bom-strip"></div>
+            <div class="db-card-body">
+              <div class="db-card-label">Bill of Materials</div>
+              <div class="db-card-val" id="db-bom-val">—</div>
+              <div class="db-card-sub" id="db-bom-sub">no bill of materials</div>
+            </div>
+          </div>
+
+          <!-- Card 5: Production -->
+          <div class="db-card">
+            <div class="db-card-strip" id="db-prod-strip"></div>
+            <div class="db-card-body">
+              <div class="db-card-label">Production</div>
+              <div class="db-card-val" id="db-prod-val">—</div>
+              <div class="db-card-sub" id="db-prod-sub">no production orders</div>
+            </div>
+          </div>
+
+        </div><!-- /#dashboard-bar -->
+
+        <!-- Phaser factory canvas -->
+        <div id="game-container">
+          <!-- View mode toggle -->
+          <div id="view-toggle-bar">
+            <button class="view-btn view-btn-active" id="view-btn-classic" title="Classic box-based view">▧ Classic</button>
+            <button class="view-btn" id="view-btn-enhanced" title="Enhanced factory floor view">⬡ Factory+</button>
+          </div>
+
+          <div id="canvas-overlay">
+            <div class="canvas-hint">
+              <h3>Factory canvas</h3>
+              <p>Run <strong>Seed entities</strong> in the guided tour to populate this canvas with your NGSI-LD factory graph.</p>
+            </div>
+          </div>
+        </div><!-- /#game-container -->
+
+      </div><!-- /#center-column -->
 
       <!-- Right: tabbed panel — Entity Inspector + Broker Explorer -->
       <aside id="right-panel">
