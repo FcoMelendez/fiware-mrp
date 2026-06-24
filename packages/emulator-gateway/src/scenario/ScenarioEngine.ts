@@ -225,8 +225,10 @@ export class ScenarioEngine {
 
     if (this.mode === 'live') {
       try {
-        const res = await fetch(`${(this.ngsi as unknown as { orionUrl: string }).orionUrl}/ngsi-ld/v1/entities?type=InventoryBalance`, {
-          headers: { 'Accept': 'application/ld+json' },
+        const invUrl = (this.ngsi as unknown as { orionUrl: string }).orionUrl
+          .replace(':1026', ':8081').replace('orion-ld', 'inventory-service');
+        const res = await fetch(`${invUrl}/inventory`, {
+          headers: { 'Accept': 'application/json' },
           signal: AbortSignal.timeout(5_000),
         });
         const json = await res.json();

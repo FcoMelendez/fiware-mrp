@@ -24,7 +24,7 @@ CONTEXT_URL = os.getenv(
     "CONTEXT_URL",
     "http://context-server:3000/contexts/mrp/v0.1/context.jsonld",
 )
-MRP_NS = "https://fiware-mrp.io/ontology/mrp%23"
+MRP_NS = "https://fiware-mrp.io/ontology/mrp#"
 
 HEADERS_READ = {"Accept": "application/ld+json"}
 HEADERS_WRITE = {
