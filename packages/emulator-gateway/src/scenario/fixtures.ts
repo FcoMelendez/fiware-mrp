@@ -238,6 +238,7 @@ export interface GuidedStep {
     body?: string;
     expectedStatus: number;
   };
+  workflow: string[];
   actionLabel?: string;
   promptLabel?: string;
 }
@@ -251,6 +252,12 @@ export const TUTORIAL_01_STEPS: GuidedStep[] = [
     shortDesc: 'Check that all services are healthy',
     desc: 'Before loading data the emulator verifies that Orion-LD, the context server and the MRP API are all responding. In live mode it polls each service health endpoint.',
     hood: { method: 'GET', url: '/api/ready', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /api/ready → Gateway (health aggregator)',
+      'Gateway → GET /ngsi-ld/v1/version → Orion-LD',
+      'Gateway → GET /context.jsonld → Context Server',
+      'All services healthy → { status: ok }',
+    ],
     actionLabel: 'Check health',
   },
   {
@@ -264,6 +271,12 @@ export const TUTORIAL_01_STEPS: GuidedStep[] = [
       body: '12 entities  •  application/ld+json',
       expectedStatus: 201,
     },
+    workflow: [
+      'Gateway attaches @context URL to each of the 12 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD',
+      'Orion-LD stores: 1 Company · 1 Plant · 3 WorkCenter · 5 Product · 2 StockLocation',
+      'Gateway emits contextSnapshot → Phaser canvas renders factory zones',
+    ],
     actionLabel: 'Seed entities',
   },
   {
@@ -276,6 +289,12 @@ export const TUTORIAL_01_STEPS: GuidedStep[] = [
       url: 'http://orion-ld:1026/ngsi-ld/v1/entities/urn:ngsi-ld:Plant:Plant-BCN',
       expectedStatus: 200,
     },
+    workflow: [
+      'User clicks a factory zone → zone entityId resolved from canvas binding',
+      'GET /ngsi-ld/v1/entities/:id with Link: <context>; rel=context → Orion-LD',
+      'Orion-LD returns compacted JSON-LD (short attribute names via @context)',
+      'Entity Inspector renders Properties and Relationships in the right panel',
+    ],
     promptLabel: 'Click any zone on the canvas →',
   },
   {
@@ -288,6 +307,12 @@ export const TUTORIAL_01_STEPS: GuidedStep[] = [
       url: 'http://orion-ld:1026/ngsi-ld/v1/entities?type=WorkCenter',
       expectedStatus: 200,
     },
+    workflow: [
+      'GET /ngsi-ld/v1/entities?type=WorkCenter with Link: <context>; rel=context → Orion-LD',
+      'Link header enables type compaction: "WorkCenter" resolves via @context',
+      'Orion-LD returns 3 entities: WC-Assembly · WC-LeakTest · WC-Packaging',
+      'Inspector lists results → click an entity to inspect capacity, efficiency, costPerHour',
+    ],
     actionLabel: 'Query WorkCenters',
   },
   {
@@ -300,6 +325,12 @@ export const TUTORIAL_01_STEPS: GuidedStep[] = [
       url: 'http://orion-ld:1026/ngsi-ld/v1/entities?type=Product',
       expectedStatus: 200,
     },
+    workflow: [
+      'GET /ngsi-ld/v1/entities?type=Product with Link: <context>; rel=context → Orion-LD',
+      'Orion-LD returns 5 Product entities',
+      '1 manufactured (HydraulicPump-P100) · 4 purchased components',
+      'Inspector → inspect productType, trackingPolicy, standardCost per product',
+    ],
     actionLabel: 'Browse Products',
   },
   {
@@ -312,6 +343,12 @@ export const TUTORIAL_01_STEPS: GuidedStep[] = [
       url: 'http://orion-ld:1026/ngsi-ld/v1/entities?type=StockLocation',
       expectedStatus: 200,
     },
+    workflow: [
+      'GET /ngsi-ld/v1/entities?type=StockLocation with Link: <context>; rel=context → Orion-LD',
+      'Orion-LD returns 2 StockLocation entities: WH-STOCK · WH-FINISHED',
+      'Each carries locatedIn Relationship → Plant-BCN',
+      'WH-STOCK holds raw materials · WH-FINISHED holds finished goods',
+    ],
     actionLabel: 'Query StockLocations',
   },
 ];
@@ -325,6 +362,11 @@ export const TUTORIAL_02_STEPS: GuidedStep[] = [
     shortDesc: 'Health-check the inventory-service',
     desc: 'Tutorial 02 adds the inventory-service to the stack. This step confirms it is running and can reach Orion-LD.',
     hood: { method: 'GET', url: 'http://inventory-service:8081/health', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /health → inventory-service:8081',
+      'inventory-service verifies its own connection to Orion-LD internally',
+      'Returns { status: ok, service: inventory-service, version: 0.2.0 }',
+    ],
     actionLabel: 'Check health',
   },
   {
@@ -338,6 +380,12 @@ export const TUTORIAL_02_STEPS: GuidedStep[] = [
       body: '12 entities  •  application/ld+json',
       expectedStatus: 201,
     },
+    workflow: [
+      'Gateway attaches @context URL to each of the 12 master-data entities',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD (idempotent)',
+      'Orion-LD stores: 1 Company · 1 Plant · 3 WorkCenter · 5 Product · 2 StockLocation',
+      'No InventoryBalance or StockMove entities are created in this step',
+    ],
     actionLabel: 'Seed entities',
   },
   {
@@ -350,6 +398,12 @@ export const TUTORIAL_02_STEPS: GuidedStep[] = [
       url: 'http://inventory-service:8081/inventory',
       expectedStatus: 200,
     },
+    workflow: [
+      'Emulator → GET /inventory → inventory-service:8081',
+      'inventory-service → GET /ngsi-ld/v1/entities?type=InventoryBalance → Orion-LD',
+      'No receipts posted yet → Orion-LD returns []',
+      'Expected result: 0 InventoryBalance entities in the broker',
+    ],
     actionLabel: 'Query inventory',
   },
   {
@@ -369,6 +423,13 @@ export const TUTORIAL_02_STEPS: GuidedStep[] = [
       }, null, 2),
       expectedStatus: 200,
     },
+    workflow: [
+      'Emulator → POST /commands/receive-material { product, qty: 50, unit: EA } → inventory-service',
+      'inventory-service resolves product_id and location_id against Orion-LD',
+      'UPSERT InventoryBalance (quantityOnHand: 50, state: active) → Orion-LD',
+      'UPSERT StockMove (moveType: receipt, state: done, origin: PO-2024-001) → Orion-LD',
+      'Returns { status: done, quantity_on_hand: 50, stock_move_id }',
+    ],
     actionLabel: 'Receive PumpCasing',
   },
   {
@@ -389,6 +450,13 @@ export const TUTORIAL_02_STEPS: GuidedStep[] = [
       }, null, 2),
       expectedStatus: 200,
     },
+    workflow: [
+      'Emulator → POST /commands/receive-material { product, qty: 30, lot_code: LOT-240001 } → inventory-service',
+      'lot_code provided → UPSERT Lot entity (LOT-240001, qualityStatus: approved) → Orion-LD',
+      'UPSERT InventoryBalance (keyed to lot, quantityOnHand: 30) → Orion-LD',
+      'UPSERT StockMove (moveType: receipt, lot ref, state: done, origin: PO-2024-002) → Orion-LD',
+      'Returns { status: done, quantity_on_hand: 30, stock_move_id }',
+    ],
     actionLabel: 'Receive Impeller',
   },
   {
@@ -401,6 +469,12 @@ export const TUTORIAL_02_STEPS: GuidedStep[] = [
       url: 'http://inventory-service:8081/inventory',
       expectedStatus: 200,
     },
+    workflow: [
+      'Emulator → GET /inventory → inventory-service:8081',
+      'inventory-service → GET /ngsi-ld/v1/entities?type=InventoryBalance → Orion-LD',
+      '2 balances returned: PumpCasing (50 EA) · Impeller (30 EA, lot LOT-240001)',
+      'Inspector lists both → inspect to see quantityOnHand, product, and lot Relationships',
+    ],
     actionLabel: 'Query all balances',
   },
 ];

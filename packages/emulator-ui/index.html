@@ -450,6 +450,15 @@
       .btn-copy-curl:hover  { background: #1e293b; color: #e2e8f0; }
       .btn-copy-curl.copied { color: #22c55e; border-color: #22c55e; }
 
+      /* ── Workflow narrative (Under the hood) ─────────────────────────────── */
+      .wf-step { display: flex; gap: 8px; align-items: flex-start; font-size: 10px; font-family: monospace; line-height: 1.45; }
+      .wf-step + .wf-step { margin-top: 5px; }
+      .wf-num  { color: #60a5fa; font-weight: 700; flex-shrink: 0; min-width: 16px; text-align: right; }
+      .wf-text { color: #e2e8f0; }
+
+      /* REQUEST console label colour override */
+      #request-console .console-label { color: #fb923c; }
+
       .hidden { display: none !important; }
     </style>
   </head>
@@ -509,7 +518,7 @@
       <aside id="right-panel">
 
         <div id="rp-tabs">
-          <button class="rp-tab active" data-tab="inspector">Response Inspector</button>
+          <button class="rp-tab active" data-tab="inspector">Query Inspector</button>
           <button class="rp-tab" data-tab="explorer">Broker</button>
         </div>
 
@@ -517,7 +526,15 @@
 
           <div id="rp-pane-inspector" class="rp-pane">
 
-            <div id="tutorial-console">
+            <div id="request-console">
+              <div class="console-header">
+                <span class="console-label">Request</span>
+                <button class="btn-copy-curl-req" disabled>📋 Copy curl</button>
+              </div>
+              <pre class="console-pre"><span class="console-empty">Execute a step to see the outgoing request…</span></pre>
+            </div>
+
+            <div id="response-console">
               <div class="console-header">
                 <span class="console-label">Response</span>
                 <button class="btn-copy-answer">📋 Copy full answer</button>

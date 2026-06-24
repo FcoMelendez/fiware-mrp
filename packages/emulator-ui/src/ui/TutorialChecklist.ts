@@ -9,6 +9,7 @@ interface GuidedStep {
   shortDesc: string;
   desc: string;
   hood: { method: string; url: string; body?: string; expectedStatus: number };
+  workflow?: string[];
   actionLabel?: string;
   promptLabel?: string;
 }
@@ -92,13 +93,7 @@ export class TutorialChecklist {
     // Reset canvas overlay, welcome banner, and console
     document.getElementById('canvas-overlay')?.classList.remove('hidden');
     document.getElementById('welcome-banner')?.classList.remove('hidden');
-    const consoleEl = document.getElementById('tutorial-console');
-    if (consoleEl) {
-      const pre = consoleEl.querySelector<HTMLElement>('.console-pre');
-      const resultEl = consoleEl.querySelector<HTMLElement>('.console-result');
-      if (pre) pre.innerHTML = '<span class="console-empty">Run a step to see the response here…</span>';
-      if (resultEl) resultEl.textContent = '';
-    }
+    this.clearConsolePanels();
     bus.emit(BUS.SCENARIO_RESET, undefined);
 
     // Reload steps for the new tutorial, then render
@@ -162,18 +157,13 @@ export class TutorialChecklist {
         <div class="step-body ${isExpanded ? '' : 'hidden'}">
           <p class="step-desc">${s.def.desc}</p>
 
-          <div class="hood-toggle" data-step="${s.def.id}">🔍 Under the hood</div>
+          <div class="hood-toggle" data-step="${s.def.id}">⚙ Under the hood</div>
           <div class="hood-content hidden" data-hood="${s.def.id}">
-            <div class="api-row">
-              <span class="api-method" style="background:${METHOD_COLOR[s.def.hood.method] ?? '#64748b'}">${s.def.hood.method}</span>
-              <span class="api-url">${s.def.hood.url}</span>
-              <button class="btn-copy-curl"
-                data-method="${s.def.hood.method}"
-                data-url="${s.def.hood.url}"
-                data-body="${s.def.hood.body ?? ''}">📋 Copy full request</button>
-            </div>
-            ${s.def.hood.body ? `<div class="api-body">${s.def.hood.body}</div>` : ''}
-            <div class="api-expected">Expected: ${s.def.hood.expectedStatus}</div>
+            ${(s.def.workflow ?? []).map((line, i) => `
+              <div class="wf-step">
+                <span class="wf-num">${i + 1}.</span>
+                <span class="wf-text">${line}</span>
+              </div>`).join('') || '<span style="color:#94a3b8;font-size:10px">No workflow defined.</span>'}
           </div>
 
           ${this.renderAction(s)}
@@ -206,21 +196,6 @@ export class TutorialChecklist {
         this.retryStep(stepId);
       });
 
-      // Copy curl button
-      card.querySelector<HTMLElement>('.btn-copy-curl')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const btn = e.currentTarget as HTMLElement;
-        const curl = this.buildCurl(
-          btn.dataset['method'] ?? 'GET',
-          btn.dataset['url'] ?? '',
-          btn.dataset['body'] ?? '',
-        );
-        navigator.clipboard.writeText(curl).then(() => {
-          btn.textContent = '✓';
-          btn.classList.add('copied');
-          setTimeout(() => { btn.textContent = '📋'; btn.classList.remove('copied'); }, 2000);
-        }).catch(() => { btn.title = curl; });
-      });
 
       this.el.appendChild(card);
     }
@@ -334,8 +309,8 @@ export class TutorialChecklist {
         bus.emit(BUS.ENTITIES_LISTED, data.entities);
       }
 
-      // Update response console
-      this.updateConsole(data.result, data);
+      // Update request + response consoles
+      this.updateConsole(data.result, data, this.steps[idx].def);
 
     } catch (err) {
       this.steps[idx].status = 'failed';
@@ -345,13 +320,45 @@ export class TutorialChecklist {
     this.render();
   }
 
-  private updateConsole(result: string, data: unknown): void {
-    const consoleEl = document.getElementById('tutorial-console');
-    if (!consoleEl) return;
+  private updateConsole(result: string, data: { apiTrace?: ApiTrace[]; [key: string]: unknown }, def: GuidedStep): void {
+    // ── REQUEST console ────────────────────────────────────────────────────
+    const reqEl = document.getElementById('request-console');
+    if (reqEl && def) {
+      const t = data.apiTrace?.[0];
+      const method = t?.method ?? def.hood.method;
+      const url    = t?.url    ?? def.hood.url;
+      const body   = t?.requestSummary ?? def.hood.body ?? '';
 
-    const resultEl = consoleEl.querySelector<HTMLElement>('.console-result');
-    const preEl    = consoleEl.querySelector<HTMLElement>('.console-pre');
-    const copyBtn  = consoleEl.querySelector<HTMLButtonElement>('.btn-copy-answer');
+      const reqPre  = reqEl.querySelector<HTMLElement>('.console-pre');
+      const copyBtn = reqEl.querySelector<HTMLButtonElement>('.btn-copy-curl-req');
+
+      if (reqPre) reqPre.textContent = `${method}  ${url}${body ? '\n' + body : ''}`;
+
+      if (copyBtn) {
+        const curl = this.buildCurl(method, url, def.hood.body ?? '');
+        copyBtn.disabled = false;
+        copyBtn.textContent = '📋 Copy curl';
+        copyBtn.classList.remove('copied');
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(curl).then(() => {
+            copyBtn.textContent = '✓ Copied';
+            copyBtn.classList.add('copied');
+            setTimeout(() => {
+              copyBtn.textContent = '📋 Copy curl';
+              copyBtn.classList.remove('copied');
+            }, 2000);
+          }).catch(() => {/* clipboard unavailable */});
+        };
+      }
+    }
+
+    // ── RESPONSE console ───────────────────────────────────────────────────
+    const resEl = document.getElementById('response-console');
+    if (!resEl) return;
+
+    const resultEl = resEl.querySelector<HTMLElement>('.console-result');
+    const preEl    = resEl.querySelector<HTMLElement>('.console-pre');
+    const copyBtn  = resEl.querySelector<HTMLButtonElement>('.btn-copy-answer');
 
     const raw = JSON.stringify(data, null, 2);
     if (resultEl) resultEl.textContent = result;
@@ -370,6 +377,23 @@ export class TutorialChecklist {
           }, 2000);
         }).catch(() => {/* clipboard unavailable */});
       };
+    }
+  }
+
+  private clearConsolePanels(): void {
+    const reqEl = document.getElementById('request-console');
+    if (reqEl) {
+      const pre = reqEl.querySelector<HTMLElement>('.console-pre');
+      const btn = reqEl.querySelector<HTMLButtonElement>('.btn-copy-curl-req');
+      if (pre) pre.innerHTML = '<span class="console-empty">Execute a step to see the outgoing request…</span>';
+      if (btn) { btn.disabled = true; btn.textContent = '📋 Copy curl'; btn.classList.remove('copied'); }
+    }
+    const resEl = document.getElementById('response-console');
+    if (resEl) {
+      const pre = resEl.querySelector<HTMLElement>('.console-pre');
+      const resultEl = resEl.querySelector<HTMLElement>('.console-result');
+      if (pre) pre.innerHTML = '<span class="console-empty">Run a step to see the response here…</span>';
+      if (resultEl) resultEl.textContent = '';
     }
   }
 
@@ -405,16 +429,10 @@ export class TutorialChecklist {
     if (this.steps[0]) this.expandedIds.add(this.steps[0].def.id);
     this.render();
 
-    // Re-show canvas overlay and welcome banner; reset console to placeholder
+    // Re-show canvas overlay and welcome banner; reset console panels
     document.getElementById('canvas-overlay')?.classList.remove('hidden');
     document.getElementById('welcome-banner')?.classList.remove('hidden');
-    const consoleEl = document.getElementById('tutorial-console');
-    if (consoleEl) {
-      const pre = consoleEl.querySelector<HTMLElement>('.console-pre');
-      const resultEl = consoleEl.querySelector<HTMLElement>('.console-result');
-      if (pre) pre.innerHTML = '<span class="console-empty">Run a step to see the response here…</span>';
-      if (resultEl) resultEl.textContent = '';
-    }
+    this.clearConsolePanels();
 
     // Broadcast reset so inspector and canvas clear
     bus.emit(BUS.SCENARIO_RESET, undefined);
@@ -443,6 +461,11 @@ const BUILT_IN_STEPS: GuidedStep[] = [
     shortDesc: 'Check that all services are healthy',
     desc: 'Before loading data the emulator verifies that Orion-LD, the context server and the MRP API are all responding.',
     hood: { method: 'GET', url: '/api/ready', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /api/ready → Gateway (health aggregator)',
+      'Gateway → GET /ngsi-ld/v1/version → Orion-LD',
+      'All services healthy → { status: ok }',
+    ],
     actionLabel: 'Check health',
   },
   {
@@ -456,6 +479,11 @@ const BUILT_IN_STEPS: GuidedStep[] = [
       body: '12 entities  •  application/ld+json',
       expectedStatus: 201,
     },
+    workflow: [
+      'Gateway attaches @context URL to each of the 12 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD',
+      'Orion-LD stores: 1 Company · 1 Plant · 3 WorkCenter · 5 Product · 2 StockLocation',
+    ],
     actionLabel: 'Seed entities',
   },
   {
@@ -464,6 +492,11 @@ const BUILT_IN_STEPS: GuidedStep[] = [
     shortDesc: 'Click a zone to see its NGSI-LD entity',
     desc: 'Every coloured zone is bound to an NGSI-LD entity. Click one to fetch it and view the normalised JSON-LD.',
     hood: { method: 'GET', url: '/ngsi-ld/v1/entities/urn:ngsi-ld:Plant:Plant-BCN', expectedStatus: 200 },
+    workflow: [
+      'User clicks a factory zone → zone entityId resolved',
+      'GET /ngsi-ld/v1/entities/:id + Link: <context>; rel=context → Orion-LD',
+      'Entity Inspector renders Properties and Relationships',
+    ],
     promptLabel: 'Click any zone on the canvas →',
   },
   {
@@ -472,6 +505,10 @@ const BUILT_IN_STEPS: GuidedStep[] = [
     shortDesc: 'Fetch all 3 WorkCenters from the broker',
     desc: 'The NGSI-LD query API lets you retrieve all entities of a type in one request.',
     hood: { method: 'GET', url: '/ngsi-ld/v1/entities?type=WorkCenter', expectedStatus: 200 },
+    workflow: [
+      'GET /ngsi-ld/v1/entities?type=WorkCenter + Link: <context>; rel=context → Orion-LD',
+      'Orion-LD returns 3 WorkCenter entities (WC-ASM, WC-LTB, WC-PKG)',
+    ],
     actionLabel: 'Query WorkCenters',
   },
   {
@@ -480,6 +517,10 @@ const BUILT_IN_STEPS: GuidedStep[] = [
     shortDesc: 'Fetch the 5-item product catalogue',
     desc: 'Products are the items the factory makes or buys. HydraulicPump-P100 is the manufactured finished good.',
     hood: { method: 'GET', url: '/ngsi-ld/v1/entities?type=Product', expectedStatus: 200 },
+    workflow: [
+      'GET /ngsi-ld/v1/entities?type=Product + Link: <context>; rel=context → Orion-LD',
+      'Orion-LD returns 5 Product entities (1 manufactured, 4 purchased)',
+    ],
     actionLabel: 'Browse Products',
   },
   {
@@ -488,6 +529,10 @@ const BUILT_IN_STEPS: GuidedStep[] = [
     shortDesc: 'See the 2 warehouse zones',
     desc: 'StockLocations represent physical inventory zones linked to the Plant via an NGSI-LD Relationship.',
     hood: { method: 'GET', url: '/ngsi-ld/v1/entities?type=StockLocation', expectedStatus: 200 },
+    workflow: [
+      'GET /ngsi-ld/v1/entities?type=StockLocation + Link: <context>; rel=context → Orion-LD',
+      'Orion-LD returns 2 StockLocations: WH-STOCK · WH-FINISHED',
+    ],
     actionLabel: 'Query StockLocations',
   },
 ];
