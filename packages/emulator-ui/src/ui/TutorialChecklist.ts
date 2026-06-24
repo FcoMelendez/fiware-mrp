@@ -41,6 +41,7 @@ const METHOD_COLOR: Record<string, string> = {
 const TUTORIAL_SUBTITLES: Record<string, string> = {
   'tutorial-01': 'Tutorial 01 – Getting started with the FIWARE MRP context',
   'tutorial-02': 'Tutorial 02 – Inventory balances and material receipts',
+  'tutorial-03': 'Tutorial 03 – Bill of Materials and BoM explosion',
 };
 
 const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
@@ -51,6 +52,10 @@ const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
   'tutorial-02': {
     title: 'Welcome to Tutorial 02',
     body: 'This tutorial adds the <em>inventory-service</em> to the stack. You will receive raw materials into WH-STOCK and build up InventoryBalance entities via the <em>receive-material</em> command.',
+  },
+  'tutorial-03': {
+    title: 'Welcome to Tutorial 03',
+    body: 'This tutorial adds the <em>bom-service</em>. You will load a Bill of Materials for the Hydraulic Pump P100, inspect its component lines, and run the <em>explode-bom</em> command to compute net material requirements.',
   },
 };
 
@@ -113,7 +118,8 @@ export class TutorialChecklist {
     }
 
     const panelTitle = document.querySelector<HTMLElement>('#left-panel-header-text h2');
-    if (panelTitle) panelTitle.textContent = `Guided Tour — ${tutorialId === 'tutorial-01' ? 'T01' : 'T02'}`;
+    const tag = tutorialId === 'tutorial-01' ? 'T01' : tutorialId === 'tutorial-02' ? 'T02' : 'T03';
+    if (panelTitle) panelTitle.textContent = `Guided Tour — ${tag}`;
   }
 
   private async loadSteps(): Promise<void> {
