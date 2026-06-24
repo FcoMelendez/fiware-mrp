@@ -8,8 +8,7 @@ export class CommandPanel {
 
   constructor(containerId: string) {
     const el = document.getElementById(containerId);
-    if (!el) throw new Error(`CommandPanel: #${containerId} not found`);
-    this.el = el;
+    this.el = el ?? document.createElement('div');
     this.freshnessEl = document.getElementById('context-freshness');
 
     bus.on(BUS.COMMAND_SENT, () => {

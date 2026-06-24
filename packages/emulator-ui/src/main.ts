@@ -17,7 +17,7 @@ import type { ConnectionStatus } from './domain/emulator.ts';
   header.addEventListener('click', (e) => {
     if ((e.target as HTMLElement).closest('button')) return;
     const collapsed = body.classList.toggle('collapsed');
-    chevron.textContent = collapsed ? '▶' : '▼';
+    chevron.style.transform = collapsed ? 'rotate(-90deg)' : '';
   });
 });
 

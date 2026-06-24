@@ -156,31 +156,14 @@ export class TutorialChecklist {
         </div>
         <div class="step-body ${isExpanded ? '' : 'hidden'}">
           <p class="step-desc">${s.def.desc}</p>
-
-          <div class="hood-toggle" data-step="${s.def.id}">⚙ Under the hood</div>
-          <div class="hood-content hidden" data-hood="${s.def.id}">
-            ${(s.def.workflow ?? []).map((line, i) => `
-              <div class="wf-step">
-                <span class="wf-num">${i + 1}.</span>
-                <span class="wf-text">${line}</span>
-              </div>`).join('') || '<span style="color:#94a3b8;font-size:10px">No workflow defined.</span>'}
-          </div>
-
+          ${this.renderHood(s)}
           ${this.renderAction(s)}
-          ${this.renderResult(s)}
         </div>
       `;
 
       // Step header → expand/collapse
       card.querySelector<HTMLElement>('.step-header')!.addEventListener('click', () => {
         this.toggleExpand(s.def.id);
-      });
-
-      // Under the hood toggle
-      card.querySelector<HTMLElement>('.hood-toggle')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const hood = this.el.querySelector<HTMLElement>(`[data-hood="${s.def.id}"]`);
-        hood?.classList.toggle('hidden');
       });
 
       // Execute button
@@ -228,28 +211,34 @@ export class TutorialChecklist {
     return '';
   }
 
-  private renderResult(s: StepState): string {
-    if (!s.result && !s.apiTrace) return '';
+  private renderHood(s: StepState): string {
+    if (s.status === 'pending' || s.status === 'active' || s.status === 'running') return '';
 
-    const traceHtml = s.apiTrace?.map((t) => `
-      <div class="trace-row">
-        <span class="api-method" style="background:${METHOD_COLOR[t.method] ?? '#64748b'}">${t.method}</span>
-        <span class="trace-status ${t.responseStatus < 300 ? 'ok' : 'err'}">← ${t.responseStatus}</span>
-        <span class="trace-summary">${t.responseSummary}</span>
-        <span class="trace-ms">${t.durationMs}ms</span>
+    const workflow = s.def.workflow ?? [];
+    const trace    = s.apiTrace?.[0];
+
+    const wfLines = workflow.map((line, idx) => `
+      <div class="wf-step">
+        <span class="wf-num">${idx + 1}.</span>
+        <span class="wf-text">${line}</span>
+      </div>`).join('');
+
+    const traceRow = trace ? `
+      <div style="border-top:1px solid #1e293b;margin:7px 0 5px"></div>
+      <div class="api-row">
+        <span class="api-method" style="background:${METHOD_COLOR[trace.method] ?? '#64748b'}">${trace.method}</span>
+        <span class="api-url" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${trace.url}</span>
+        <span class="trace-status ${trace.responseStatus < 300 ? 'ok' : 'err'}">← ${trace.responseStatus}</span>
+        <span class="trace-ms">${trace.durationMs}ms</span>
       </div>
-    `).join('') ?? '';
-
-    const entityCount = s.entities?.length
-      ? `<div class="result-count">${s.entities.length} entit${s.entities.length === 1 ? 'y' : 'ies'} in context store</div>`
-      : '';
+      ${s.result ? `<div style="color:#6ee7b7;font-size:10px;font-family:monospace;margin-top:4px;line-height:1.4">${s.result}</div>` : ''}
+    ` : '';
 
     return `
-      <div class="step-result">
-        <div class="result-label">Result</div>
-        ${traceHtml}
-        ${s.result ? `<div class="result-text">${s.result}</div>` : ''}
-        ${entityCount}
+      <div class="hood-content">
+        <div style="color:#475569;font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">⚙ Under the hood</div>
+        ${wfLines || '<span style="color:#475569;font-size:10px">No workflow defined.</span>'}
+        ${traceRow}
       </div>
     `;
   }
