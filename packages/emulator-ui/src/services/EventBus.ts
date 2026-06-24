@@ -28,4 +28,5 @@ export const BUS = {
   TUTORIAL_UPDATED:   'tutorial:updated',
   TIMELINE_EVENT:     'timeline:event',
   SCENARIO_RESET:     'scenario:reset',
+  STEP_COMPLETED:     'step:completed',
 } as const;

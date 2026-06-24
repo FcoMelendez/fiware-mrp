@@ -31,9 +31,10 @@ document.querySelectorAll<HTMLButtonElement>('.rp-tab').forEach((btn) => {
   });
 });
 
-// Auto-switch to inspector when an entity is selected from canvas or step result
-bus.on(BUS.ENTITY_SELECTED, () => switchToTab('inspector'));
-bus.on(BUS.ENTITIES_LISTED, () => switchToTab('inspector'));
+// Auto-switch to inspector on any entity selection or step completion
+bus.on(BUS.ENTITY_SELECTED,  () => switchToTab('inspector'));
+bus.on(BUS.ENTITIES_LISTED,  () => switchToTab('inspector'));
+bus.on(BUS.STEP_COMPLETED,   () => switchToTab('inspector'));
 
 // Connection status badge
 const statusBadge = document.getElementById('status-badge');

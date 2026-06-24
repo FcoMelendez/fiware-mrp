@@ -357,6 +357,8 @@ export class TutorialChecklist {
     if (resultEl) resultEl.textContent = result;
     if (preEl)    preEl.textContent = raw;
 
+    bus.emit(BUS.STEP_COMPLETED, undefined);
+
     if (copyBtn) {
       copyBtn.onclick = () => {
         navigator.clipboard.writeText(raw).then(() => {

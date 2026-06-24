@@ -394,8 +394,7 @@
 
       /* ── Tutorial console (bottom of left panel) ─────────────────────────── */
       #tutorial-console {
-        flex-shrink: 0; border-top: 2px solid #334155;
-        background: #0f172a; padding: 8px 12px 10px;
+        background: #0f172a; border-radius: 8px; padding: 8px 12px 10px;
       }
       #tutorial-console.hidden { display: none; }
       .console-header {
@@ -494,16 +493,6 @@
         </div>
 
         <div id="tutorial-steps"></div>
-
-        <!-- Response console — always visible -->
-        <div id="tutorial-console">
-          <div class="console-header">
-            <span class="console-label">Response</span>
-            <button class="btn-copy-answer">📋 Copy full answer</button>
-          </div>
-          <div class="console-result"></div>
-          <pre class="console-pre"><span class="console-empty">Run a step to see the response here…</span></pre>
-        </div>
       </aside>
 
       <!-- Center: Phaser factory canvas -->
@@ -520,13 +509,23 @@
       <aside id="right-panel">
 
         <div id="rp-tabs">
-          <button class="rp-tab active" data-tab="inspector">Inspector</button>
+          <button class="rp-tab active" data-tab="inspector">Response Inspector</button>
           <button class="rp-tab" data-tab="explorer">Broker</button>
         </div>
 
         <div id="rp-content">
 
           <div id="rp-pane-inspector" class="rp-pane">
+
+            <div id="tutorial-console">
+              <div class="console-header">
+                <span class="console-label">Response</span>
+                <button class="btn-copy-answer">📋 Copy full answer</button>
+              </div>
+              <div class="console-result"></div>
+              <pre class="console-pre"><span class="console-empty">Run a step to see the response here…</span></pre>
+            </div>
+
             <div>
               <h2>Entity Inspector</h2>
               <div id="inspector-content">
