@@ -3,8 +3,23 @@ import type { NgsiLdClient } from '../ngsi/NgsiLdClient.js';
 import { MOCK_SCENE } from '../scenario/fixtures.js';
 import { config } from '../config.js';
 
+const MRP_TYPES = [
+  'Company', 'Plant', 'WorkCenter', 'Product', 'StockLocation',
+  'InventoryBalance', 'StockMove', 'Lot', 'WorkOrder',
+];
+
 export function entitiesRouter(ngsi: NgsiLdClient): Router {
   const router = Router();
+
+  // List all entities across all known MRP types
+  router.get('/', async (_req, res) => {
+    if (config.mode === 'live') {
+      const entities = await ngsi.queryEntities(MRP_TYPES);
+      res.json(entities);
+    } else {
+      res.json(MOCK_SCENE.entities);
+    }
+  });
 
   router.get('/:entityId(*)', async (req, res) => {
     const entityId = req.params['entityId'];

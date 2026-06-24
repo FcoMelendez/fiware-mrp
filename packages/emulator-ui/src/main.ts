@@ -3,6 +3,7 @@ import { TutorialChecklist } from './ui/TutorialChecklist.ts';
 import { EventTimeline } from './ui/EventTimeline.ts';
 import { EntityInspector } from './ui/EntityInspector.ts';
 import { CommandPanel } from './ui/CommandPanel.ts';
+import { BrokerExplorer } from './ui/BrokerExplorer.ts';
 import { bus, BUS } from './services/EventBus.ts';
 import type { ConnectionStatus } from './domain/emulator.ts';
 
@@ -11,6 +12,28 @@ new TutorialChecklist('tutorial-steps');
 new EventTimeline('timeline-events');
 new EntityInspector('inspector-content');
 new CommandPanel('command-panel-actions');
+const explorer = new BrokerExplorer('broker-explorer-content');
+
+// ── Right-panel tab switching ──────────────────────────────────────────────
+function switchToTab(tab: 'inspector' | 'explorer'): void {
+  document.querySelectorAll<HTMLButtonElement>('.rp-tab').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset['tab'] === tab);
+  });
+  document.getElementById('rp-pane-inspector')?.classList.toggle('hidden', tab !== 'inspector');
+  document.getElementById('rp-pane-explorer')?.classList.toggle('hidden', tab !== 'explorer');
+}
+
+document.querySelectorAll<HTMLButtonElement>('.rp-tab').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset['tab'] as 'inspector' | 'explorer';
+    switchToTab(tab);
+    if (tab === 'explorer') explorer.activate();
+  });
+});
+
+// Auto-switch to inspector when an entity is selected from canvas or step result
+bus.on(BUS.ENTITY_SELECTED, () => switchToTab('inspector'));
+bus.on(BUS.ENTITIES_LISTED, () => switchToTab('inspector'));
 
 // Connection status badge
 const statusBadge = document.getElementById('status-badge');

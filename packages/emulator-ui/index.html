@@ -235,8 +235,22 @@
       /* ── Right panel ──────────────────────────────────────────────────────── */
       #right-panel {
         background: #ffffff; border-left: 1px solid #e2e8f0;
-        overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 14px;
+        display: flex; flex-direction: column; overflow: hidden;
       }
+      #rp-tabs {
+        display: flex; border-bottom: 1px solid #e2e8f0;
+        flex-shrink: 0; background: #f8fafc;
+      }
+      .rp-tab {
+        flex: 1; padding: 8px 4px; font-size: 11px; font-weight: 700;
+        color: #64748b; background: none; border: none;
+        border-bottom: 2px solid transparent; cursor: pointer;
+        transition: color 0.15s, border-color 0.15s; margin-bottom: -1px;
+      }
+      .rp-tab:hover { color: #1e293b; }
+      .rp-tab.active { color: #2563eb; border-bottom-color: #2563eb; background: #fff; }
+      #rp-content { flex: 1; overflow-y: auto; min-height: 0; }
+      .rp-pane { padding: 12px; display: flex; flex-direction: column; gap: 14px; }
       #right-panel h2 { font-size: 13px; font-weight: 700; color: #1e293b; }
 
       /* Inspector — type badge (colored border+text, transparent bg) */
@@ -502,24 +516,37 @@
         </div>
       </div>
 
-      <!-- Right: entity inspector + commands -->
+      <!-- Right: tabbed panel — Entity Inspector + Broker Explorer -->
       <aside id="right-panel">
 
-        <div>
-          <h2>Entity Inspector</h2>
-          <div id="inspector-content">
-            <p class="inspector-empty">Click a zone on the canvas or run a step to inspect an NGSI-LD entity.</p>
+        <div id="rp-tabs">
+          <button class="rp-tab active" data-tab="inspector">Inspector</button>
+          <button class="rp-tab" data-tab="explorer">Broker</button>
+        </div>
+
+        <div id="rp-content">
+
+          <div id="rp-pane-inspector" class="rp-pane">
+            <div>
+              <h2>Entity Inspector</h2>
+              <div id="inspector-content">
+                <p class="inspector-empty">Click a zone on the canvas or run a step to inspect an NGSI-LD entity.</p>
+              </div>
+            </div>
+            <div id="available-actions">
+              <h3>Available actions</h3>
+              <div id="command-panel-actions"></div>
+            </div>
+            <div id="context-freshness-section">
+              <h3>Context freshness</h3>
+              <p id="context-freshness">No events yet</p>
+            </div>
           </div>
-        </div>
 
-        <div id="available-actions">
-          <h3>Available actions</h3>
-          <div id="command-panel-actions"></div>
-        </div>
+          <div id="rp-pane-explorer" class="rp-pane hidden">
+            <div id="broker-explorer-content"></div>
+          </div>
 
-        <div id="context-freshness-section">
-          <h3>Context freshness</h3>
-          <p id="context-freshness">No events yet</p>
         </div>
 
       </aside>

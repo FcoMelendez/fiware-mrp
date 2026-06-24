@@ -160,12 +160,14 @@ export class ScenarioEngine {
 
     if (this.mode === 'live') {
       try {
+        const { orionUrl, contextUrl } = this.ngsi as unknown as { orionUrl: string; contextUrl: string };
+        const withContext = TUTORIAL_01_ENTITIES.map((e) => ({ ...e, '@context': contextUrl }));
         const res = await fetch(
-          `${(this.ngsi as unknown as { orionUrl: string }).orionUrl}/ngsi-ld/v1/entityOperations/upsert`,
+          `${orionUrl}/ngsi-ld/v1/entityOperations/upsert`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/ld+json' },
-            body: JSON.stringify(TUTORIAL_01_ENTITIES),
+            body: JSON.stringify(withContext),
             signal: AbortSignal.timeout(10_000),
           },
         );
