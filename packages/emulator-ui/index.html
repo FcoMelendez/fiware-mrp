@@ -215,38 +215,41 @@
         display: flex; flex-direction: column;
         min-width: 0; min-height: 0; overflow: hidden;
         position: relative;
+        /* Blue frame on three sides — top is provided by the nav bar's bottom border */
+        box-shadow: -2px 0 0 #2563eb, 2px 0 0 #2563eb, 0 2px 0 #2563eb;
       }
 
       /* ── Business dashboard bar ──────────────────────────────────────────── */
       #dashboard-bar {
-        background: #0c1420; border-bottom: 2px solid #1e293b;
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
         display: flex; flex-shrink: 0; height: 68px;
       }
       .db-card {
         flex: 1; display: flex; min-width: 0;
-        border-right: 1px solid #1e293b;
+        border-right: 1px solid #f1f5f9;
       }
       .db-card:last-child { border-right: none; }
-      .db-card-strip { width: 3px; flex-shrink: 0; background: #1e293b; transition: background 0.4s; }
+      .db-card-strip { width: 4px; flex-shrink: 0; background: #e2e8f0; transition: background 0.4s; }
       .db-card-body {
         flex: 1; padding: 8px 10px; min-width: 0;
-        display: flex; flex-direction: column; justify-content: center; gap: 3px;
+        display: flex; flex-direction: column; justify-content: center; gap: 2px;
       }
       .db-card-label {
-        font-size: 9px; font-weight: 700; color: #334155;
+        font-size: 9px; font-weight: 700; color: #94a3b8;
         letter-spacing: 0.7px; text-transform: uppercase; line-height: 1;
       }
       .db-card-meta-row { display: flex; align-items: baseline; gap: 6px; }
       .db-card-val {
-        font-size: 16px; font-weight: 700; color: #475569; line-height: 1.15;
+        font-size: 16px; font-weight: 700; color: #9ca3af; line-height: 1.15;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.3s;
       }
       .db-card-meta {
-        font-size: 10px; color: #475569; font-style: italic;
+        font-size: 10px; color: #94a3b8; font-style: italic;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
       .db-card-sub {
-        font-size: 10px; color: #334155; line-height: 1;
+        font-size: 10px; color: #94a3b8; line-height: 1;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
       .db-wc-dots { display: flex; gap: 8px; align-items: center; overflow: hidden; }
@@ -257,9 +260,17 @@
 
       /* ── BoM card interactive state ──────────────────────────────────────── */
       #db-bom-card { cursor: pointer; transition: background 0.15s; }
-      #db-bom-card:hover { background: rgba(124,58,237,0.08); }
-      #db-bom-card.db-card-active { background: rgba(124,58,237,0.14); }
+      #db-bom-card:hover { background: #f5f3ff; }
+      #db-bom-card.db-card-active { background: #ede9fe; }
       #db-bom-card.db-card-active .db-card-strip { background: #7c3aed !important; }
+      /* Expand chevron inside the BoM card label row */
+      .db-bom-label-row { display: flex; align-items: center; justify-content: space-between; }
+      .db-bom-chevron {
+        font-size: 13px; color: #7c3aed; opacity: 0.35;
+        transition: opacity 0.15s, transform 0.2s; flex-shrink: 0; line-height: 1;
+      }
+      #db-bom-card:hover .db-bom-chevron { opacity: 0.85; }
+      #db-bom-card.db-card-active .db-bom-chevron { transform: rotate(180deg); opacity: 1; }
 
       /* ── BoM popover ─────────────────────────────────────────────────────── */
       .bom-popover {
@@ -721,7 +732,10 @@
           <div class="db-card" id="db-bom-card" title="Click to browse Bill of Materials">
             <div class="db-card-strip" id="db-bom-strip"></div>
             <div class="db-card-body">
-              <div class="db-card-label" id="db-bom-label">Bill of Materials</div>
+              <div class="db-bom-label-row">
+                <div class="db-card-label" id="db-bom-label">Bill of Materials</div>
+                <span class="db-bom-chevron">▾</span>
+              </div>
               <div class="db-card-val" id="db-bom-val">—</div>
               <div class="db-card-sub" id="db-bom-sub">no bill of materials</div>
             </div>
