@@ -214,6 +214,7 @@
       #center-column {
         display: flex; flex-direction: column;
         min-width: 0; min-height: 0; overflow: hidden;
+        position: relative;
       }
 
       /* ── Business dashboard bar ──────────────────────────────────────────── */
@@ -253,6 +254,94 @@
         display: inline-flex; align-items: center; gap: 3px;
         font-size: 10px; font-weight: 600; white-space: nowrap;
       }
+
+      /* ── BoM card interactive state ──────────────────────────────────────── */
+      #db-bom-card { cursor: pointer; transition: background 0.15s; }
+      #db-bom-card:hover { background: rgba(124,58,237,0.08); }
+      #db-bom-card.db-card-active { background: rgba(124,58,237,0.14); }
+      #db-bom-card.db-card-active .db-card-strip { background: #7c3aed !important; }
+
+      /* ── BoM popover ─────────────────────────────────────────────────────── */
+      .bom-popover {
+        position: absolute;
+        z-index: 50;
+        top: 68px;
+        max-height: 460px;
+        background: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 0 0 10px 10px;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.55);
+        overflow-y: auto;
+        font-size: 11px;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+      }
+      .bom-popover-hidden { display: none !important; }
+
+      .bom-pop-header {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 12px;
+        background: #1e293b;
+        border-bottom: 1px solid #334155;
+        font-size: 10px; font-weight: 700; color: #94a3b8;
+        text-transform: uppercase; letter-spacing: 0.6px;
+        position: sticky; top: 0; z-index: 2;
+      }
+      .bom-pop-count { font-weight: 400; color: #475569; flex: 1; }
+      .bom-pop-close {
+        background: none; border: none; cursor: pointer;
+        color: #475569; font-size: 15px; line-height: 1;
+        padding: 0 2px; border-radius: 3px; transition: color 0.12s;
+      }
+      .bom-pop-close:hover { color: #ef4444; }
+
+      .bom-pop-list { padding: 2px 0 4px; }
+      .bom-empty { padding: 14px 14px; color: #475569; font-style: italic; font-size: 11px; }
+
+      /* BoM row */
+      .bom-row { border-bottom: 1px solid #1e293b; }
+      .bom-row:last-child { border-bottom: none; }
+      .bom-row-header {
+        width: 100%; display: flex; align-items: center; gap: 7px;
+        padding: 8px 12px; cursor: pointer; user-select: none;
+        background: none; border: none; text-align: left;
+        transition: background 0.1s; font-family: inherit;
+      }
+      .bom-row-header:hover { background: #1a2236; }
+      .bom-chevron { font-size: 8px; color: #7c3aed; flex-shrink: 0; width: 10px; }
+      .bom-row-code { font-weight: 700; color: #e2e8f0; font-family: monospace; font-size: 11px; }
+      .bom-row-meta { flex: 1; font-size: 10px; color: #475569; }
+      .bom-row-state { font-size: 10px; font-weight: 700; flex-shrink: 0; }
+
+      /* BoM body (children, meta rows, lines) */
+      .bom-row-body { background: #0a1120; }
+      .bom-collapsed { display: none; }
+
+      .bom-meta-row {
+        display: flex; gap: 10px; padding: 3px 14px 3px 28px;
+        font-family: monospace; font-size: 10px; align-items: baseline;
+      }
+      .bom-meta-key { color: #334155; min-width: 80px; flex-shrink: 0; }
+      .bom-meta-val { color: #64748b; word-break: break-all; }
+      .bom-rel { color: #818cf8; }
+
+      /* Lines section */
+      .bom-lines-section { border-top: 1px solid #1e293b; margin-top: 4px; }
+
+      /* Individual line */
+      .bom-line { border-top: 1px solid #111827; }
+      .bom-line:first-child { border-top: none; }
+      .bom-line-header {
+        width: 100%; display: flex; align-items: center; gap: 6px;
+        padding: 6px 12px 6px 20px; cursor: pointer; user-select: none;
+        background: none; border: none; text-align: left;
+        transition: background 0.1s; font-family: inherit;
+      }
+      .bom-line-header:hover { background: #0f1a2e; }
+      .bom-line-header .bom-chevron { color: #475569; }
+      .bom-line-seq  { color: #334155; font-size: 10px; min-width: 18px; text-align: right; font-family: monospace; flex-shrink: 0; }
+      .bom-line-name { flex: 1; font-weight: 600; color: #cbd5e1; font-family: monospace; font-size: 11px; }
+      .bom-line-qty  { font-size: 10px; color: #7c3aed; font-weight: 700; flex-shrink: 0; }
+      .bom-line-data { background: #07101e; padding: 2px 0 6px; }
 
       /* ── Center — Phaser canvas ───────────────────────────────────────────── */
       #game-container {
@@ -628,11 +717,11 @@
             </div>
           </div>
 
-          <!-- Card 4: Bill of Materials -->
-          <div class="db-card">
+          <!-- Card 4: Bill of Materials (interactive — click to expand) -->
+          <div class="db-card" id="db-bom-card" title="Click to browse Bill of Materials">
             <div class="db-card-strip" id="db-bom-strip"></div>
             <div class="db-card-body">
-              <div class="db-card-label">Bill of Materials</div>
+              <div class="db-card-label" id="db-bom-label">Bill of Materials</div>
               <div class="db-card-val" id="db-bom-val">—</div>
               <div class="db-card-sub" id="db-bom-sub">no bill of materials</div>
             </div>
