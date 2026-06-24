@@ -45,7 +45,7 @@ install-emulator:
 	cd packages/emulator-ui && npm install
 
 start-emulator:
-	$(COMPOSE) up -d --build mongo orion-ld context-server mrp-api inventory-service emulator-gateway emulator-ui
+	EMULATOR_MODE=live $(COMPOSE) up -d --build mongo orion-ld context-server mrp-api inventory-service emulator-gateway emulator-ui
 	@echo "Emulator UI      → http://localhost:5173"
 	@echo "Gateway API      → http://localhost:8090/api/health"
 	@echo "Inventory API    → http://localhost:8081/health"
