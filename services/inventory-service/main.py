@@ -26,7 +26,10 @@ CONTEXT_URL = os.getenv(
 )
 MRP_NS = "https://fiware-mrp.io/ontology/mrp#"
 
-HEADERS_READ = {"Accept": "application/ld+json"}
+HEADERS_READ = {
+    "Accept": "application/ld+json",
+    "Link": f'<{CONTEXT_URL}>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"',
+}
 HEADERS_WRITE = {
     "Content-Type": "application/ld+json",
     "Accept": "application/json",
