@@ -342,10 +342,10 @@ export class DashboardPanel {
     setText('db-ctx-sub', hasData
       ? `${kpi.entityTypes} type${kpi.entityTypes !== 1 ? 's' : ''} · ${kpi.plantName ?? 'no plant'}`
       : 'no data loaded');
-    setColor('db-ctx-val', hasData ? '#1e293b' : '#9ca3af');
+    setColor('db-ctx-val', hasData ? '#94a3b8' : '#334155');
 
     const strip = el('db-ctx-strip');
-    if (strip) strip.style.background = hasData ? '#2563eb' : '#e2e8f0';
+    if (strip) strip.style.background = hasData ? '#2563eb' : '#1e293b';
 
     const meta = el('db-ctx-meta');
     if (meta) meta.textContent = kpi.companyName ?? '';
@@ -357,13 +357,13 @@ export class DashboardPanel {
     const blocked   = wcs.filter((w) => w.state === 'blocked').length;
     const busy      = wcs.filter((w) => w.state === 'busy').length;
 
-    const statusColor = blocked > 0 ? '#dc2626' : busy > 0 ? '#2563eb' : wcs.length > 0 ? '#16a34a' : '#9ca3af';
+    const statusColor = blocked > 0 ? '#ef4444' : busy > 0 ? '#3b82f6' : wcs.length > 0 ? '#22c55e' : '#334155';
 
     setText('db-wc-val', wcs.length === 0 ? '—' : `${available}/${wcs.length} ready`);
     setColor('db-wc-val', statusColor);
 
     const strip = el('db-wc-strip');
-    if (strip) strip.style.background = wcs.length > 0 ? statusColor : '#e2e8f0';
+    if (strip) strip.style.background = wcs.length > 0 ? statusColor : '#1e293b';
 
     const dotsEl = el('db-wc-dots');
     if (dotsEl) {
@@ -387,10 +387,10 @@ export class DashboardPanel {
     const hasData = skus > 0;
     setText('db-inv-val', hasData ? `${skus} SKU${skus !== 1 ? 's' : ''}` : '—');
     setText('db-inv-sub', hasData ? `${totalQty.toLocaleString()} units on hand` : 'no stock data');
-    setColor('db-inv-val', hasData ? '#b45309' : '#9ca3af');
+    setColor('db-inv-val', hasData ? '#fbbf24' : '#334155');
 
     const strip = el('db-inv-strip');
-    if (strip) strip.style.background = hasData ? '#d97706' : '#e2e8f0';
+    if (strip) strip.style.background = hasData ? '#d97706' : '#1e293b';
   }
 
   private renderBoM(kpi: KpiSnapshot): void {
@@ -399,10 +399,10 @@ export class DashboardPanel {
 
     setText('db-bom-val', hasData ? `${count} BoM${count !== 1 ? 's' : ''}` : '—');
     setText('db-bom-sub', hasData ? `${lines} component line${lines !== 1 ? 's' : ''}` : 'no bill of materials');
-    setColor('db-bom-val', hasData ? '#6d28d9' : '#9ca3af');
+    setColor('db-bom-val', hasData ? '#a78bfa' : '#334155');
 
     const strip = el('db-bom-strip');
-    if (strip) strip.style.background = hasData ? '#7c3aed' : '#e2e8f0';
+    if (strip) strip.style.background = hasData ? '#7c3aed' : '#1e293b';
   }
 
   private renderProduction(kpi: KpiSnapshot): void {
@@ -422,14 +422,14 @@ export class DashboardPanel {
         ? `${alerts} quality alert${alerts !== 1 ? 's' : ''}`
         : 'no production orders';
 
-    const statusColor = alerts > 0 ? '#dc2626' : hasData ? '#2563eb' : '#9ca3af';
+    const statusColor = alerts > 0 ? '#ef4444' : hasData ? '#60a5fa' : '#334155';
 
     setText('db-prod-val', topLine);
     setText('db-prod-sub', botLine);
     setColor('db-prod-val', statusColor);
-    setColor('db-prod-sub', alerts > 0 ? '#dc2626' : '#94a3b8');
+    setColor('db-prod-sub', alerts > 0 ? '#fca5a5' : '#475569');
 
     const strip = el('db-prod-strip');
-    if (strip) strip.style.background = alerts > 0 ? '#dc2626' : hasData ? '#2563eb' : '#e2e8f0';
+    if (strip) strip.style.background = alerts > 0 ? '#dc2626' : hasData ? '#2563eb' : '#1e293b';
   }
 }
