@@ -7,6 +7,20 @@ import { BrokerExplorer } from './ui/BrokerExplorer.ts';
 import { bus, BUS } from './services/EventBus.ts';
 import type { ConnectionStatus } from './domain/emulator.ts';
 
+// ── Console collapse/expand ────────────────────────────────────────────────
+['request-console', 'response-console'].forEach((id) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const header  = el.querySelector<HTMLElement>('.console-header')!;
+  const body    = el.querySelector<HTMLElement>('.console-body')!;
+  const chevron = el.querySelector<HTMLElement>('.console-chevron')!;
+  header.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    const collapsed = body.classList.toggle('collapsed');
+    chevron.textContent = collapsed ? '▶' : '▼';
+  });
+});
+
 // Boot DOM panels
 new TutorialChecklist('tutorial-steps');
 new EventTimeline('timeline-events');

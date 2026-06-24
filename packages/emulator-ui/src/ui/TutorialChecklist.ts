@@ -337,14 +337,14 @@ export class TutorialChecklist {
       if (copyBtn) {
         const curl = this.buildCurl(method, url, def.hood.body ?? '');
         copyBtn.disabled = false;
-        copyBtn.textContent = '📋 Copy curl';
+        copyBtn.textContent = 'Copy curl';
         copyBtn.classList.remove('copied');
         copyBtn.onclick = () => {
           navigator.clipboard.writeText(curl).then(() => {
             copyBtn.textContent = '✓ Copied';
             copyBtn.classList.add('copied');
             setTimeout(() => {
-              copyBtn.textContent = '📋 Copy curl';
+              copyBtn.textContent = 'Copy curl';
               copyBtn.classList.remove('copied');
             }, 2000);
           }).catch(() => {/* clipboard unavailable */});
@@ -372,7 +372,7 @@ export class TutorialChecklist {
           copyBtn.textContent = '✓ Copied';
           copyBtn.classList.add('copied');
           setTimeout(() => {
-            copyBtn.textContent = '📋 Copy full answer';
+            copyBtn.textContent = 'Copy answer';
             copyBtn.classList.remove('copied');
           }, 2000);
         }).catch(() => {/* clipboard unavailable */});
@@ -386,7 +386,7 @@ export class TutorialChecklist {
       const pre = reqEl.querySelector<HTMLElement>('.console-pre');
       const btn = reqEl.querySelector<HTMLButtonElement>('.btn-copy-curl-req');
       if (pre) pre.innerHTML = '<span class="console-empty">Execute a step to see the outgoing request…</span>';
-      if (btn) { btn.disabled = true; btn.textContent = '📋 Copy curl'; btn.classList.remove('copied'); }
+      if (btn) { btn.disabled = true; btn.textContent = 'Copy curl'; btn.classList.remove('copied'); }
     }
     const resEl = document.getElementById('response-console');
     if (resEl) {

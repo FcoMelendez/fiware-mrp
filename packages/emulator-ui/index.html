@@ -392,30 +392,41 @@
         white-space: pre-wrap; max-height: 100px; overflow-y: auto; margin: 0;
       }
 
-      /* ── Tutorial console (bottom of left panel) ─────────────────────────── */
-      #tutorial-console {
+      /* ── Query Inspector consoles ────────────────────────────────────────── */
+      #request-console, #response-console {
         background: #0f172a; border-radius: 8px; padding: 8px 12px 10px;
       }
-      #tutorial-console.hidden { display: none; }
       .console-header {
-        display: flex; align-items: center; justify-content: space-between;
-        margin-bottom: 6px;
+        display: flex; align-items: center; gap: 6px;
+        margin-bottom: 6px; cursor: pointer; user-select: none;
       }
       .console-label  { font-size: 10px; font-weight: 700; color: #60a5fa; letter-spacing: 0.6px; text-transform: uppercase; }
+      .console-chevron { font-size: 9px; color: #475569; margin-left: 2px; flex-shrink: 0; transition: transform 0.15s; }
+      .console-header-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
       .console-result { font-size: 10px; color: #94a3b8; font-family: monospace; margin-bottom: 4px; }
+      .console-body { }
+      .console-body.collapsed { display: none; }
       .console-pre {
         font-family: monospace; font-size: 10px; color: #e2e8f0;
         max-height: 130px; overflow-y: auto; white-space: pre-wrap;
         word-break: break-all; margin: 0; line-height: 1.5;
       }
-      .btn-copy-answer {
+      .btn-console-action {
         background: none; border: 1px solid #334155; border-radius: 4px;
-        color: #94a3b8; font-size: 10px; padding: 2px 7px; cursor: pointer;
+        color: #94a3b8; font-size: 10px; font-family: inherit;
+        padding: 2px 7px; cursor: pointer;
         transition: all 0.15s; white-space: nowrap;
       }
-      .btn-copy-answer:hover  { background: #1e293b; color: #e2e8f0; }
-      .btn-copy-answer.copied { color: #22c55e; border-color: #22c55e; }
+      .btn-console-action:hover  { background: #1e293b; color: #e2e8f0; }
+      .btn-console-action.copied { color: #22c55e; border-color: #22c55e; }
+      .btn-console-action:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
       .console-empty { font-style: italic; color: #475569; font-size: 10px; }
+
+      /* REQUEST console label colour override */
+      #request-console .console-label { color: #fb923c; }
+
+      /* ── Entity inspector — own scroll ───────────────────────────────────── */
+      #inspector-content { overflow-y: auto; max-height: 240px; }
 
       /* ── Event tooltip ────────────────────────────────────────────────────── */
       #event-tooltip {
@@ -441,10 +452,11 @@
       }
       #attr-tooltip.hidden { display: none; }
 
-      /* Update copy-curl button to show text */
+      /* ── Copy-curl (inside hood-content dark panel) ─────────────────────── */
       .btn-copy-curl {
         background: none; border: 1px solid #475569; border-radius: 4px;
-        color: #94a3b8; font-size: 10px; padding: 2px 7px; cursor: pointer;
+        color: #94a3b8; font-size: 10px; font-family: inherit;
+        padding: 2px 7px; cursor: pointer;
         flex-shrink: 0; margin-left: auto; transition: all 0.15s; white-space: nowrap;
       }
       .btn-copy-curl:hover  { background: #1e293b; color: #e2e8f0; }
@@ -455,9 +467,6 @@
       .wf-step + .wf-step { margin-top: 5px; }
       .wf-num  { color: #60a5fa; font-weight: 700; flex-shrink: 0; min-width: 16px; text-align: right; }
       .wf-text { color: #e2e8f0; }
-
-      /* REQUEST console label colour override */
-      #request-console .console-label { color: #fb923c; }
 
       .hidden { display: none !important; }
     </style>
@@ -529,18 +538,28 @@
             <div id="request-console">
               <div class="console-header">
                 <span class="console-label">Request</span>
-                <button class="btn-copy-curl-req" disabled>📋 Copy curl</button>
+                <span class="console-chevron">▼</span>
+                <div class="console-header-actions">
+                  <button class="btn-console-action btn-copy-curl-req" disabled>Copy curl</button>
+                </div>
               </div>
-              <pre class="console-pre"><span class="console-empty">Execute a step to see the outgoing request…</span></pre>
+              <div class="console-body">
+                <pre class="console-pre"><span class="console-empty">Execute a step to see the outgoing request…</span></pre>
+              </div>
             </div>
 
             <div id="response-console">
               <div class="console-header">
                 <span class="console-label">Response</span>
-                <button class="btn-copy-answer">📋 Copy full answer</button>
+                <span class="console-chevron">▼</span>
+                <div class="console-header-actions">
+                  <button class="btn-console-action btn-copy-answer">Copy answer</button>
+                </div>
               </div>
-              <div class="console-result"></div>
-              <pre class="console-pre"><span class="console-empty">Run a step to see the response here…</span></pre>
+              <div class="console-body">
+                <div class="console-result"></div>
+                <pre class="console-pre"><span class="console-empty">Run a step to see the response here…</span></pre>
+              </div>
             </div>
 
             <div>
