@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene.ts';
 import { FactoryScene } from './scenes/FactoryScene.ts';
+import { FactorySceneEnhanced } from './scenes/FactorySceneEnhanced.ts';
 
 export function createPhaserGame(parent: string): Phaser.Game {
   const container = document.getElementById(parent);
@@ -17,7 +18,7 @@ export function createPhaserGame(parent: string): Phaser.Game {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.NONE,
     },
-    scene: [BootScene, FactoryScene],
+    scene: [BootScene, FactoryScene, FactorySceneEnhanced],
     audio: { noAudio: true },
   });
 }

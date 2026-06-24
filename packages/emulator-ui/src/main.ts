@@ -52,25 +52,51 @@ bus.on(BUS.STEP_COMPLETED,   () => switchToTab('inspector'));
 
 // Connection status badge
 const statusBadge = document.getElementById('status-badge');
-const statusDot = document.getElementById('status-dot');
+const statusDot   = document.getElementById('status-dot');
 
 bus.on<ConnectionStatus>(BUS.CONNECTION_CHANGED, (status) => {
   if (!statusBadge || !statusDot) return;
   const labels: Record<ConnectionStatus, string> = {
-    connecting: 'CONNECTING',
-    live: 'LIVE',
-    mock: 'MOCK',
-    offline: 'OFFLINE',
+    connecting: 'CONNECTING', live: 'LIVE', mock: 'MOCK', offline: 'OFFLINE',
   };
   const colors: Record<ConnectionStatus, string> = {
-    connecting: '#f59e0b',
-    live: '#22c55e',
-    mock: '#3b82f6',
-    offline: '#ef4444',
+    connecting: '#f59e0b', live: '#22c55e', mock: '#3b82f6', offline: '#ef4444',
   };
   statusBadge.textContent = labels[status] ?? status.toUpperCase();
   statusDot.style.backgroundColor = colors[status] ?? '#9ca3af';
 });
 
-// Start the Phaser game inside #game-container
-createPhaserGame('game-container');
+// ── Phaser game ────────────────────────────────────────────────────────────
+const game = createPhaserGame('game-container');
+
+// ── View toggle (Classic ↔ Factory+) ──────────────────────────────────────
+type ViewMode = 'classic' | 'enhanced';
+let currentView: ViewMode = 'classic';
+
+function setView(mode: ViewMode): void {
+  if (mode === currentView) return;
+  currentView = mode;
+
+  const btnClassic  = document.getElementById('view-btn-classic');
+  const btnEnhanced = document.getElementById('view-btn-enhanced');
+  btnClassic?.classList.toggle('view-btn-active',  mode === 'classic');
+  btnEnhanced?.classList.toggle('view-btn-active', mode === 'enhanced');
+
+  // Wait a tick so Phaser is ready
+  requestAnimationFrame(() => {
+    try {
+      if (mode === 'enhanced') {
+        if (game.scene.isActive('Factory')) game.scene.stop('Factory');
+        if (!game.scene.isActive('FactoryEnhanced')) game.scene.start('FactoryEnhanced');
+      } else {
+        if (game.scene.isActive('FactoryEnhanced')) game.scene.stop('FactoryEnhanced');
+        if (!game.scene.isActive('Factory')) game.scene.start('Factory');
+      }
+    } catch {
+      // Scene may not be ready yet — ignore
+    }
+  });
+}
+
+document.getElementById('view-btn-classic')?.addEventListener('click',  () => setView('classic'));
+document.getElementById('view-btn-enhanced')?.addEventListener('click', () => setView('enhanced'));

@@ -217,6 +217,22 @@
       }
       #game-container canvas { display: block; }
 
+      /* ── View toggle overlay ─────────────────────────────────────────────── */
+      #view-toggle-bar {
+        position: absolute; top: 8px; right: 10px; z-index: 20;
+        display: flex; gap: 3px;
+        background: rgba(15,23,42,0.75); backdrop-filter: blur(4px);
+        border-radius: 8px; padding: 3px;
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      .view-btn {
+        background: none; border: none; border-radius: 6px;
+        color: #94a3b8; font-size: 10px; font-weight: 700; font-family: 'Segoe UI', system-ui, sans-serif;
+        padding: 4px 10px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.3px;
+      }
+      .view-btn:hover { color: #f1f5f9; }
+      .view-btn-active { background: #1d4ed8; color: #f1f5f9 !important; }
+
       /* Overlay prompt when scene is empty */
       #canvas-overlay {
         position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -531,6 +547,12 @@
 
       <!-- Center: Phaser factory canvas -->
       <div id="game-container">
+        <!-- View mode toggle -->
+        <div id="view-toggle-bar">
+          <button class="view-btn view-btn-active" id="view-btn-classic" title="Classic box-based view">▧ Classic</button>
+          <button class="view-btn" id="view-btn-enhanced" title="Enhanced factory floor view">⬡ Factory+</button>
+        </div>
+
         <div id="canvas-overlay">
           <div class="canvas-hint">
             <h3>Factory canvas</h3>
