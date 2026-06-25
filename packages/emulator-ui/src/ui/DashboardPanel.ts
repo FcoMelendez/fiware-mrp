@@ -394,12 +394,30 @@ export class DashboardPanel {
     const timeStr = `${time.toLocaleTimeString('en-GB')}.${ms}`;
     const shortId = esc(entityId.split(':').pop() ?? entityId);
     const attrStr = esc(attrs.join(', ') || '—');
+
+    // Entity type breakdown from the live context store
+    const typeCounts = new Map<string, number>();
+    for (const e of contextStore.getAll()) {
+      typeCounts.set(e.type, (typeCounts.get(e.type) ?? 0) + 1);
+    }
+    const typeChips = [...typeCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([t, n]) =>
+        `<span><span style="color:#475569">${esc(t)}</span>&thinsp;${n}</span>`)
+      .join('');
+
     this.ctxTooltip.innerHTML =
       `<div style="font-size:9px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Last entity change</div>` +
       `<div style="display:flex;gap:8px;margin-bottom:2px"><span style="color:#475569;min-width:48px">type</span><span>${esc(entityType)}</span></div>` +
       `<div style="display:flex;gap:8px;margin-bottom:2px"><span style="color:#475569;min-width:48px">id</span><span style="font-family:monospace;font-size:10px">${shortId}</span></div>` +
       `<div style="display:flex;gap:8px;margin-bottom:2px"><span style="color:#475569;min-width:48px">attrs</span><span style="font-family:monospace;font-size:10px;color:#93c5fd">${attrStr}</span></div>` +
-      `<div style="display:flex;gap:8px"><span style="color:#475569;min-width:48px">time</span><span style="font-family:monospace">${timeStr}</span></div>`;
+      `<div style="display:flex;gap:8px"><span style="color:#475569;min-width:48px">time</span><span style="font-family:monospace">${timeStr}</span></div>` +
+      (typeCounts.size > 0
+        ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #334155">` +
+          `<div style="font-size:9px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Context graph</div>` +
+          `<div style="display:flex;flex-wrap:wrap;gap:3px 10px;font-size:10px;font-family:monospace">${typeChips}</div>` +
+          `</div>`
+        : '');
     this.ctxTooltip.style.display = 'block';
   }
 
