@@ -30,7 +30,7 @@ interface KpiSnapshot {
   companyName:      string | null;
   workCenters:      { id: string; label: string; state: string }[];
   inventory:        { skus: number; totalQty: number; demand: number };
-  bom:              { count: number; lines: number };
+  bom:              { count: number; lines: number; mfgProducts: number; productsWithBom: number };
   production:       { moTotal: number; moDraft: number; moConfirmed: number; moInProgress: number; woRunning: number };
   alerts:           number;
 }
@@ -73,6 +73,17 @@ function compute(entities: NgsiLdEntity[]): KpiSnapshot {
   const boms     = entities.filter((e) => e.type === 'BillOfMaterials');
   const bomLines = entities.filter((e) => e.type === 'BillOfMaterialsLine');
 
+  const mfgProducts = entities.filter(
+    (e) => e.type === 'Product' && propValue<string>(e, 'productType') === 'manufactured'
+  );
+  const activeBomProductIds = new Set(
+    boms
+      .filter((e) => propValue<string>(e, 'state') === 'active')
+      .map((e) => relObject(e, 'product'))
+      .filter((id): id is string => !!id)
+  );
+  const productsWithBom = mfgProducts.filter((p) => activeBomProductIds.has(p.id)).length;
+
   const mos          = entities.filter((e) => e.type === 'ManufacturingOrder');
   const moDraft      = mos.filter((e) => propValue<string>(e, 'state') === 'draft').length;
   const moConfirmed  = mos.filter((e) => propValue<string>(e, 'state') === 'confirmed').length;
@@ -94,7 +105,7 @@ function compute(entities: NgsiLdEntity[]): KpiSnapshot {
     companyName:   company ? shortId(company) : null,
     workCenters:   wcs,
     inventory:     { skus: ibs.length, totalQty, demand },
-    bom:           { count: boms.length, lines: bomLines.length },
+    bom:           { count: boms.length, lines: bomLines.length, mfgProducts: mfgProducts.length, productsWithBom },
     production:    { moTotal: mos.length, moDraft, moConfirmed, moInProgress: moInProg, woRunning },
     alerts,
   };
@@ -523,15 +534,36 @@ export class DashboardPanel {
   }
 
   private renderBoM(kpi: KpiSnapshot): void {
-    const { count, lines } = kpi.bom;
-    const hasData = count > 0;
+    const { count, lines, mfgProducts, productsWithBom } = kpi.bom;
+    const hasData  = count > 0;
+    const allReady = mfgProducts > 0 && productsWithBom === mfgProducts;
 
     setText('db-bom-val', hasData ? `${count} BoM${count !== 1 ? 's' : ''}` : '—');
-    setText('db-bom-sub', hasData ? `${lines} component line${lines !== 1 ? 's' : ''}` : 'no bill of materials');
     setColor('db-bom-val', hasData ? '#a78bfa' : '#334155');
 
+    let sub: string;
+    let subColor: string;
+    let stripColor: string;
+
+    if (mfgProducts > 0) {
+      sub        = `${productsWithBom}/${mfgProducts} products ready`;
+      subColor   = allReady ? '#22c55e' : '#ef4444';
+      stripColor = allReady ? '#16a34a' : hasData ? '#d97706' : '#dc2626';
+    } else if (hasData) {
+      sub        = `${lines} component line${lines !== 1 ? 's' : ''}`;
+      subColor   = '#475569';
+      stripColor = '#7c3aed';
+    } else {
+      sub        = 'no bill of materials';
+      subColor   = '#475569';
+      stripColor = '#1e293b';
+    }
+
+    setText('db-bom-sub', sub);
+    setColor('db-bom-sub', subColor);
+
     const strip = el('db-bom-strip');
-    if (strip) strip.style.background = hasData ? '#7c3aed' : '#1e293b';
+    if (strip) strip.style.background = stripColor;
   }
 
   private renderProduction(kpi: KpiSnapshot): void {
