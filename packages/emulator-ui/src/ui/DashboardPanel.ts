@@ -16,6 +16,13 @@ const STATE_COLOR: Record<string, string> = {
   done:        '#16a34a',
 };
 
+interface LastEvent {
+  entityId:   string;
+  entityType: string;
+  attrs:      string[];
+  time:       Date;
+}
+
 interface KpiSnapshot {
   totalEntities:    number;
   entityTypes:      number;
@@ -113,13 +120,29 @@ export class DashboardPanel {
   private bomPopover!: HTMLElement;
   private bomExpanded  = new Set<string>();
   private lineExpanded = new Set<string>();
+  private lastEvent:   LastEvent | null = null;
+  private ctxTooltip!: HTMLElement;
 
   constructor() {
     this.setupBomWidget();
+    this.setupContextTooltip();
 
     bus.on(BUS.SNAPSHOT_LOADED, () => this.refresh());
-    bus.on(BUS.ENTITY_CHANGED,  () => this.refresh());
-    bus.on(BUS.SCENARIO_RESET,  () => this.refresh());
+    bus.on<NgsiLdEntity>(BUS.ENTITY_CHANGED, (entity) => {
+      if (entity) {
+        this.lastEvent = {
+          entityId:   entity.id,
+          entityType: entity.type ?? 'Unknown',
+          attrs:      Object.keys(entity).filter((k) => k !== 'id' && k !== 'type' && k !== '@context'),
+          time:       new Date(),
+        };
+      }
+      this.refresh();
+    });
+    bus.on(BUS.SCENARIO_RESET, () => {
+      this.lastEvent = null;
+      this.refresh();
+    });
     this.refresh();
   }
 
@@ -328,6 +351,58 @@ export class DashboardPanel {
     `;
   }
 
+  // ── Context Graph hover tooltip ─────────────────────────────────────────────
+
+  private setupContextTooltip(): void {
+    const tip = document.createElement('div');
+    tip.style.cssText = [
+      'position:fixed', 'z-index:9999', 'min-width:220px',
+      'background:#1e293b', 'border:1px solid #334155', 'border-radius:10px',
+      'padding:10px 12px', 'font-size:11px', 'line-height:1.6',
+      'box-shadow:0 8px 24px rgba(0,0,0,.4)', 'pointer-events:none',
+      'color:#cbd5e1', 'display:none',
+    ].join(';');
+    document.body.appendChild(tip);
+    this.ctxTooltip = tip;
+
+    const subEl = el('db-ctx-sub');
+    if (!subEl) return;
+    subEl.addEventListener('mouseenter', (e) => {
+      if (this.lastEvent) { this.renderCtxTooltip(); this.positionCtxTooltip(e as MouseEvent); }
+    });
+    subEl.addEventListener('mouseleave', () => { this.ctxTooltip.style.display = 'none'; });
+    subEl.addEventListener('mousemove',  (e) => {
+      if (this.ctxTooltip.style.display !== 'none') this.positionCtxTooltip(e as MouseEvent);
+    });
+  }
+
+  private renderCtxTooltip(): void {
+    if (!this.lastEvent) return;
+    const { entityId, entityType, attrs, time } = this.lastEvent;
+    const ms      = time.getMilliseconds().toString().padStart(3, '0');
+    const timeStr = `${time.toLocaleTimeString('en-GB')}.${ms}`;
+    const shortId = esc(entityId.split(':').pop() ?? entityId);
+    const attrStr = esc(attrs.join(', ') || '—');
+    this.ctxTooltip.innerHTML =
+      `<div style="font-size:9px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Last entity change</div>` +
+      `<div style="display:flex;gap:8px;margin-bottom:2px"><span style="color:#475569;min-width:48px">type</span><span>${esc(entityType)}</span></div>` +
+      `<div style="display:flex;gap:8px;margin-bottom:2px"><span style="color:#475569;min-width:48px">id</span><span style="font-family:monospace;font-size:10px">${shortId}</span></div>` +
+      `<div style="display:flex;gap:8px;margin-bottom:2px"><span style="color:#475569;min-width:48px">attrs</span><span style="font-family:monospace;font-size:10px;color:#93c5fd">${attrStr}</span></div>` +
+      `<div style="display:flex;gap:8px"><span style="color:#475569;min-width:48px">time</span><span style="font-family:monospace">${timeStr}</span></div>`;
+    this.ctxTooltip.style.display = 'block';
+  }
+
+  private positionCtxTooltip(e: MouseEvent): void {
+    const TIP_W = 240;
+    const TIP_H = 130;
+    let left = e.clientX + 14;
+    let top  = e.clientY + 18;
+    if (left + TIP_W > window.innerWidth  - 8) left = e.clientX - TIP_W - 8;
+    if (top  + TIP_H > window.innerHeight - 8) top  = e.clientY - TIP_H - 8;
+    this.ctxTooltip.style.left = `${left}px`;
+    this.ctxTooltip.style.top  = `${top}px`;
+  }
+
   // ── KPI card refresh ────────────────────────────────────────────────────────
 
   private refresh(): void {
@@ -346,9 +421,6 @@ export class DashboardPanel {
   private renderContextGraph(kpi: KpiSnapshot): void {
     const hasData = kpi.totalEntities > 0;
     setText('db-ctx-val', hasData ? `${kpi.totalEntities} entities` : '—');
-    setText('db-ctx-sub', hasData
-      ? `${kpi.entityTypes} type${kpi.entityTypes !== 1 ? 's' : ''} · ${kpi.plantName ?? 'no plant'}`
-      : 'no data loaded');
     setColor('db-ctx-val', hasData ? '#94a3b8' : '#334155');
 
     const strip = el('db-ctx-strip');
@@ -356,6 +428,23 @@ export class DashboardPanel {
 
     const meta = el('db-ctx-meta');
     if (meta) meta.textContent = kpi.companyName ?? '';
+
+    const subEl = el('db-ctx-sub');
+    if (subEl) {
+      if (this.lastEvent) {
+        subEl.textContent                = `last: ${this.lastEvent.time.toLocaleTimeString('en-GB')}`;
+        subEl.style.cursor               = 'help';
+        subEl.style.textDecorationLine   = 'underline';
+        subEl.style.textDecorationStyle  = 'dotted';
+        subEl.style.textDecorationColor  = '#475569';
+      } else {
+        subEl.textContent               = hasData
+          ? `${kpi.entityTypes} type${kpi.entityTypes !== 1 ? 's' : ''} · ${kpi.plantName ?? 'no plant'}`
+          : 'no data loaded';
+        subEl.style.cursor              = '';
+        subEl.style.textDecorationLine  = '';
+      }
+    }
   }
 
   private renderShopFloor(kpi: KpiSnapshot): void {
