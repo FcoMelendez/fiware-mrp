@@ -31,7 +31,7 @@ interface KpiSnapshot {
   workCenters:      { id: string; label: string; state: string }[];
   inventory:        { skus: number; totalQty: number; demand: number };
   bom:              { count: number; lines: number; mfgProducts: number; productsWithBom: number };
-  production:       { moTotal: number; moDraft: number; moConfirmed: number; moInProgress: number; woRunning: number };
+  production:       { moTotal: number; moDraft: number; moConfirmed: number; moInProgress: number; woRunning: number; backlogValue: number };
   alerts:           number;
 }
 
@@ -88,6 +88,15 @@ function compute(entities: NgsiLdEntity[]): KpiSnapshot {
   const moDraft      = mos.filter((e) => propValue<string>(e, 'state') === 'draft').length;
   const moConfirmed  = mos.filter((e) => propValue<string>(e, 'state') === 'confirmed').length;
   const moInProg     = mos.filter((e) => propValue<string>(e, 'state') === 'in_progress').length;
+
+  const productById = new Map(entities.filter((e) => e.type === 'Product').map((e) => [e.id, e]));
+  const backlogValue = mos
+    .filter((e) => { const s = propValue<string>(e, 'state') ?? ''; return s === 'draft' || s === 'confirmed' || s === 'in_progress'; })
+    .reduce((sum, mo) => {
+      const prod = productById.get(relObject(mo, 'product') ?? '');
+      return sum + (propValue<number>(mo, 'quantity') ?? 0) * (prod ? (propValue<number>(prod, 'standardCost') ?? 0) : 0);
+    }, 0);
+
   const wos          = entities.filter((e) => e.type === 'WorkOrder');
   const woRunning    = wos.filter((e) => {
     const s = propValue<string>(e, 'state') ?? '';
@@ -106,7 +115,7 @@ function compute(entities: NgsiLdEntity[]): KpiSnapshot {
     workCenters:   wcs,
     inventory:     { skus: ibs.length, totalQty, demand },
     bom:           { count: boms.length, lines: bomLines.length, mfgProducts: mfgProducts.length, productsWithBom },
-    production:    { moTotal: mos.length, moDraft, moConfirmed, moInProgress: moInProg, woRunning },
+    production:    { moTotal: mos.length, moDraft, moConfirmed, moInProgress: moInProg, woRunning, backlogValue },
     alerts,
   };
 }
@@ -599,7 +608,17 @@ export class DashboardPanel {
 
     const metaEl = el('db-prod-meta');
     if (metaEl) {
-      metaEl.textContent = kpi.inventory.demand > 0 ? `${kpi.inventory.demand} units planned` : '';
+      const { backlogValue } = kpi.production;
+      if (backlogValue > 0) {
+        const fmt = backlogValue >= 1_000_000
+          ? `€${(backlogValue / 1_000_000).toFixed(1)}M`
+          : backlogValue >= 1_000
+            ? `€${(backlogValue / 1_000).toFixed(1)}k`
+            : `€${backlogValue.toFixed(0)}`;
+        metaEl.textContent = fmt;
+      } else {
+        metaEl.textContent = kpi.inventory.demand > 0 ? `${kpi.inventory.demand} units` : '';
+      }
     }
 
     const strip = el('db-prod-strip');
