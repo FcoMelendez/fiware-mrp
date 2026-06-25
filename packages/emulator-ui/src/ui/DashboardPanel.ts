@@ -29,7 +29,7 @@ interface KpiSnapshot {
   plantName:        string | null;
   companyName:      string | null;
   workCenters:      { id: string; label: string; state: string; oeeTarget: number }[];
-  inventory:        { skus: number; totalQty: number; demand: number };
+  inventory:        { skus: number; totalQty: number; demand: number; locations: number };
   bom:              { count: number; lines: number; mfgProducts: number; productsWithBom: number };
   production:       { moTotal: number; moDraft: number; moConfirmed: number; moInProgress: number; woRunning: number; backlogValue: number };
   alerts:           number;
@@ -114,7 +114,7 @@ function compute(entities: NgsiLdEntity[]): KpiSnapshot {
     plantName:     plant   ? shortId(plant)   : null,
     companyName:   company ? shortId(company) : null,
     workCenters:   wcs,
-    inventory:     { skus: ibs.length, totalQty, demand },
+    inventory:     { skus: ibs.length, totalQty, demand, locations: entities.filter((e) => e.type === 'StockLocation' && propValue<string>(e, 'state') === 'active').length },
     bom:           { count: boms.length, lines: bomLines.length, mfgProducts: mfgProducts.length, productsWithBom },
     production:    { moTotal: mos.length, moDraft, moConfirmed, moInProgress: moInProg, woRunning, backlogValue },
     alerts,
@@ -532,7 +532,7 @@ export class DashboardPanel {
   }
 
   private renderInventory(kpi: KpiSnapshot): void {
-    const { skus, totalQty, demand } = kpi.inventory;
+    const { skus, totalQty, demand, locations } = kpi.inventory;
     const hasStock  = skus > 0 || totalQty > 0;
     const hasDemand = demand > 0;
 
@@ -562,6 +562,9 @@ export class DashboardPanel {
     setText('db-inv-val', val);
     setText('db-inv-sub', sub);
     setColor('db-inv-val', valColor);
+
+    const metaEl = el('db-inv-meta');
+    if (metaEl) metaEl.textContent = locations > 0 ? `${locations} loc.` : '';
 
     const strip = el('db-inv-strip');
     if (strip) strip.style.background = stripColor;
