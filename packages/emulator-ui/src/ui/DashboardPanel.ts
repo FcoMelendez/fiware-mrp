@@ -24,7 +24,7 @@ interface KpiSnapshot {
   workCenters:      { id: string; label: string; state: string }[];
   inventory:        { skus: number; totalQty: number };
   bom:              { count: number; lines: number };
-  production:       { moTotal: number; moInProgress: number; woRunning: number };
+  production:       { moTotal: number; moDraft: number; moConfirmed: number; moInProgress: number; woRunning: number };
   alerts:           number;
 }
 
@@ -61,12 +61,14 @@ function compute(entities: NgsiLdEntity[]): KpiSnapshot {
   const boms     = entities.filter((e) => e.type === 'BillOfMaterials');
   const bomLines = entities.filter((e) => e.type === 'BillOfMaterialsLine');
 
-  const mos        = entities.filter((e) => e.type === 'ManufacturingOrder');
-  const moInProg   = mos.filter((e) => propValue<string>(e, 'state') === 'inProgress').length;
-  const wos        = entities.filter((e) => e.type === 'WorkOrder');
-  const woRunning  = wos.filter((e) => {
+  const mos          = entities.filter((e) => e.type === 'ManufacturingOrder');
+  const moDraft      = mos.filter((e) => propValue<string>(e, 'state') === 'draft').length;
+  const moConfirmed  = mos.filter((e) => propValue<string>(e, 'state') === 'confirmed').length;
+  const moInProg     = mos.filter((e) => propValue<string>(e, 'state') === 'in_progress').length;
+  const wos          = entities.filter((e) => e.type === 'WorkOrder');
+  const woRunning    = wos.filter((e) => {
     const s = propValue<string>(e, 'state') ?? '';
-    return s === 'inProgress' || s === 'ready';
+    return s === 'in_progress' || s === 'ready';
   }).length;
 
   const alerts = entities.filter(
@@ -81,7 +83,7 @@ function compute(entities: NgsiLdEntity[]): KpiSnapshot {
     workCenters:   wcs,
     inventory:     { skus: ibs.length, totalQty },
     bom:           { count: boms.length, lines: bomLines.length },
-    production:    { moTotal: mos.length, moInProgress: moInProg, woRunning },
+    production:    { moTotal: mos.length, moDraft, moConfirmed, moInProgress: moInProg, woRunning },
     alerts,
   };
 }
@@ -406,30 +408,38 @@ export class DashboardPanel {
   }
 
   private renderProduction(kpi: KpiSnapshot): void {
-    const { moTotal, moInProgress, woRunning } = kpi.production;
+    const { moTotal, moDraft, moConfirmed, moInProgress, woRunning } = kpi.production;
     const alerts  = kpi.alerts;
+    const moOpen  = moDraft + moConfirmed + moInProgress;
     const hasData = moTotal > 0 || woRunning > 0;
 
-    const topLine = moTotal > 0
-      ? `${moTotal} order${moTotal !== 1 ? 's' : ''}`
-      : woRunning > 0
-        ? `${woRunning} WO${woRunning !== 1 ? 's' : ''} running`
-        : '—';
-
-    const botLine = moTotal > 0
-      ? `${moInProgress} in progress · ${woRunning} WO${woRunning !== 1 ? 's' : ''}`
-      : alerts > 0
-        ? `${alerts} quality alert${alerts !== 1 ? 's' : ''}`
-        : 'no production orders';
-
-    const statusColor = alerts > 0 ? '#ef4444' : hasData ? '#60a5fa' : '#334155';
+    const topLine     = moOpen > 0 ? `${moOpen} open` : hasData ? `${moTotal} total` : '—';
+    const statusColor = alerts > 0 ? '#ef4444' : moOpen > 0 ? '#60a5fa' : hasData ? '#94a3b8' : '#334155';
+    const stripColor  = alerts > 0 ? '#dc2626' : hasData ? '#2563eb' : '#1e293b';
 
     setText('db-prod-val', topLine);
-    setText('db-prod-sub', botLine);
     setColor('db-prod-val', statusColor);
-    setColor('db-prod-sub', alerts > 0 ? '#fca5a5' : '#475569');
 
     const strip = el('db-prod-strip');
-    if (strip) strip.style.background = alerts > 0 ? '#dc2626' : hasData ? '#2563eb' : '#1e293b';
+    if (strip) strip.style.background = stripColor;
+
+    // State-breakdown chips
+    const chipsEl = el('db-prod-chips');
+    if (!chipsEl) return;
+    if (!hasData) {
+      chipsEl.innerHTML = '<span style="color:#334155;font-size:10px">no orders</span>';
+      return;
+    }
+    const chips: Array<[string, number, string]> = [
+      ['draft',    moDraft,      '#94a3b8'],
+      ['conf.',    moConfirmed,  '#3b82f6'],
+      ['in prog.', moInProgress, '#f59e0b'],
+    ];
+    chipsEl.innerHTML = chips
+      .map(([label, count, color]) =>
+        `<span class="db-wc-dot" style="color:${color}" title="${label}: ${count}">` +
+        `<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="${color}"/></svg>` +
+        `${label} ${count}</span>`)
+      .join('');
   }
 }
