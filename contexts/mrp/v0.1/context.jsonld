@@ -145,6 +145,11 @@
     "reservedAt":           "mrp:reservedAt",
     "releasedAt":           "mrp:releasedAt",
 
+    "orderCode":            "mrp:orderCode",
+    "plannedStart":         "mrp:plannedStart",
+    "plannedEnd":           "mrp:plannedEnd",
+    "confirmedAt":          "mrp:confirmedAt",
+
     "origin":               "mrp:origin",
     "priority":             "mrp:priority",
     "reservationState":     "mrp:reservationState",

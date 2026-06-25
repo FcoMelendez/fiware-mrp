@@ -2,6 +2,7 @@
         demo-01 test-01 \
         demo-02 test-02 \
         test-03 \
+        test-04 \
         test-all \
         start-emulator start-mock stop-emulator \
         install-emulator \
@@ -46,11 +47,12 @@ install-emulator:
 	cd packages/emulator-ui && npm install
 
 start-emulator:
-	EMULATOR_MODE=live $(COMPOSE) up -d --build mongo orion-ld context-server mrp-api inventory-service bom-service emulator-gateway emulator-ui
-	@echo "Emulator UI      → http://localhost:5173"
-	@echo "Gateway API      → http://localhost:8090/api/health"
-	@echo "Inventory API    → http://localhost:8081/health"
-	@echo "BoM API          → http://localhost:8082/health"
+	EMULATOR_MODE=live $(COMPOSE) up -d --build mongo orion-ld context-server mrp-api inventory-service bom-service manufacturing-service emulator-gateway emulator-ui
+	@echo "Emulator UI         → http://localhost:5173"
+	@echo "Gateway API         → http://localhost:8090/api/health"
+	@echo "Inventory API       → http://localhost:8081/health"
+	@echo "BoM API             → http://localhost:8082/health"
+	@echo "Manufacturing API   → http://localhost:8083/health"
 
 start-mock:
 	EMULATOR_MODE=mock $(COMPOSE) up -d --build emulator-gateway emulator-ui
@@ -80,7 +82,11 @@ test-03:
 	@echo "=== Running Tutorial 03 tests ==="
 	@bash tutorials/03-bom/tests/test-03.sh
 
-test-all: test-01 test-02 test-03
+test-04:
+	@echo "=== Running Tutorial 04 tests ==="
+	@bash tutorials/04-manufacturing-order/tests/test-04.sh
+
+test-all: test-01 test-02 test-03 test-04
 	@echo "=== All tests passed ==="
 
 # ── Quality gates ─────────────────────────────────────────────────────────────
@@ -128,6 +134,7 @@ help:
 	@echo "  make test-01      Run Tutorial 01 automated assertions"
 	@echo "  make test-02      Run Tutorial 02 automated assertions"
 	@echo "  make test-03      Run Tutorial 03 automated assertions"
+	@echo "  make test-04      Run Tutorial 04 automated assertions"
 	@echo "  make test-all     Run all tutorial tests"
 	@echo "  make start-emulator  Start full stack + Phaser emulator (http://localhost:5173)"
 	@echo "  make start-mock      Start emulator in mock mode (no MRP backend needed)"

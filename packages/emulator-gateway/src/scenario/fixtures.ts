@@ -691,3 +691,139 @@ export const TUTORIAL_03_STEPS: GuidedStep[] = [
 ];
 
 export const TUTORIAL_03_STEP_IDS = TUTORIAL_03_STEPS.map((s) => s.id);
+
+// ── Tutorial 04 mock entities ──────────────────────────────────────────────────
+
+export const MOCK_MO_DRAFT = {
+  id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001',
+  type: 'ManufacturingOrder',
+  orderCode: { type: 'Property', value: 'MO-2024-001' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  bom: { type: 'Relationship', object: 'urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1' },
+  quantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  state: { type: 'Property', value: 'draft' },
+  plannedStart: { type: 'Property', value: '2024-07-01T08:00:00Z' },
+  plannedEnd: { type: 'Property', value: '2024-07-03T17:00:00Z' },
+  priority: { type: 'Property', value: 'normal' },
+};
+
+export const MOCK_MO_CONFIRMED = {
+  ...MOCK_MO_DRAFT,
+  state: { type: 'Property', value: 'confirmed' },
+  confirmedAt: { type: 'Property', value: '2024-07-01T07:45:00Z' },
+};
+
+export const TUTORIAL_04_ENTITIES = [MOCK_MO_CONFIRMED];
+
+// ── Tutorial 04 step definitions ───────────────────────────────────────────────
+
+export const TUTORIAL_04_STEPS: GuidedStep[] = [
+  {
+    id: 'check-mfg-service',
+    title: 'Verify manufacturing service',
+    shortDesc: 'Health-check the manufacturing-service',
+    desc: 'Tutorial 04 adds the manufacturing-service to the stack. This step confirms it is running and can reach Orion-LD.',
+    hood: { method: 'GET', url: 'http://manufacturing-service:8083/health', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /health → manufacturing-service:8083',
+      'manufacturing-service verifies its connection to Orion-LD internally',
+      'Returns { status: ok, service: manufacturing-service, version: 0.4.0 }',
+    ],
+    actionLabel: 'Check health',
+  },
+  {
+    id: 'seed-mfg-data',
+    title: 'Load manufacturing seed data',
+    shortDesc: 'Seed 18 entities: T01 master data + T03 BoM + ManufacturingOrder (draft)',
+    desc: 'Seeds Orion-LD with the Tutorial 01 factory graph (12 entities), the Tutorial 03 Bill of Materials (5 entities), and the Tutorial 04 ManufacturingOrder MO-2024-001 in draft state for 10 units of HydraulicPump-P100.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
+      body: '18 entities  •  application/ld+json',
+      expectedStatus: 201,
+    },
+    workflow: [
+      'Gateway attaches @context URL to all 18 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD (idempotent)',
+      'Orion-LD stores 12 T01 master-data entities + 5 T03 BoM entities + 1 ManufacturingOrder',
+      'ManufacturingOrder MO-2024-001: state=draft, product→HydraulicPump-P100, qty=10 EA',
+    ],
+    actionLabel: 'Seed entities',
+  },
+  {
+    id: 'query-orders-draft',
+    title: 'Query draft manufacturing orders',
+    shortDesc: 'GET /manufacturing-orders?state=draft — list 1 draft ManufacturingOrder',
+    desc: 'The manufacturing-service exposes a /manufacturing-orders endpoint that proxies an NGSI-LD type query to Orion-LD and filters by state. The MO is still in draft — it has not yet been confirmed.',
+    hood: {
+      method: 'GET',
+      url: 'http://manufacturing-service:8083/manufacturing-orders?state=draft',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /manufacturing-orders?state=draft → manufacturing-service:8083',
+      'manufacturing-service → GET /ngsi-ld/v1/entities?type=ManufacturingOrder → Orion-LD',
+      'Filters results client-side: state == draft',
+      '1 ManufacturingOrder returned: MO-2024-001 (state: draft, qty: 10 EA)',
+    ],
+    actionLabel: 'Query draft orders',
+  },
+  {
+    id: 'confirm-order',
+    title: 'Confirm the manufacturing order',
+    shortDesc: 'POST /commands/confirm-manufacturing-order — draft → confirmed',
+    desc: 'The confirm-manufacturing-order command validates that the order is in draft state, then patches state=confirmed and records a confirmedAt timestamp in Orion-LD. A confirmed order is locked for scheduling and component reservation.',
+    hood: {
+      method: 'POST',
+      url: 'http://manufacturing-service:8083/commands/confirm-manufacturing-order',
+      body: JSON.stringify({ order_id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/confirm-manufacturing-order { order_id } → manufacturing-service',
+      'manufacturing-service → GET /ngsi-ld/v1/entities/{id} → validates state == draft',
+      'PATCH /ngsi-ld/v1/entities/{id}/attrs → state: confirmed, confirmedAt: <timestamp>',
+      'Returns { status: confirmed, order_id, confirmed_at }',
+    ],
+    actionLabel: 'Confirm order',
+  },
+  {
+    id: 'query-orders-confirmed',
+    title: 'Query confirmed manufacturing orders',
+    shortDesc: 'GET /manufacturing-orders?state=confirmed — verify state transition',
+    desc: 'After confirmation the order should no longer appear in draft queries. Filtering by state=confirmed shows the order with its confirmedAt timestamp set.',
+    hood: {
+      method: 'GET',
+      url: 'http://manufacturing-service:8083/manufacturing-orders?state=confirmed',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /manufacturing-orders?state=confirmed → manufacturing-service:8083',
+      'manufacturing-service → GET /ngsi-ld/v1/entities?type=ManufacturingOrder → Orion-LD',
+      'Filters results client-side: state == confirmed',
+      '1 ManufacturingOrder returned: MO-2024-001 (state: confirmed, confirmedAt set)',
+    ],
+    actionLabel: 'Query confirmed orders',
+  },
+  {
+    id: 'inspect-order',
+    title: 'Inspect the ManufacturingOrder entity',
+    shortDesc: 'Fetch MO-2024-001 directly from the broker',
+    desc: 'Fetch the ManufacturingOrder entity directly from Orion-LD to see all NGSI-LD attributes: the product and bom Relationships, the confirmed state, and the confirmedAt timestamp set by the service.',
+    hood: {
+      method: 'GET',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entities/urn:ngsi-ld:ManufacturingOrder:MO-2024-001',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'GET /ngsi-ld/v1/entities/urn:ngsi-ld:ManufacturingOrder:MO-2024-001 with Link: <context>',
+      'Orion-LD returns compacted JSON-LD (short keys via @context)',
+      'product → urn:ngsi-ld:Product:HydraulicPump-P100 (Relationship)',
+      'bom → urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1 (Relationship)',
+      'state: confirmed · confirmedAt: <timestamp> · quantity: 10 EA',
+    ],
+    actionLabel: 'Inspect order',
+  },
+];
+
+export const TUTORIAL_04_STEP_IDS = TUTORIAL_04_STEPS.map((s) => s.id);

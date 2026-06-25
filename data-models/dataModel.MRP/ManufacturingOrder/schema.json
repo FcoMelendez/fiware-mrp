@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "$id": "https://fiware-mrp.io/schemas/ManufacturingOrder/schema.json",
+  "title": "ManufacturingOrder",
+  "description": "An instruction to produce a specified quantity of a finished product by a planned date. Links a Product to its Bill of Materials, carries a state machine (draft → confirmed → in_progress → completed), and drives component reservation and work-order generation in subsequent tutorials.",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "https://smart-data-models.github.io/data-models/common-schema.json#/definitions/GSMA-Commons"
+    }
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["ManufacturingOrder"],
+      "description": "NGSI-LD entity type"
+    },
+    "orderCode": {
+      "type": "object",
+      "description": "Human-readable manufacturing order code (e.g. MO-2024-001)",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string" }
+      },
+      "required": ["type", "value"]
+    },
+    "product": {
+      "type": "object",
+      "description": "Relationship to the Product entity being manufactured",
+      "properties": {
+        "type": { "type": "string", "enum": ["Relationship"] },
+        "object": { "type": "string", "format": "uri" }
+      },
+      "required": ["type", "object"]
+    },
+    "bom": {
+      "type": "object",
+      "description": "Relationship to the BillOfMaterials used to derive component requirements",
+      "properties": {
+        "type": { "type": "string", "enum": ["Relationship"] },
+        "object": { "type": "string", "format": "uri" }
+      },
+      "required": ["type", "object"]
+    },
+    "quantity": {
+      "type": "object",
+      "description": "Number of units to produce",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "unitCode": { "type": "string" }
+      },
+      "required": ["type", "value"]
+    },
+    "state": {
+      "type": "object",
+      "description": "Current state in the manufacturing order lifecycle",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": {
+          "type": "string",
+          "enum": ["draft", "confirmed", "in_progress", "completed", "cancelled"]
+        }
+      },
+      "required": ["type", "value"]
+    },
+    "plannedStart": {
+      "type": "object",
+      "description": "Planned production start date-time (ISO 8601)",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "value"]
+    },
+    "plannedEnd": {
+      "type": "object",
+      "description": "Planned production completion date-time (ISO 8601)",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "value"]
+    },
+    "priority": {
+      "type": "object",
+      "description": "Order priority level",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": {
+          "type": "string",
+          "enum": ["normal", "urgent", "critical"]
+        }
+      },
+      "required": ["type", "value"]
+    },
+    "confirmedAt": {
+      "type": "object",
+      "description": "Timestamp at which the order was confirmed (ISO 8601)",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "value"]
+    }
+  },
+  "required": ["id", "type", "orderCode", "product", "bom", "quantity", "state", "plannedStart", "plannedEnd"]
+}

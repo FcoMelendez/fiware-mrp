@@ -1,0 +1,39 @@
+[
+  {
+    "id": "urn:ngsi-ld:ManufacturingOrder:MO-2024-001",
+    "type": "ManufacturingOrder",
+    "orderCode": {
+      "type": "Property",
+      "value": "MO-2024-001"
+    },
+    "product": {
+      "type": "Relationship",
+      "object": "urn:ngsi-ld:Product:HydraulicPump-P100"
+    },
+    "bom": {
+      "type": "Relationship",
+      "object": "urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1"
+    },
+    "quantity": {
+      "type": "Property",
+      "value": 10,
+      "unitCode": "EA"
+    },
+    "state": {
+      "type": "Property",
+      "value": "draft"
+    },
+    "plannedStart": {
+      "type": "Property",
+      "value": "2024-07-01T08:00:00Z"
+    },
+    "plannedEnd": {
+      "type": "Property",
+      "value": "2024-07-03T17:00:00Z"
+    },
+    "priority": {
+      "type": "Property",
+      "value": "normal"
+    }
+  }
+]

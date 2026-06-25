@@ -6,11 +6,15 @@ import {
   MOCK_IB_IMPELLER,
   MOCK_LOT_240001,
   MOCK_EXPLODE_RESULT,
+  MOCK_MO_DRAFT,
+  MOCK_MO_CONFIRMED,
   TUTORIAL_01_ENTITIES,
   TUTORIAL_01_STEPS,
   TUTORIAL_02_STEPS,
   TUTORIAL_03_ENTITIES,
   TUTORIAL_03_STEPS,
+  TUTORIAL_04_ENTITIES,
+  TUTORIAL_04_STEPS,
   type GuidedStep,
 } from './fixtures.js';
 
@@ -63,6 +67,11 @@ export class ScenarioEngine {
         title: 'Tutorial 03 – Bill of Materials and BoM explosion',
         stepsCount: TUTORIAL_03_STEPS.length,
       },
+      {
+        id: 'tutorial-04',
+        title: 'Tutorial 04 – Manufacturing order confirmation',
+        stepsCount: TUTORIAL_04_STEPS.length,
+      },
     ];
   }
 
@@ -70,6 +79,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-01') return TUTORIAL_01_STEPS;
     if (tutorialId === 'tutorial-02') return TUTORIAL_02_STEPS;
     if (tutorialId === 'tutorial-03') return TUTORIAL_03_STEPS;
+    if (tutorialId === 'tutorial-04') return TUTORIAL_04_STEPS;
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -77,6 +87,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-01') return this.executeTutorial01Step(stepId);
     if (tutorialId === 'tutorial-02') return this.executeTutorial02Step(stepId);
     if (tutorialId === 'tutorial-03') return this.executeTutorial03Step(stepId);
+    if (tutorialId === 'tutorial-04') return this.executeTutorial04Step(stepId);
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -88,13 +99,15 @@ export class ScenarioEngine {
         deleted = await this.ngsi.deleteEntitiesByType(['InventoryBalance', 'StockMove', 'Lot']);
       } else if (tutorialId === 'tutorial-03') {
         deleted = await this.ngsi.deleteEntitiesByType(['BillOfMaterials', 'BillOfMaterialsLine']);
+      } else if (tutorialId === 'tutorial-04') {
+        deleted = await this.ngsi.deleteEntitiesByType(['ManufacturingOrder']);
       }
     }
 
     // Always broadcast the clean starting snapshot so the canvas resets correctly
-    // in both mock and live mode. T02 and T03 need T01 base entities visible from the start.
+    // in both mock and live mode. T02/T03/T04 all start from T01 base entities on canvas.
     const startingEntities =
-      tutorialId === 'tutorial-02' || tutorialId === 'tutorial-03'
+      tutorialId === 'tutorial-02' || tutorialId === 'tutorial-03' || tutorialId === 'tutorial-04'
         ? TUTORIAL_01_ENTITIES
         : [];
     this.hub.broadcast({ eventType: 'contextSnapshot', payload: { ...MOCK_SCENE, entities: startingEntities } });
@@ -233,8 +246,15 @@ export class ScenarioEngine {
         : await this.ngsi.queryEntities([type]);
       if (entities.length === 0) responseStatus = 404;
     } else {
-      const mockPool = [...TUTORIAL_01_ENTITIES, MOCK_IB_PUMP_CASING, MOCK_IB_IMPELLER, MOCK_LOT_240001];
-      entities = mockPool.filter((e) => (e as { type: string }).type === type);
+      const mockPool = [
+        ...TUTORIAL_01_ENTITIES,
+        MOCK_IB_PUMP_CASING, MOCK_IB_IMPELLER, MOCK_LOT_240001,
+        ...TUTORIAL_03_ENTITIES,
+        ...TUTORIAL_04_ENTITIES,
+      ];
+      entities = singleId
+        ? mockPool.filter((e) => (e as { id: string }).id === singleId)
+        : mockPool.filter((e) => (e as { type: string }).type === type);
     }
 
     const durationMs = Date.now() - t0;
@@ -458,6 +478,149 @@ export class ScenarioEngine {
         durationMs,
       }],
       entities: returnedEntities,
+    };
+  }
+
+  // ── Tutorial 04 step handlers ──────────────────────────────────────────────
+
+  private async executeTutorial04Step(stepId: string): Promise<StepResult> {
+    const step = TUTORIAL_04_STEPS.find((s) => s.id === stepId);
+    if (!step) throw new Error(`Unknown step: ${stepId} in tutorial-04`);
+    switch (stepId) {
+      case 'check-mfg-service':      return this.stepStackHealth(step, 'tutorial-04');
+      case 'seed-mfg-data':          return this.stepSeedMfgData(step);
+      case 'query-orders-draft':     return this.stepQueryMfgOrders(step, 'draft');
+      case 'confirm-order':          return this.stepConfirmOrder(step);
+      case 'query-orders-confirmed': return this.stepQueryMfgOrders(step, 'confirmed');
+      case 'inspect-order':          return this.stepQueryEntities(step, 'ManufacturingOrder', MOCK_MO_CONFIRMED.id);
+      default: throw new Error(`No executor for step: ${stepId}`);
+    }
+  }
+
+  private async stepSeedMfgData(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 201;
+    let responseSummary = '18 entities upserted';
+    const allEntities = [...TUTORIAL_01_ENTITIES, ...TUTORIAL_03_ENTITIES, MOCK_MO_DRAFT];
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl, contextUrl } = this.ngsi as unknown as { orionUrl: string; contextUrl: string };
+        const withContext = allEntities.map((e) => ({ ...e, '@context': contextUrl }));
+        const res = await fetch(
+          `${orionUrl}/ngsi-ld/v1/entityOperations/upsert`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/ld+json' },
+            body: JSON.stringify(withContext),
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        responseStatus = res.status;
+        responseSummary = res.ok ? '18 entities upserted' : `Error: ${res.status}`;
+      } catch (err) {
+        responseStatus = 503;
+        responseSummary = err instanceof Error ? err.message : 'Broker unreachable';
+      }
+    }
+
+    const durationMs = Date.now() - t0;
+    // Broadcast T01 entities on canvas (ManufacturingOrder has no zone binding)
+    const snapshot = { ...MOCK_SCENE, entities: TUTORIAL_01_ENTITIES };
+    this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `${responseSummary} — 12 T01 master-data + 5 T03 BoM entities + 1 ManufacturingOrder (draft)`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: '18 entities  •  application/ld+json',
+        responseStatus,
+        responseSummary,
+        durationMs,
+      }],
+      entities: [MOCK_MO_DRAFT],
+    };
+  }
+
+  private async stepQueryMfgOrders(step: GuidedStep, state: string): Promise<StepResult> {
+    const t0 = Date.now();
+    let entities: unknown[];
+    let responseStatus = 200;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const mfgUrl = orionUrl.replace(':1026', ':8083').replace('orion-ld', 'manufacturing-service');
+        const res = await fetch(`${mfgUrl}/manufacturing-orders?state=${state}`, {
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+        entities = res.ok ? (await res.json() as unknown[]) : [];
+      } catch { responseStatus = 503; entities = []; }
+    } else {
+      entities = state === 'draft' ? [MOCK_MO_DRAFT] : [MOCK_MO_CONFIRMED];
+    }
+
+    const durationMs = Date.now() - t0;
+    return {
+      stepId: step.id,
+      status: 'completed',
+      result: `${entities.length} ManufacturingOrder entit${entities.length === 1 ? 'y' : 'ies'} with state=${state}`,
+      apiTrace: [{ method: 'GET', url: step.hood.url, responseStatus, responseSummary: `${entities.length} orders`, durationMs }],
+      entities,
+    };
+  }
+
+  private async stepConfirmOrder(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const orderId = MOCK_MO_DRAFT.id;
+    let confirmedAt = '2024-07-01T07:45:00Z';
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const mfgUrl = orionUrl.replace(':1026', ':8083').replace('orion-ld', 'manufacturing-service');
+        const res = await fetch(`${mfgUrl}/commands/confirm-manufacturing-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: orderId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+        if (res.ok) {
+          const data = await res.json() as { confirmed_at?: string };
+          confirmedAt = data.confirmed_at ?? confirmedAt;
+        }
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    // Highlight WC-Assembly zone — the confirmed order targets the assembly work center
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: 'urn:ngsi-ld:WorkCenter:WC-Assembly',
+      entityType: 'WorkCenter',
+      payload: { message: 'ManufacturingOrder MO-2024-001 confirmed — assembly scheduled' },
+    });
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `ManufacturingOrder MO-2024-001 confirmed — state: draft → confirmed, confirmedAt: ${confirmedAt}`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ order_id: "${orderId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "confirmed", confirmed_at: "${confirmedAt}" }`,
+        durationMs,
+      }],
+      entities: [MOCK_MO_CONFIRMED],
     };
   }
 

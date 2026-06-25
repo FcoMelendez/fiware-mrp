@@ -42,6 +42,7 @@ const TUTORIAL_SUBTITLES: Record<string, string> = {
   'tutorial-01': 'Tutorial 01 – Getting started with the FIWARE MRP context',
   'tutorial-02': 'Tutorial 02 – Inventory balances and material receipts',
   'tutorial-03': 'Tutorial 03 – Bill of Materials and BoM explosion',
+  'tutorial-04': 'Tutorial 04 – Manufacturing order confirmation',
 };
 
 const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
@@ -56,6 +57,10 @@ const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
   'tutorial-03': {
     title: 'Welcome to Tutorial 03',
     body: 'This tutorial adds the <em>bom-service</em>. You will load a Bill of Materials for the Hydraulic Pump P100, inspect its component lines, and run the <em>explode-bom</em> command to compute net material requirements.',
+  },
+  'tutorial-04': {
+    title: 'Welcome to Tutorial 04',
+    body: 'This tutorial adds the <em>manufacturing-service</em>. You will create a ManufacturingOrder in draft state and run the <em>confirm-manufacturing-order</em> command to transition it to confirmed — the production commitment signal.',
   },
 };
 
@@ -128,7 +133,8 @@ export class TutorialChecklist {
     }
 
     const panelTitle = document.querySelector<HTMLElement>('#left-panel-header-text h2');
-    const tag = tutorialId === 'tutorial-01' ? 'T01' : tutorialId === 'tutorial-02' ? 'T02' : 'T03';
+    const tagMap: Record<string, string> = { 'tutorial-01': 'T01', 'tutorial-02': 'T02', 'tutorial-03': 'T03', 'tutorial-04': 'T04' };
+    const tag = tagMap[tutorialId] ?? tutorialId.replace('tutorial-', 'T');
     if (panelTitle) panelTitle.textContent = `Guided Tour — ${tag}`;
   }
 

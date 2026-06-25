@@ -108,6 +108,29 @@ services:
     profiles:
       - tools
 
+  # ── Manufacturing service (Tutorial 04) ───────────────────────────────────
+
+  manufacturing-service:
+    <<: *common-python
+    build:
+      context: ./services/manufacturing-service
+    container_name: mrp-manufacturing-service
+    depends_on:
+      orion-ld:
+        condition: service_healthy
+      context-server:
+        condition: service_healthy
+    ports:
+      - "${MFG_SERVICE_PORT:-8083}:8083"
+    environment:
+      ORION_URL: http://orion-ld:1026
+      CONTEXT_URL: http://context-server:3000/contexts/mrp/v0.1/context.jsonld
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ── BoM service (Tutorial 03) ──────────────────────────────────────────────
 
   bom-service:
@@ -197,8 +220,9 @@ services:
       VITE_GATEWAY_URL: http://emulator-gateway:8090
 
   # ── Future services (added in later tutorials) ───────────────────────────────
-  # bom-service        → Tutorial 03 (added above)
-  # scheduler-service  → Tutorial 06
+  # bom-service             → Tutorial 03 (added above)
+  # manufacturing-service   → Tutorial 04 (added above)
+  # scheduler-service       → Tutorial 06
   # shopfloor-service  → Tutorial 07
   # quality-service    → Tutorial 09
   # mps-service        → Tutorial 10

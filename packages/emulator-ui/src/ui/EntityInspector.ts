@@ -381,6 +381,20 @@ const DATA_MODELS: Record<string, ModelDef> = {
       { name: 'component',   ngsiType: 'Relationship', valueType: 'Product', xsdType: 'URI',         desc: 'Component product',      semantic: 'NGSI-LD Relationship to the Product entity that is the component. Can be a purchased part or a manufactured sub-assembly (triggers recursive explosion in MRP).' },
     ],
   },
+  ManufacturingOrder: {
+    description: 'An instruction to produce a specified quantity of a finished product by a planned date. Drives component reservation (T05), work-order scheduling (T06), and shop-floor execution (T07). State machine: draft → confirmed → in_progress → completed.',
+    attrs: [
+      { name: 'orderCode',   ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:string',  desc: 'MO identifier',          semantic: 'Human-readable manufacturing order code (e.g. MO-2024-001). Used as a reference in work orders, reservations, and cost records.' },
+      { name: 'quantity',    ngsiType: 'Property',     valueType: 'Number',  xsdType: 'xsd:float',   desc: 'Units to produce',        semantic: 'Number of finished-product units to manufacture. Passed to explode-bom during component reservation to compute net requirements.' },
+      { name: 'state',       ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:string',  desc: 'draft | confirmed | in_progress | completed | cancelled', semantic: 'Only "confirmed" orders are eligible for component reservation and scheduling. "draft" allows editing; "in_progress" means at least one work order has started; "completed" means all quantity has been received into finished goods.', structure: 'Enum: "draft" | "confirmed" | "in_progress" | "completed" | "cancelled"' },
+      { name: 'plannedStart',ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:dateTime',desc: 'Planned start date-time', semantic: 'ISO 8601 date-time for when production should begin. Used by the scheduler (T06) to sequence work orders against work-center capacity.' },
+      { name: 'plannedEnd',  ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:dateTime',desc: 'Planned end date-time',   semantic: 'ISO 8601 date-time for when all quantity should be complete. Drives due-date alerting and MPS demand calculations in later tutorials.' },
+      { name: 'priority',    ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:string',  desc: 'normal | urgent | critical', semantic: 'Scheduling priority. "urgent" and "critical" orders are sequenced ahead of "normal" when capacity is constrained (Tutorial 06).', structure: 'Enum: "normal" | "urgent" | "critical"' },
+      { name: 'confirmedAt', ngsiType: 'Property',     valueType: 'Text',    xsdType: 'xsd:dateTime',desc: 'Confirmation timestamp',  semantic: 'ISO 8601 timestamp set by manufacturing-service when the confirm-manufacturing-order command succeeds. Null/absent for draft orders.' },
+      { name: 'product',     ngsiType: 'Relationship', valueType: 'Product', xsdType: 'URI',         desc: 'Finished product',        semantic: 'NGSI-LD Relationship to the Product entity being manufactured. The manufacturing-service uses this to locate the active BOM for component explosion.' },
+      { name: 'bom',         ngsiType: 'Relationship', valueType: 'BillOfMaterials', xsdType: 'URI', desc: 'Bill of Materials',       semantic: 'NGSI-LD Relationship to the specific BillOfMaterials version used for this order. Pinning the BOM version at order creation ensures stable component requirements even if a newer BOM is activated later.' },
+    ],
+  },
 };
 
 // ── Shared data-model rendering (used by EntityInspector and BrokerExplorer) ─
