@@ -22,7 +22,7 @@ interface KpiSnapshot {
   plantName:        string | null;
   companyName:      string | null;
   workCenters:      { id: string; label: string; state: string }[];
-  inventory:        { skus: number; totalQty: number };
+  inventory:        { skus: number; totalQty: number; demand: number };
   bom:              { count: number; lines: number };
   production:       { moTotal: number; moDraft: number; moConfirmed: number; moInProgress: number; woRunning: number };
   alerts:           number;
@@ -58,6 +58,11 @@ function compute(entities: NgsiLdEntity[]): KpiSnapshot {
   const ibs      = entities.filter((e) => e.type === 'InventoryBalance');
   const totalQty = ibs.reduce((s, e) => s + (propValue<number>(e, 'availableQuantity') ?? 0), 0);
 
+  const demand = entities
+    .filter((e) => e.type === 'ManufacturingOrder')
+    .filter((e) => { const s = propValue<string>(e, 'state') ?? ''; return s === 'draft' || s === 'confirmed' || s === 'in_progress'; })
+    .reduce((s, e) => s + (propValue<number>(e, 'quantity') ?? 0), 0);
+
   const boms     = entities.filter((e) => e.type === 'BillOfMaterials');
   const bomLines = entities.filter((e) => e.type === 'BillOfMaterialsLine');
 
@@ -81,7 +86,7 @@ function compute(entities: NgsiLdEntity[]): KpiSnapshot {
     plantName:     plant   ? shortId(plant)   : null,
     companyName:   company ? shortId(company) : null,
     workCenters:   wcs,
-    inventory:     { skus: ibs.length, totalQty },
+    inventory:     { skus: ibs.length, totalQty, demand },
     bom:           { count: boms.length, lines: bomLines.length },
     production:    { moTotal: mos.length, moDraft, moConfirmed, moInProgress: moInProg, woRunning },
     alerts,
@@ -393,14 +398,39 @@ export class DashboardPanel {
   }
 
   private renderInventory(kpi: KpiSnapshot): void {
-    const { skus, totalQty } = kpi.inventory;
-    const hasData = skus > 0;
-    setText('db-inv-val', hasData ? `${skus} SKU${skus !== 1 ? 's' : ''}` : '—');
-    setText('db-inv-sub', hasData ? `${totalQty.toLocaleString()} units on hand` : 'no stock data');
-    setColor('db-inv-val', hasData ? '#fbbf24' : '#334155');
+    const { skus, totalQty, demand } = kpi.inventory;
+    const hasStock  = skus > 0 || totalQty > 0;
+    const hasDemand = demand > 0;
+
+    let val: string;
+    let sub: string;
+    let valColor: string;
+    let stripColor: string;
+
+    if (hasDemand) {
+      const coverage = totalQty / demand;
+      val       = `${coverage.toFixed(1)}×`;
+      sub       = `${totalQty.toLocaleString()} units · ${demand} demand`;
+      valColor  = coverage >= 2.0 ? '#22c55e' : coverage >= 1.0 ? '#f59e0b' : '#ef4444';
+      stripColor = coverage >= 2.0 ? '#16a34a' : coverage >= 1.0 ? '#d97706' : '#dc2626';
+    } else if (hasStock) {
+      val       = `${skus} SKU${skus !== 1 ? 's' : ''}`;
+      sub       = `${totalQty.toLocaleString()} units on hand`;
+      valColor  = '#fbbf24';
+      stripColor = '#d97706';
+    } else {
+      val       = '—';
+      sub       = 'no stock data';
+      valColor  = '#334155';
+      stripColor = '#1e293b';
+    }
+
+    setText('db-inv-val', val);
+    setText('db-inv-sub', sub);
+    setColor('db-inv-val', valColor);
 
     const strip = el('db-inv-strip');
-    if (strip) strip.style.background = hasData ? '#d97706' : '#1e293b';
+    if (strip) strip.style.background = stripColor;
   }
 
   private renderBoM(kpi: KpiSnapshot): void {
