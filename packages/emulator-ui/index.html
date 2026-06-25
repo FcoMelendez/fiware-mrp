@@ -261,6 +261,15 @@
         font-size: 10px; font-weight: 600; white-space: nowrap;
       }
 
+      /* ── Utilisation bar (Shop Floor card) ───────────────────────────────── */
+      .db-util-bar-wrap {
+        height: 4px; background: #0f172a; border-radius: 2px; margin: 3px 0 2px;
+      }
+      .db-util-bar {
+        height: 100%; border-radius: 2px; width: 0%; transition: width 0.5s ease, background 0.4s;
+        background: #22c55e;
+      }
+
       /* ── BoM card interactive state ──────────────────────────────────────── */
       #db-bom-card { cursor: pointer; transition: background 0.15s; }
       #db-bom-card:hover { background: rgba(124,58,237,0.18); }
@@ -718,6 +727,7 @@
             <div class="db-card-body">
               <div class="db-card-label">Shop Floor</div>
               <div class="db-card-val" id="db-wc-val">—</div>
+              <div class="db-util-bar-wrap"><div class="db-util-bar" id="db-wc-util-bar"></div></div>
               <div class="db-wc-dots" id="db-wc-dots"><span style="color:#334155;font-size:10px">no work centres</span></div>
             </div>
           </div>

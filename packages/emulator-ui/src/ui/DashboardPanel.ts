@@ -354,31 +354,39 @@ export class DashboardPanel {
   }
 
   private renderShopFloor(kpi: KpiSnapshot): void {
-    const wcs       = kpi.workCenters;
-    const available = wcs.filter((w) => ['available', 'active', 'ready'].includes(w.state)).length;
-    const blocked   = wcs.filter((w) => w.state === 'blocked').length;
-    const busy      = wcs.filter((w) => w.state === 'busy').length;
+    const wcs     = kpi.workCenters;
+    const total   = wcs.length;
+    const busy    = wcs.filter((w) => w.state === 'busy').length;
+    const blocked = wcs.filter((w) => w.state === 'blocked').length;
+    const util    = total > 0 ? Math.round((busy / total) * 100) : 0;
 
-    const statusColor = blocked > 0 ? '#ef4444' : busy > 0 ? '#3b82f6' : wcs.length > 0 ? '#22c55e' : '#334155';
+    const barColor    = util >= 90 ? '#ef4444' : util >= 70 ? '#f59e0b' : '#22c55e';
+    const valColor    = blocked > 0 ? '#ef4444' : busy > 0 ? barColor : total > 0 ? '#22c55e' : '#334155';
+    const stripColor  = total > 0 ? valColor : '#1e293b';
 
-    setText('db-wc-val', wcs.length === 0 ? '—' : `${available}/${wcs.length} ready`);
-    setColor('db-wc-val', statusColor);
+    setText('db-wc-val', total === 0 ? '—' : `${util}% util.`);
+    setColor('db-wc-val', valColor);
 
     const strip = el('db-wc-strip');
-    if (strip) strip.style.background = wcs.length > 0 ? statusColor : '#1e293b';
+    if (strip) strip.style.background = stripColor;
+
+    const bar = el('db-wc-util-bar') as HTMLElement | null;
+    if (bar) {
+      bar.style.width      = `${util}%`;
+      bar.style.background = total > 0 ? barColor : '#1e293b';
+    }
 
     const dotsEl = el('db-wc-dots');
     if (dotsEl) {
-      if (wcs.length === 0) {
+      if (total === 0) {
         dotsEl.innerHTML = '<span style="color:#334155;font-size:10px">no work centres</span>';
       } else {
         dotsEl.innerHTML = wcs.map((w) => {
           const col   = STATE_COLOR[w.state] ?? '#9ca3af';
           const short = w.label.replace(/WorkCenter|WC-?/gi, '').trim().slice(0, 8) || w.label.slice(0, 8);
-          return `<span class="db-wc-dot" title="${esc(w.label)} · ${esc(w.state)}" style="color:${col}">
-            <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="${col}"/></svg>
-            ${esc(short)}
-          </span>`;
+          return `<span class="db-wc-dot" title="${esc(w.label)} · ${esc(w.state)}" style="color:${col}">` +
+            `<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="${col}"/></svg>` +
+            `${esc(short)}</span>`;
         }).join('');
       }
     }
