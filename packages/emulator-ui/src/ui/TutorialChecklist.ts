@@ -95,18 +95,24 @@ export class TutorialChecklist {
     this.updateTopBar(tutorialId);
     this.expandedIds.clear();
 
-    // Ask the server to broadcast the clean starting snapshot for this tutorial.
-    // The SSE event will update contextStore and repopulate the canvas.
+    // Clear steps immediately so old tutorial's completed steps aren't visible
+    // during the async loadSteps() fetch. Without this, old green steps stay
+    // in the DOM and can be clicked with the wrong tutorialId context.
+    this.steps = [];
+    this.render();
+
+    // Ask the server to broadcast the clean starting snapshot for this tutorial
     fetch(`/api/scenarios/${tutorialId}/reset`, { method: 'POST' }).catch(() => {});
+
+    // Start the async step fetch before bus.emit so it's in-flight even if a
+    // listener throws and aborts the forEach (EventBus propagates exceptions).
+    this.loadSteps().then(() => this.render());
 
     // Reset canvas overlay, welcome banner, and console locally
     document.getElementById('canvas-overlay')?.classList.remove('hidden');
     document.getElementById('welcome-banner')?.classList.remove('hidden');
     this.clearConsolePanels();
     bus.emit(BUS.SCENARIO_RESET, undefined);
-
-    // Reload steps for the new tutorial, then render
-    this.loadSteps().then(() => this.render());
   }
 
   private updateTopBar(tutorialId: string): void {

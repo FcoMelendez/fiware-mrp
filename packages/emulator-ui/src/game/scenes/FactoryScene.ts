@@ -60,8 +60,19 @@ export class FactoryScene extends Phaser.Scene {
 
       bus.on<NgsiLdEntity[]>(BUS.SNAPSHOT_LOADED, (entities) => {
         document.getElementById('canvas-overlay')?.classList.add('hidden');
-        for (const entity of entities) {
-          this.updateZoneForEntity(entity);
+        if (entities.length === 0) {
+          // Empty snapshot (e.g. T01 reset) — clear all zone labels
+          for (const [, obj] of this.zoneObjects) {
+            obj.entityLabel?.setText('');
+            const defaultBorder = ZONE_BORDER[obj.zone.kind] ?? 0x6b7280;
+            obj.bg.setStrokeStyle(2, defaultBorder);
+            obj.bg.setAlpha(1);
+          }
+        } else {
+          // Suppress flash: bulk snapshot is a context load, not new entity arrival
+          for (const entity of entities) {
+            this.updateZoneForEntity(entity, false);
+          }
         }
       }),
 
@@ -75,10 +86,13 @@ export class FactoryScene extends Phaser.Scene {
 
       bus.on<void>(BUS.SCENARIO_RESET, () => {
         for (const [, obj] of this.zoneObjects) {
-          obj.entityLabel?.setText('');
-          const defaultBorder = ZONE_BORDER[obj.zone.kind] ?? 0x6b7280;
-          obj.bg.setStrokeStyle(2, defaultBorder);
-          obj.bg.setAlpha(1);
+          // Guard against destroyed objects (e.g. during a resize-triggered restart)
+          if (obj.entityLabel?.active) obj.entityLabel.setText('');
+          if (obj.bg.active) {
+            const defaultBorder = ZONE_BORDER[obj.zone.kind] ?? 0x6b7280;
+            obj.bg.setStrokeStyle(2, defaultBorder);
+            obj.bg.setAlpha(1);
+          }
         }
       }),
     );
@@ -210,7 +224,7 @@ export class FactoryScene extends Phaser.Scene {
     this.zoneObjects.clear();
   }
 
-  private updateZoneForEntity(entity: NgsiLdEntity): void {
+  private updateZoneForEntity(entity: NgsiLdEntity, flash = true): void {
     // Find zone bound to this entity
     const zone = this.snapshot.layout.zones.find((z) => z.entityId === entity.id);
     if (!zone) return;
@@ -223,8 +237,8 @@ export class FactoryScene extends Phaser.Scene {
     const name = propValue<string>(entity, 'name') ?? entity.id.split(':').pop() ?? entity.id;
     obj.entityLabel?.setText(name);
 
-    // Brief green flash when an entity first arrives in the zone
-    if (wasEmpty) {
+    // Brief green flash when an entity first arrives in the zone (suppressed for bulk loads)
+    if (wasEmpty && flash) {
       const defaultBorder = ZONE_BORDER[zone.kind] ?? 0x6b7280;
       obj.bg.setStrokeStyle(3, 0x22c55e);
       this.tweens.add({
