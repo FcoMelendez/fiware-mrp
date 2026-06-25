@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tutorial 03 automated assertions — Bill of Materials and BoM explosion
-# Prerequisites: stack up, TUTORIAL=01 make seed && TUTORIAL=03 make seed
+# Prerequisites: stack up, TUTORIAL=03 make seed  (file is self-contained: includes T01+T03 entities)
 set -euo pipefail
 
 ORION="${ORION_URL:-http://localhost:1026}"

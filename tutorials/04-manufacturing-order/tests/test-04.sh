@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tutorial 04 automated assertions — ManufacturingOrder confirmation
-# Prerequisites: stack up, make seed, TUTORIAL=03 make seed, TUTORIAL=04 make seed
+# Prerequisites: stack up, TUTORIAL=04 make seed  (file is self-contained: includes T01+T03+T04 entities)
 set -euo pipefail
 
 ORION="${ORION_URL:-http://localhost:1026}"
