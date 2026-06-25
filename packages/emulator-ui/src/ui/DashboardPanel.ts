@@ -597,6 +597,11 @@ export class DashboardPanel {
     setText('db-prod-val', topLine);
     setColor('db-prod-val', statusColor);
 
+    const metaEl = el('db-prod-meta');
+    if (metaEl) {
+      metaEl.textContent = kpi.inventory.demand > 0 ? `${kpi.inventory.demand} units planned` : '';
+    }
+
     const strip = el('db-prod-strip');
     if (strip) strip.style.background = stripColor;
 
