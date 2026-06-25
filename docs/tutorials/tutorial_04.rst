@@ -87,9 +87,10 @@ ManufacturingOrder properties
 Prerequisites
 -------------
 
-- Tutorial 01 master data loaded (``make start && make seed``)
-- Tutorial 03 BoM data loaded (``TUTORIAL=03 make seed``)
+- Docker stack running (``make start``)
 - Port 8083 free on localhost
+
+The Tutorial 04 seed file is self-contained: it includes all Tutorial 01 master data and Tutorial 03 BoM entities. No separate T01 or T03 seed step is required.
 
 Quickstart
 ----------
@@ -97,9 +98,7 @@ Quickstart
 .. code-block:: bash
 
    make start                               # start core infrastructure
-   make seed                                # Tutorial 01 master data
-   TUTORIAL=03 make seed                    # Tutorial 03 BoM data
-   TUTORIAL=04 make seed                    # Tutorial 04 ManufacturingOrder (draft)
+   TUTORIAL=04 make seed                    # loads 18 entities: T01 + T03 + ManufacturingOrder
    docker compose up -d --build manufacturing-service
 
 Tutorial steps
@@ -119,9 +118,11 @@ Expected response::
 Step 2 — Seed Tutorial 04 data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The seed step (performed by the emulator or ``TUTORIAL=04 make seed``) loads one
-``ManufacturingOrder`` entity in ``draft`` state for 10 units of ``HydraulicPump-P100``,
-referencing the BoM seeded in Tutorial 03.
+The seed step (performed by the emulator or ``TUTORIAL=04 make seed``) loads 18 entities:
+12 Tutorial 01 master-data entities (Company, Plant, WorkCenter × 3, Product × 5,
+StockLocation × 2), 5 Tutorial 03 BoM entities (BillOfMaterials + 4 lines), and one
+``ManufacturingOrder`` (``MO-2024-001``) in ``draft`` state for 10 units of
+``HydraulicPump-P100``.
 
 Step 3 — Query manufacturing orders in draft state
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -164,6 +165,38 @@ Step 6 — Inspect the entity in the broker
    curl "http://localhost:1026/ngsi-ld/v1/entities/urn:ngsi-ld:ManufacturingOrder:MO-2024-001" \
      -H "Accept: application/ld+json" \
      -H 'Link: <http://localhost:3000/contexts/mrp/v0.1/context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"'
+
+Emulator dashboard
+------------------
+
+The interactive emulator (``make start-mock``) shows a live business dashboard while you
+step through the tutorial. Key card readings after Tutorial 04:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 35 35
+
+   * - Card
+     - After seed
+     - After confirm
+   * - Context Graph
+     - ``18 entities`` · company name · last-event timestamp
+     - unchanged
+   * - Shop Floor
+     - ``0% util. · 85% OEE tgt``
+     - unchanged
+   * - Inventory
+     - ``0.0× coverage · 2 loc. · 0 / 10 demand``
+     - unchanged
+   * - Bill of Materials
+     - ``1 BoM · 1/1 products ready`` (green)
+     - unchanged
+   * - Mfg Orders
+     - ``1 open · €2.5k · draft 1``
+     - ``conf. 1 · draft 0``
+
+Hover the ``last: HH:MM:SS`` sub-line on the Context Graph card to see a tooltip listing the
+last changed entity and a breakdown of all entity types currently in the context store.
 
 Automated assertions
 ---------------------

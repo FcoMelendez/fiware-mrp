@@ -40,17 +40,16 @@ Services introduced:
 
 ## Prerequisites
 
-- Tutorial 01 stack running and seeded (`make start && make seed`)
-- Tutorial 03 BoM data seeded (`TUTORIAL=03 make seed`)
+- Docker stack running (`make start`)
 - Port 8083 free on localhost
+
+The Tutorial 04 seed file is **self-contained**: it bundles all Tutorial 01 master data and Tutorial 03 BoM entities — no separate T01 or T03 seed step is needed.
 
 ## Start the stack
 
 ```bash
 make start                         # start core infrastructure
-make seed                          # load Tutorial 01 master data
-TUTORIAL=03 make seed              # load Tutorial 03 BoM data
-TUTORIAL=04 make seed              # load Tutorial 04 ManufacturingOrder (draft)
+TUTORIAL=04 make seed              # loads 18 entities: T01 + T03 + ManufacturingOrder
 docker compose up -d --build manufacturing-service
 ```
 
@@ -65,8 +64,7 @@ curl http://localhost:8083/health
 
 ### Step 2 — Seed Tutorial 04 data
 
-The seed step loads 1 `ManufacturingOrder` (MO-2024-001) in `draft` state for 10 units of
-`HydraulicPump-P100`, referencing the BoM from Tutorial 03.
+The seed step loads **18 entities**: 12 T01 master-data entities (Company, Plant, WorkCenter × 3, Product × 5, StockLocation × 2), 5 T03 BoM entities (BillOfMaterials + 4 lines), and one `ManufacturingOrder` (MO-2024-001) in `draft` state for 10 units of `HydraulicPump-P100`.
 
 ### Step 3 — Query manufacturing orders in draft state
 
@@ -113,6 +111,20 @@ curl "http://localhost:1026/ngsi-ld/v1/entities/urn:ngsi-ld:ManufacturingOrder:M
 ```
 
 You should see `state: { type: Property, value: confirmed }` and the `confirmedAt` timestamp.
+
+## Emulator dashboard
+
+The interactive emulator (`make start-mock` → http://localhost:5173) shows a live business dashboard while you step through the tutorial. After Tutorial 04 seed loads you will see:
+
+| Dashboard card | Value after seed | Value after confirm |
+|---|---|---|
+| **Context Graph** | `18 entities` + company name + last-event timestamp | unchanged |
+| **Shop Floor** | `0% util. · 85% OEE tgt` + 3 WC status dots | unchanged |
+| **Inventory** | `0.0× coverage · 2 loc. · 0 units / 10 demand` | unchanged |
+| **Bill of Materials** | `1 BoM · 1/1 products ready` (green) | unchanged |
+| **Mfg Orders** | `1 open · €2.5k · draft 1 · conf. 0 · in prog. 0` | `conf. 1 · draft 0` |
+
+Hover the `last: HH:MM:SS` text on the Context Graph card to see a tooltip with the last changed entity, its attributes, and a breakdown of all entity types in the context store.
 
 ## Run automated assertions
 

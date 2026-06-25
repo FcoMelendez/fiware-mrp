@@ -148,7 +148,7 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 * Docker and Docker Compose installed.
-* Tutorial 01 completed (or at minimum: ``make start``).
+* Docker stack running (``make start``). The Tutorial 03 seed file is self-contained and includes all Tutorial 01 master data — no separate T01 seed step needed.
 * ``bom-service`` is part of the default stack from Tutorial 03 onwards.
 
 CLI path
@@ -159,8 +159,7 @@ CLI path
    # 1. Start the full stack (includes bom-service from this tutorial onwards)
    make start
 
-   # 2. Seed Tutorial 01 master data + Tutorial 03 BoM data
-   TUTORIAL=01 make seed
+   # 2. Seed Tutorial 03 data (self-contained — includes T01 master data)
    TUTORIAL=03 make seed
 
    # 3. Verify the bom-service is running
