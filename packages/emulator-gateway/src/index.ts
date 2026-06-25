@@ -5,6 +5,7 @@ import { ClientHub } from './stream/ClientHub.js';
 import { NgsiLdClient } from './ngsi/NgsiLdClient.js';
 import { CommandProxy } from './commands/CommandProxy.js';
 import { ScenarioEngine } from './scenario/ScenarioEngine.js';
+import { MockEntityStore } from './scenario/MockEntityStore.js';
 import { healthHandler, readyHandlerFactory } from './routes/health.js';
 import { scenesRouter } from './routes/scenes.js';
 import { entitiesRouter } from './routes/entities.js';
@@ -19,7 +20,8 @@ app.use(express.json());
 const hub = new ClientHub();
 const ngsi = new NgsiLdClient(config.orionUrl, config.contextUrl);
 const proxy = new CommandProxy(config.mrpApiUrl);
-const engine = new ScenarioEngine(hub, ngsi, config.mode);
+const mockStore = new MockEntityStore();
+const engine = new ScenarioEngine(hub, ngsi, config.mode, mockStore);
 
 // ── System endpoints ──────────────────────────────────────────────────────────
 app.get('/api/health', healthHandler);
@@ -64,7 +66,7 @@ app.post('/notify', (req: Request, res: Response) => {
 
 // ── Business routes ───────────────────────────────────────────────────────────
 app.use('/api/scenes', scenesRouter(ngsi, hub));
-app.use('/api/entities', entitiesRouter(ngsi));
+app.use('/api/entities', entitiesRouter(ngsi, mockStore));
 app.use('/api/commands', commandsRouter(hub, proxy));
 app.use('/api/scenarios', scenariosRouter(engine));
 

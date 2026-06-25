@@ -1,5 +1,6 @@
 import type { ClientHub } from '../stream/ClientHub.js';
 import type { NgsiLdClient } from '../ngsi/NgsiLdClient.js';
+import type { MockEntityStore } from './MockEntityStore.js';
 import {
   MOCK_SCENE,
   MOCK_IB_PUMP_CASING,
@@ -46,6 +47,7 @@ export class ScenarioEngine {
     private readonly hub: ClientHub,
     private readonly ngsi: NgsiLdClient,
     private readonly mode: string,
+    private readonly mockStore?: MockEntityStore,
   ) {}
 
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -111,6 +113,11 @@ export class ScenarioEngine {
         ? TUTORIAL_01_ENTITIES
         : [];
     this.hub.broadcast({ eventType: 'contextSnapshot', payload: { ...MOCK_SCENE, entities: startingEntities } });
+
+    // Reset the mock entity store to match the starting broker state
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.seedFrom(startingEntities as Array<Record<string, unknown>>);
+    }
 
     return { deleted };
   }
@@ -218,6 +225,9 @@ export class ScenarioEngine {
     const durationMs = Date.now() - t0;
     const snapshot = { ...MOCK_SCENE, entities: TUTORIAL_01_ENTITIES };
     this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(TUTORIAL_01_ENTITIES as Array<Record<string, unknown>>);
+    }
 
     return {
       stepId: step.id,
@@ -319,6 +329,9 @@ export class ScenarioEngine {
     const durationMs = Date.now() - t0;
     const snapshot = { ...MOCK_SCENE, entities: allEntities };
     this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(allEntities as Array<Record<string, unknown>>);
+    }
 
     return {
       stepId: step.id,
@@ -463,6 +476,11 @@ export class ScenarioEngine {
       payload: { message: `Received ${opts.quantity} ${opts.unit}` },
     });
 
+    // Track received entities in mock store
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(returnedEntities as Array<Record<string, unknown>>);
+    }
+
     const productCode = opts.productId.split(':').pop() ?? opts.productId;
     const lotNote = opts.lotCode ? `, lot ${opts.lotCode}` : '';
     return {
@@ -528,6 +546,9 @@ export class ScenarioEngine {
     // Broadcast T01 entities on canvas (ManufacturingOrder has no zone binding)
     const snapshot = { ...MOCK_SCENE, entities: TUTORIAL_01_ENTITIES };
     this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(allEntities as Array<Record<string, unknown>>);
+    }
 
     return {
       stepId: step.id,
@@ -607,6 +628,14 @@ export class ScenarioEngine {
       entityType: 'WorkCenter',
       payload: { message: 'ManufacturingOrder MO-2024-001 confirmed — assembly scheduled' },
     });
+
+    // Patch the mock store to reflect the confirmed state
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(orderId, {
+        state: { type: 'Property', value: 'confirmed' },
+        confirmedAt: { type: 'Property', value: confirmedAt },
+      });
+    }
 
     return {
       stepId: step.id,

@@ -1,25 +1,25 @@
 import { Router } from 'express';
 import type { NgsiLdClient } from '../ngsi/NgsiLdClient.js';
-import { MOCK_SCENE } from '../scenario/fixtures.js';
+import type { MockEntityStore } from '../scenario/MockEntityStore.js';
 import { config } from '../config.js';
 
 const MRP_TYPES = [
   'Company', 'Plant', 'WorkCenter', 'Product', 'StockLocation',
   'InventoryBalance', 'StockMove', 'Lot',
   'BillOfMaterials', 'BillOfMaterialsLine',
-  'WorkOrder',
+  'ManufacturingOrder', 'WorkOrder',
 ];
 
-export function entitiesRouter(ngsi: NgsiLdClient): Router {
+export function entitiesRouter(ngsi: NgsiLdClient, mockStore: MockEntityStore): Router {
   const router = Router();
 
-  // List all entities across all known MRP types
+  // List all entities — live mode queries the broker; mock mode uses the in-memory store
   router.get('/', async (_req, res) => {
     if (config.mode === 'live') {
       const entities = await ngsi.queryEntities(MRP_TYPES);
       res.json(entities);
     } else {
-      res.json(MOCK_SCENE.entities);
+      res.json(mockStore.getAll());
     }
   });
 
@@ -27,12 +27,9 @@ export function entitiesRouter(ngsi: NgsiLdClient): Router {
     const entityId = req.params['entityId'];
     if (config.mode === 'live') {
       const entity = await ngsi.getEntity(entityId);
-      if (entity) {
-        res.json(entity);
-        return;
-      }
+      if (entity) { res.json(entity); return; }
     }
-    const mock = MOCK_SCENE.entities.find((e) => e.id === entityId);
+    const mock = mockStore.getById(entityId);
     if (mock) {
       res.json(mock);
     } else {
