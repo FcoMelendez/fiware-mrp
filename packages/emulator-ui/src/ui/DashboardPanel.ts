@@ -28,7 +28,7 @@ interface KpiSnapshot {
   entityTypes:      number;
   plantName:        string | null;
   companyName:      string | null;
-  workCenters:      { id: string; label: string; state: string }[];
+  workCenters:      { id: string; label: string; state: string; oeeTarget: number }[];
   inventory:        { skus: number; totalQty: number; demand: number };
   bom:              { count: number; lines: number; mfgProducts: number; productsWithBom: number };
   production:       { moTotal: number; moDraft: number; moConfirmed: number; moInProgress: number; woRunning: number; backlogValue: number };
@@ -57,9 +57,10 @@ function compute(entities: NgsiLdEntity[]): KpiSnapshot {
   const wcs = entities
     .filter((e) => e.type === 'WorkCenter')
     .map((e) => ({
-      id:    e.id,
-      label: shortId(e),
-      state: propValue<string>(e, 'state') ?? 'available',
+      id:        e.id,
+      label:     shortId(e),
+      state:     propValue<string>(e, 'state') ?? 'available',
+      oeeTarget: propValue<number>(e, 'oeeTarget') ?? 0,
     }));
 
   const ibs      = entities.filter((e) => e.type === 'InventoryBalance');
@@ -498,6 +499,12 @@ export class DashboardPanel {
 
     setText('db-wc-val', total === 0 ? '—' : `${util}% util.`);
     setColor('db-wc-val', valColor);
+
+    const avgOee = total > 0
+      ? Math.round(wcs.reduce((s, w) => s + w.oeeTarget, 0) / total * 100)
+      : 0;
+    const metaEl = el('db-wc-meta');
+    if (metaEl) metaEl.textContent = total > 0 ? `${avgOee}% OEE tgt` : '';
 
     const strip = el('db-wc-strip');
     if (strip) strip.style.background = stripColor;
