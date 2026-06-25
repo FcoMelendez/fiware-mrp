@@ -543,8 +543,8 @@ export class ScenarioEngine {
     }
 
     const durationMs = Date.now() - t0;
-    // Broadcast T01 entities on canvas (ManufacturingOrder has no zone binding)
-    const snapshot = { ...MOCK_SCENE, entities: TUTORIAL_01_ENTITIES };
+    // Broadcast all seeded entities so dashboard KPIs reflect the full context graph
+    const snapshot = { ...MOCK_SCENE, entities: allEntities };
     this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
     if (this.mode === 'mock' && this.mockStore) {
       this.mockStore.upsertMany(allEntities as Array<Record<string, unknown>>);
