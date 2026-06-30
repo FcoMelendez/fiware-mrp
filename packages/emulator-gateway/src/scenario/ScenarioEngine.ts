@@ -97,13 +97,12 @@ export class ScenarioEngine {
     let deleted = 0;
 
     if (this.mode === 'live') {
-      if (tutorialId === 'tutorial-02') {
-        deleted = await this.ngsi.deleteEntitiesByType(['InventoryBalance', 'StockMove', 'Lot']);
-      } else if (tutorialId === 'tutorial-03') {
-        deleted = await this.ngsi.deleteEntitiesByType(['BillOfMaterials', 'BillOfMaterialsLine']);
-      } else if (tutorialId === 'tutorial-04') {
-        deleted = await this.ngsi.deleteEntitiesByType(['ManufacturingOrder']);
-      }
+      deleted = await this.ngsi.deleteEntitiesByType([
+        'Company', 'Plant', 'WorkCenter', 'Product', 'StockLocation',
+        'InventoryBalance', 'StockMove', 'Lot',
+        'BillOfMaterials', 'BillOfMaterialsLine',
+        'ManufacturingOrder',
+      ]);
     }
 
     // Always broadcast the clean starting snapshot so the canvas resets correctly

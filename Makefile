@@ -47,6 +47,7 @@ install-emulator:
 	cd packages/emulator-ui && npm install
 
 start-emulator:
+	$(COMPOSE) down -v --remove-orphans
 	EMULATOR_MODE=live $(COMPOSE) up -d --build mongo orion-ld context-server mrp-api inventory-service bom-service manufacturing-service emulator-gateway emulator-ui
 	@echo "Emulator UI         → http://localhost:5173"
 	@echo "Gateway API         → http://localhost:8090/api/health"
