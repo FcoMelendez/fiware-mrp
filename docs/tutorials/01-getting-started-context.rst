@@ -691,3 +691,16 @@ business command.  After this tutorial, the system can answer:
 
 New models introduced: ``InventoryBalance``, ``StockMove``, ``Lot``.
 New service added to ``docker-compose.yml``: ``inventory-service``.
+
+
+----
+
+Architecture snapshot
+----------------------
+
+.. image:: ../_static/architecture/arch-t01.png
+   :alt: Stack at 01-getting-started-context
+   :align: center
+   :width: 90%
+
+See :doc:`../architecture/index` for the full architecture and all incremental diagrams.

@@ -244,3 +244,16 @@ What's next
 * **Tutorial 04** — Manufacturing order confirmation: use the BOM to create a
   ``ManufacturingOrder`` entity and check component availability before
   confirming.
+
+
+----
+
+Architecture snapshot
+----------------------
+
+.. image:: ../_static/architecture/arch-t03.png
+   :alt: Stack at 03-bom
+   :align: center
+   :width: 90%
+
+See :doc:`../architecture/index` for the full architecture and all incremental diagrams.

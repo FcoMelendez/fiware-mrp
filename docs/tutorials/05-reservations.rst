@@ -201,3 +201,16 @@ Under the hood — NGSI-LD API calls
 ----
 
 Next: Tutorial 06 — Work Orders and Finite-Capacity Scheduling *(coming soon)*
+
+
+----
+
+Architecture snapshot
+----------------------
+
+.. image:: ../_static/architecture/arch-t05.png
+   :alt: Stack at 05-reservations
+   :align: center
+   :width: 90%
+
+See :doc:`../architecture/index` for the full architecture and all incremental diagrams.

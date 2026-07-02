@@ -220,3 +220,16 @@ What's next
 Tutorial 05 picks up the confirmed ``ManufacturingOrder`` and runs component reservation:
 for each ``BillOfMaterialsLine``, it checks ``InventoryBalance`` and either creates an
 ``InventoryReservation`` or raises a shortage alert.
+
+
+----
+
+Architecture snapshot
+----------------------
+
+.. image:: ../_static/architecture/arch-t04.png
+   :alt: Stack at tutorial_04
+   :align: center
+   :width: 90%
+
+See :doc:`../architecture/index` for the full architecture and all incremental diagrams.

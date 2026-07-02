@@ -512,3 +512,16 @@ needed to manufacture *N* units.
 
 New models introduced: ``BillOfMaterials``, ``BillOfMaterialsLine``.
 New service added: ``bom-service``.
+
+
+----
+
+Architecture snapshot
+----------------------
+
+.. image:: ../_static/architecture/arch-t02.png
+   :alt: Stack at 02-inventory
+   :align: center
+   :width: 90%
+
+See :doc:`../architecture/index` for the full architecture and all incremental diagrams.

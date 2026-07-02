@@ -144,3 +144,16 @@ What's next
 Tutorial 08 introduces **finished-goods receipt**: when the last WorkOrder
 for an MO completes, inventory is automatically updated (finished-goods
 location, lot assignment, and StockMove creation).
+
+
+----
+
+Architecture snapshot
+----------------------
+
+.. image:: ../_static/architecture/arch-t07.png
+   :alt: Stack at 07-shop-floor
+   :align: center
+   :width: 90%
+
+See :doc:`../architecture/index` for the full architecture and all incremental diagrams.

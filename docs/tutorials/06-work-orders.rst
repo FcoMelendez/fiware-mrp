@@ -190,8 +190,21 @@ NGSI-LD API call table
 What's next
 -----------
 
-:doc:`Tutorial 07 – Shop-floor Execution <tutorial_07>` *(coming soon)*
+:doc:`07-shop-floor` — Shop-floor Execution
 
-Tutorial 07 will introduce the ``shopfloor-service`` that transitions work orders
-through ``planned → in_progress → completed``, records production events, and
-updates the ManufacturingOrder state accordingly.
+Tutorial 07 introduces the ``shopfloor-service`` that transitions work orders
+through ``planned → in_progress → completed`` and records ``ProductionEvent``
+entities for each execution step.
+
+
+----
+
+Architecture snapshot
+----------------------
+
+.. image:: ../_static/architecture/arch-t06.png
+   :alt: Stack at 06-work-orders
+   :align: center
+   :width: 90%
+
+See :doc:`../architecture/index` for the full architecture and all incremental diagrams.
