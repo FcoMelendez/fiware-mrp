@@ -20,9 +20,13 @@ import {
   TUTORIAL_05_STEPS,
   TUTORIAL_06_ENTITIES,
   TUTORIAL_06_STEPS,
+  TUTORIAL_07_ENTITIES,
+  TUTORIAL_07_STEPS,
   MOCK_WO_ASSEMBLY,
   MOCK_WO_LEAK_TEST,
   MOCK_WO_PACKAGING,
+  MOCK_WO_ASSEMBLY_IN_PROGRESS,
+  MOCK_PE_ASSEMBLY_COMPLETED,
   type GuidedStep,
 } from './fixtures.js';
 
@@ -91,6 +95,11 @@ export class ScenarioEngine {
         title: 'Tutorial 06 – Work orders and finite-capacity scheduling',
         stepsCount: TUTORIAL_06_STEPS.length,
       },
+      {
+        id: 'tutorial-07',
+        title: 'Tutorial 07 – Shop-floor execution',
+        stepsCount: TUTORIAL_07_STEPS.length,
+      },
     ];
   }
 
@@ -101,6 +110,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-04') return TUTORIAL_04_STEPS;
     if (tutorialId === 'tutorial-05') return TUTORIAL_05_STEPS;
     if (tutorialId === 'tutorial-06') return TUTORIAL_06_STEPS;
+    if (tutorialId === 'tutorial-07') return TUTORIAL_07_STEPS;
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -111,6 +121,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-04') return this.executeTutorial04Step(stepId);
     if (tutorialId === 'tutorial-05') return this.executeTutorial05Step(stepId);
     if (tutorialId === 'tutorial-06') return this.executeTutorial06Step(stepId);
+    if (tutorialId === 'tutorial-07') return this.executeTutorial07Step(stepId);
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -125,6 +136,7 @@ export class ScenarioEngine {
         'ManufacturingOrder',
         'InventoryReservation',
         'WorkOrder',
+        'ProductionEvent',
       ]);
     }
 
@@ -198,6 +210,8 @@ export class ScenarioEngine {
       ? ' (inventory-service, orion-ld)'
       : tutorialId === 'tutorial-06'
       ? ' (scheduler-service, orion-ld)'
+      : tutorialId === 'tutorial-07'
+      ? ' (shopfloor-service, orion-ld)'
       : '';
     const summary = this.mode === 'mock'
       ? `Mock mode — all services considered healthy${serviceNote}`
@@ -284,6 +298,7 @@ export class ScenarioEngine {
         ...TUTORIAL_04_ENTITIES,
         ...TUTORIAL_05_ENTITIES,
         ...TUTORIAL_06_ENTITIES,
+        ...TUTORIAL_07_ENTITIES,
       ];
       entities = singleId
         ? mockPool.filter((e) => (e as { id: string }).id === singleId)
@@ -759,6 +774,215 @@ export class ScenarioEngine {
         durationMs,
       }],
       entities: TUTORIAL_05_ENTITIES,
+    };
+  }
+
+  // ── Tutorial 07 step handlers ──────────────────────────────────────────────
+
+  private async executeTutorial07Step(stepId: string): Promise<StepResult> {
+    const step = TUTORIAL_07_STEPS.find((s) => s.id === stepId);
+    if (!step) throw new Error(`Unknown step: ${stepId} in tutorial-07`);
+    switch (stepId) {
+      case 'check-shopfloor-service': return this.stepStackHealth(step, 'tutorial-07');
+      case 'seed-t07-data':           return this.stepSeedT07Data(step);
+      case 'start-work-order':        return this.stepStartWorkOrder(step);
+      case 'query-work-orders-t07':   return this.stepQueryWorkOrdersT07(step);
+      case 'complete-work-order':     return this.stepCompleteWorkOrder(step);
+      case 'query-production-events': return this.stepQueryEntities(step, 'ProductionEvent');
+      default: throw new Error(`No executor for step: ${stepId}`);
+    }
+  }
+
+  private async stepSeedT07Data(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 201;
+    let responseSummary = '28 entities upserted';
+
+    // T07 seed = T06 seed (25) + 3 WorkOrders (planned)
+    const t07SeedEntities = [
+      ...TUTORIAL_01_ENTITIES,
+      MOCK_IB_PUMP_CASING,
+      MOCK_IB_IMPELLER,
+      MOCK_LOT_240001,
+      ...TUTORIAL_03_ENTITIES,
+      MOCK_MO_CONFIRMED,
+      ...TUTORIAL_05_ENTITIES,
+      MOCK_WO_ASSEMBLY,
+      MOCK_WO_LEAK_TEST,
+      MOCK_WO_PACKAGING,
+    ];
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl, contextUrl } = this.ngsi as unknown as { orionUrl: string; contextUrl: string };
+        const withContext = t07SeedEntities.map((e) => ({ ...e, '@context': contextUrl }));
+        const res = await fetch(
+          `${orionUrl}/ngsi-ld/v1/entityOperations/upsert`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/ld+json' },
+            body: JSON.stringify(withContext),
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        responseStatus = res.status;
+        responseSummary = res.ok
+          ? `${t07SeedEntities.length} entities upserted`
+          : `Error: ${res.status}`;
+      } catch (err) {
+        responseStatus = 503;
+        responseSummary = err instanceof Error ? err.message : 'Broker unreachable';
+      }
+    }
+
+    const durationMs = Date.now() - t0;
+    const snapshot = { ...MOCK_SCENE, entities: t07SeedEntities };
+    this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(t07SeedEntities as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `${responseSummary} — T06 state: 25 entities + 3 WorkOrders (Assembly/LeakTest/Packaging: planned)`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `${t07SeedEntities.length} entities  •  application/ld+json`,
+        responseStatus,
+        responseSummary,
+        durationMs,
+      }],
+      entities: t07SeedEntities,
+    };
+  }
+
+  private async stepStartWorkOrder(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const woId = MOCK_WO_ASSEMBLY.id;
+    const mockActualStart = '2024-07-01T08:05:00Z';
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const sfUrl = orionUrl.replace(':1026', ':8085').replace('orion-ld', 'shopfloor-service');
+        const res = await fetch(`${sfUrl}/commands/start-work-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ work_order_id: woId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: 'urn:ngsi-ld:WorkCenter:WC-Assembly',
+      entityType: 'WorkCenter',
+      payload: { message: 'Assembly work order started — state: in_progress' },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(woId, {
+        state: { type: 'Property', value: 'in_progress' },
+        actualStart: { type: 'Property', value: mockActualStart },
+      });
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `Assembly WorkOrder started — state: planned → in_progress, actualStart: ${mockActualStart}`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ work_order_id: "${woId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", state: "in_progress", actual_start: "${mockActualStart}" }`,
+        durationMs,
+      }],
+      entities: [MOCK_WO_ASSEMBLY_IN_PROGRESS],
+    };
+  }
+
+  private async stepQueryWorkOrdersT07(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let entities: unknown[];
+    let responseStatus = 200;
+
+    if (this.mode === 'live') {
+      entities = await this.ngsi.queryEntities(['WorkOrder']);
+      if (entities.length === 0) responseStatus = 404;
+    } else {
+      // Show post-start state: Assembly=in_progress, others=planned
+      entities = [MOCK_WO_ASSEMBLY_IN_PROGRESS, MOCK_WO_LEAK_TEST, MOCK_WO_PACKAGING];
+    }
+
+    const durationMs = Date.now() - t0;
+    return {
+      stepId: step.id,
+      status: 'completed',
+      result: `3 WorkOrder entities — Assembly: in_progress · LeakTest: planned · Packaging: planned`,
+      apiTrace: [{ method: 'GET', url: step.hood.url, responseStatus, responseSummary: `${entities.length} entities`, durationMs }],
+      entities,
+    };
+  }
+
+  private async stepCompleteWorkOrder(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const woId = MOCK_WO_ASSEMBLY.id;
+    const mockActualEnd = '2024-07-01T18:05:00Z';
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const sfUrl = orionUrl.replace(':1026', ':8085').replace('orion-ld', 'shopfloor-service');
+        const res = await fetch(`${sfUrl}/commands/complete-work-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ work_order_id: woId, quantity_produced: 10 }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: 'urn:ngsi-ld:WorkCenter:WC-Assembly',
+      entityType: 'WorkCenter',
+      payload: { message: 'Assembly work order completed — ProductionEvent created' },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(woId, {
+        state:     { type: 'Property', value: 'completed' },
+        actualEnd: { type: 'Property', value: mockActualEnd },
+      });
+      this.mockStore.upsertMany([MOCK_PE_ASSEMBLY_COMPLETED as Record<string, unknown>]);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `Assembly WorkOrder completed — state: in_progress → completed, ProductionEvent created (10 EA produced)`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ work_order_id: "${woId}", quantity_produced: 10 }`,
+        responseStatus,
+        responseSummary: `{ status: "done", state: "completed", actual_end: "${mockActualEnd}" }`,
+        durationMs,
+      }],
+      entities: [MOCK_PE_ASSEMBLY_COMPLETED],
     };
   }
 

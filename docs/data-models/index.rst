@@ -102,6 +102,18 @@ Tutorial 06 — Work order entities
    * - :doc:`WorkOrder <work-order>`
      - One routing step in MO execution: operation, WorkCenter, planned dates, duration
 
+Tutorial 07 — Shop-floor execution entities
+--------------------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Entity type
+     - Description
+   * - :doc:`ProductionEvent <production-event>`
+     - Immutable audit record of a work-order-started or work-order-completed event
+
 ----
 
 .. toctree::
@@ -122,3 +134,4 @@ Tutorial 06 — Work order entities
    manufacturing-order
    inventory-reservation
    work-order
+   production-event

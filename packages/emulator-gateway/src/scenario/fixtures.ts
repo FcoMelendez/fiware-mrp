@@ -1177,3 +1177,139 @@ export const TUTORIAL_06_STEPS: GuidedStep[] = [
     actionLabel: 'Inspect work order',
   },
 ];
+
+// ── Tutorial 07 mock entities ──────────────────────────────────────────────────
+
+export const MOCK_WO_ASSEMBLY_IN_PROGRESS = {
+  ...MOCK_WO_ASSEMBLY,
+  state:       { type: 'Property', value: 'in_progress' },
+  actualStart: { type: 'Property', value: '2024-07-01T08:05:00Z' },
+};
+
+export const MOCK_PE_ASSEMBLY_COMPLETED = {
+  id: 'urn:ngsi-ld:ProductionEvent:PE-WO-MO-2024-001-Assembly-completed',
+  type: 'ProductionEvent',
+  eventType: { type: 'Property', value: 'work_order_completed' },
+  eventTime: { type: 'Property', value: '2024-07-01T18:05:00Z' },
+  quantity:  { type: 'Property', value: 10.0, unitCode: 'EA' },
+  workOrder:         { type: 'Relationship', object: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-001-Assembly' },
+  workCenter:        { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+  manufacturingOrder:{ type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  product:           { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+};
+
+export const TUTORIAL_07_ENTITIES = [MOCK_PE_ASSEMBLY_COMPLETED];
+
+// ── Tutorial 07 step definitions ───────────────────────────────────────────────
+
+export const TUTORIAL_07_STEPS: GuidedStep[] = [
+  {
+    id: 'check-shopfloor-service',
+    title: 'Verify shopfloor service',
+    shortDesc: 'Health-check the shopfloor-service (v0.7)',
+    desc: 'Tutorial 07 introduces the shopfloor-service, which drives work orders through their execution lifecycle. This step confirms the new service is running and reachable.',
+    hood: { method: 'GET', url: 'http://shopfloor-service:8085/health', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /health → shopfloor-service:8085',
+      'shopfloor-service verifies its own startup',
+      'Returns { status: ok, service: shopfloor-service, version: 0.7.0 }',
+    ],
+    actionLabel: 'Check health',
+  },
+  {
+    id: 'seed-t07-data',
+    title: 'Load T07 seed data',
+    shortDesc: 'Seed 28 entities: T06 context + 3 WorkOrders (planned)',
+    desc: 'Seeds Orion-LD with the full context for Tutorial 07: all T06 entities plus the 3 WorkOrder entities created by the scheduler in T06 — representing the completed T06 state, ready for shop-floor execution.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
+      body: '28 entities  •  application/ld+json',
+      expectedStatus: 201,
+    },
+    workflow: [
+      'Gateway attaches @context URL to all 28 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD (idempotent)',
+      'T06 state: 25 entities (T01–T05 + 4 IRs)',
+      'T06 result: 3 WorkOrders — Assembly, LeakTest, Packaging (all state: planned)',
+    ],
+    actionLabel: 'Seed entities',
+  },
+  {
+    id: 'start-work-order',
+    title: 'Start the Assembly work order',
+    shortDesc: 'POST /commands/start-work-order — planned → in_progress',
+    desc: 'The start-work-order command fetches the Assembly WorkOrder, validates state=planned, patches it to in_progress, sets actualStart, and creates a work_order_started ProductionEvent in Orion-LD.',
+    hood: {
+      method: 'POST',
+      url: 'http://shopfloor-service:8085/commands/start-work-order',
+      body: JSON.stringify({ work_order_id: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-001-Assembly' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/start-work-order { work_order_id } → shopfloor-service',
+      'shopfloor-service fetches WO → validates state=planned',
+      'PATCH /ngsi-ld/v1/entities/{id}/attrs → state: in_progress, actualStart: <now>',
+      'POST /ngsi-ld/v1/entities → ProductionEvent (eventType: work_order_started)',
+    ],
+    actionLabel: 'Start work order',
+  },
+  {
+    id: 'query-work-orders-t07',
+    title: 'Query work orders',
+    shortDesc: 'GET /work-orders — see Assembly=in_progress',
+    desc: 'After starting the Assembly work order, query all WorkOrders to see the state transition. Assembly is now in_progress; LeakTest and Packaging remain planned.',
+    hood: {
+      method: 'GET',
+      url: 'http://scheduler-service:8084/work-orders',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /work-orders → scheduler-service:8084',
+      'scheduler-service → GET /ngsi-ld/v1/entities?type=WorkOrder → Orion-LD',
+      '3 work orders returned',
+      'Assembly: state=in_progress, actualStart set · LeakTest/Packaging: state=planned',
+    ],
+    actionLabel: 'Query work orders',
+  },
+  {
+    id: 'complete-work-order',
+    title: 'Complete the Assembly work order',
+    shortDesc: 'POST /commands/complete-work-order — in_progress → completed + ProductionEvent',
+    desc: 'The complete-work-order command transitions the Assembly WorkOrder to completed, sets actualEnd, and creates a work_order_completed ProductionEvent with the actual quantity produced.',
+    hood: {
+      method: 'POST',
+      url: 'http://shopfloor-service:8085/commands/complete-work-order',
+      body: JSON.stringify({
+        work_order_id: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-001-Assembly',
+        quantity_produced: 10,
+      }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/complete-work-order { work_order_id, quantity_produced } → shopfloor-service',
+      'shopfloor-service fetches WO → validates state=in_progress',
+      'PATCH /ngsi-ld/v1/entities/{id}/attrs → state: completed, actualEnd: <now>',
+      'POST /ngsi-ld/v1/entities → ProductionEvent (eventType: work_order_completed, quantity: 10 EA)',
+    ],
+    actionLabel: 'Complete work order',
+  },
+  {
+    id: 'query-production-events',
+    title: 'Query production events',
+    shortDesc: 'GET /production-events — inspect the work_order_completed ProductionEvent',
+    desc: 'After completing the Assembly work order, one ProductionEvent entity exists in the broker capturing the completion: eventType, eventTime, quantity produced, and Relationships to the WorkOrder, WorkCenter, ManufacturingOrder, and Product.',
+    hood: {
+      method: 'GET',
+      url: 'http://shopfloor-service:8085/production-events',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /production-events → shopfloor-service:8085',
+      'shopfloor-service → GET /ngsi-ld/v1/entities?type=ProductionEvent → Orion-LD',
+      '1 ProductionEvent returned: eventType=work_order_completed, quantity=10 EA',
+      'Relationships: workOrder → WO-Assembly · workCenter → WC-Assembly · manufacturingOrder → MO-2024-001',
+    ],
+    actionLabel: 'Query production events',
+  },
+];

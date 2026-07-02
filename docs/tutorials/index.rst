@@ -32,7 +32,7 @@ self-contained: reset, seed, execute, assert and stop.
      - :doc:`06-work-orders`
      - Work orders and finite-capacity scheduling
    * - v0.7
-     - Tutorial 07 *(coming soon)*
+     - :doc:`07-shop-floor`
      - Shop-floor execution
    * - v0.8
      - Tutorial 08 *(coming soon)*
@@ -59,3 +59,4 @@ self-contained: reset, seed, execute, assert and stop.
    tutorial_04
    05-reservations
    06-work-orders
+   07-shop-floor

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dataModel.MRP/ProductionEvent/schema.json",
+  "title": "ProductionEvent",
+  "description": "Immutable record of a shop-floor execution event — work order started or completed.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:ngsi-ld:ProductionEvent:.+$",
+          "description": "NGSI-LD entity URN"
+        },
+        "type": {
+          "type": "string",
+          "const": "ProductionEvent"
+        },
+        "eventType": {
+          "type": "object",
+          "description": "Kind of shop-floor event",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "enum": ["work_order_started", "work_order_completed"] }
+          },
+          "required": ["type", "value"]
+        },
+        "eventTime": {
+          "type": "object",
+          "description": "ISO-8601 timestamp when the event occurred",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "quantity": {
+          "type": "object",
+          "description": "Quantity produced (work_order_completed events only)",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "exclusiveMinimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "workOrder": {
+          "type": "object",
+          "description": "WorkOrder that generated this event",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:WorkOrder:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "workCenter": {
+          "type": "object",
+          "description": "WorkCenter where the event occurred",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:WorkCenter:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "manufacturingOrder": {
+          "type": "object",
+          "description": "Parent ManufacturingOrder",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:ManufacturingOrder:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "product": {
+          "type": "object",
+          "description": "Product being manufactured",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:Product:.+$" }
+          },
+          "required": ["type", "object"]
+        }
+      },
+      "required": ["id", "type", "eventType", "eventTime", "workOrder"]
+    }
+  ],
+  "examples": [
+    {
+      "id": "urn:ngsi-ld:ProductionEvent:PE-WO-MO-2024-001-Assembly-completed",
+      "type": "ProductionEvent",
+      "eventType": { "type": "Property", "value": "work_order_completed" },
+      "eventTime":  { "type": "Property", "value": "2024-07-01T18:05:00Z" },
+      "quantity":   { "type": "Property", "value": 10.0, "unitCode": "EA" },
+      "workOrder":          { "type": "Relationship", "object": "urn:ngsi-ld:WorkOrder:WO-MO-2024-001-Assembly" },
+      "workCenter":         { "type": "Relationship", "object": "urn:ngsi-ld:WorkCenter:WC-Assembly" },
+      "manufacturingOrder": { "type": "Relationship", "object": "urn:ngsi-ld:ManufacturingOrder:MO-2024-001" },
+      "product":            { "type": "Relationship", "object": "urn:ngsi-ld:Product:HydraulicPump-P100" }
+    }
+  ]
+}

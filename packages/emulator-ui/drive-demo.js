@@ -20,10 +20,10 @@ async function shot(page, name) {
   await page.waitForTimeout(2000);
   await shot(page, '01-initial.png');
 
-  console.log('Switching to Tutorial 06…');
-  await page.selectOption('#tutorial-selector', 'tutorial-06');
+  console.log('Switching to Tutorial 07…');
+  await page.selectOption('#tutorial-selector', 'tutorial-07');
   await page.waitForTimeout(1000);
-  await shot(page, '02-t06-loaded.png');
+  await shot(page, '02-t07-loaded.png');
 
   const totalSteps = 6;
   for (let i = 0; i < totalSteps; i++) {
