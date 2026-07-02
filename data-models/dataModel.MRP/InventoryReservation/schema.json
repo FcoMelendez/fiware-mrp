@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fiware-mrp.io/dataModel.MRP/InventoryReservation/schema.json",
+  "title": "InventoryReservation",
+  "description": "Records the outcome of a component availability check against a confirmed ManufacturingOrder. One reservation is created per BillOfMaterialsLine.",
+  "type": "object",
+  "required": ["id", "type", "reservationCode", "requiredQuantity", "reservedQuantity", "shortageQuantity", "state", "reservedAt", "manufacturingOrder", "product", "stockLocation"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^urn:ngsi-ld:InventoryReservation:.+$",
+      "description": "NGSI-LD entity identifier"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["InventoryReservation"]
+    },
+    "reservationCode": {
+      "type": "object",
+      "description": "Human-readable reservation code (e.g. IR-MO-2024-001-PumpCasing)",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string" }
+      },
+      "required": ["type", "value"]
+    },
+    "requiredQuantity": {
+      "type": "object",
+      "description": "Total quantity the manufacturing order requires for this component",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "number", "minimum": 0 },
+        "unitCode": { "type": "string" }
+      },
+      "required": ["type", "value"]
+    },
+    "reservedQuantity": {
+      "type": "object",
+      "description": "Quantity locked from available stock (0 ≤ reservedQuantity ≤ requiredQuantity)",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "number", "minimum": 0 },
+        "unitCode": { "type": "string" }
+      },
+      "required": ["type", "value"]
+    },
+    "shortageQuantity": {
+      "type": "object",
+      "description": "Quantity that must be sourced before production can start (requiredQuantity − reservedQuantity)",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "number", "minimum": 0 },
+        "unitCode": { "type": "string" }
+      },
+      "required": ["type", "value"]
+    },
+    "state": {
+      "type": "object",
+      "description": "Reservation outcome: reserved (fully covered), partial (partly covered), shortage (no stock)",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string", "enum": ["reserved", "partial", "shortage"] }
+      },
+      "required": ["type", "value"]
+    },
+    "reservedAt": {
+      "type": "object",
+      "description": "ISO 8601 timestamp when the reservation was created",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "value"]
+    },
+    "manufacturingOrder": {
+      "type": "object",
+      "description": "Relationship to the ManufacturingOrder that triggered this reservation",
+      "properties": {
+        "type": { "type": "string", "enum": ["Relationship"] },
+        "object": { "type": "string", "pattern": "^urn:ngsi-ld:ManufacturingOrder:.+$" }
+      },
+      "required": ["type", "object"]
+    },
+    "product": {
+      "type": "object",
+      "description": "Relationship to the component Product being reserved",
+      "properties": {
+        "type": { "type": "string", "enum": ["Relationship"] },
+        "object": { "type": "string", "pattern": "^urn:ngsi-ld:Product:.+$" }
+      },
+      "required": ["type", "object"]
+    },
+    "stockLocation": {
+      "type": "object",
+      "description": "Relationship to the StockLocation from which stock was drawn",
+      "properties": {
+        "type": { "type": "string", "enum": ["Relationship"] },
+        "object": { "type": "string", "pattern": "^urn:ngsi-ld:StockLocation:.+$" }
+      },
+      "required": ["type", "object"]
+    },
+    "inventoryBalance": {
+      "type": "object",
+      "description": "Relationship to the InventoryBalance that was decremented (absent when no stock exists)",
+      "properties": {
+        "type": { "type": "string", "enum": ["Relationship"] },
+        "object": { "type": "string", "pattern": "^urn:ngsi-ld:InventoryBalance:.+$" }
+      },
+      "required": ["type", "object"]
+    }
+  }
+}

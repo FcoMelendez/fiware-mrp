@@ -1,6 +1,6 @@
 """
-Inventory Service — Tutorial 02 addition to the FIWARE MRP stack.
-Implements receive-material command and inventory balance queries over NGSI-LD.
+Inventory Service — Tutorial 02/05 addition to the FIWARE MRP stack.
+Implements receive-material, reserve-components commands and inventory queries over NGSI-LD.
 """
 import os
 import random
@@ -15,8 +15,8 @@ from pydantic import BaseModel
 
 app = FastAPI(
     title="FIWARE MRP Inventory Service",
-    version="0.2.0",
-    description="Inventory balance and stock move commands on NGSI-LD",
+    version="0.5.0",
+    description="Inventory balance, stock move, and component reservation commands on NGSI-LD",
 )
 
 ORION_URL = os.getenv("ORION_URL", "http://orion-ld:1026")
@@ -57,12 +57,12 @@ class ReceiveMaterialRequest(BaseModel):
 
 @app.get("/health", tags=["system"])
 def health() -> dict:
-    return {"status": "ok", "service": "inventory-service", "version": "0.2.0"}
+    return {"status": "ok", "service": "inventory-service", "version": "0.5.0"}
 
 
 @app.get("/", include_in_schema=False)
 def index() -> JSONResponse:
-    return JSONResponse({"service": "fiware-mrp-inventory", "version": "0.2.0", "docs": "/docs"})
+    return JSONResponse({"service": "fiware-mrp-inventory", "version": "0.5.0", "docs": "/docs"})
 
 
 @app.post("/commands/receive-material", tags=["commands"])
@@ -99,6 +99,212 @@ async def receive_material(body: ReceiveMaterialRequest) -> dict:
     if lot_id:
         result["lot_id"] = lot_id
     return result
+
+
+class ReserveComponentsRequest(BaseModel):
+    order_id: str
+    location_id: str = "urn:ngsi-ld:StockLocation:WH-STOCK"
+
+
+@app.post("/commands/reserve-components", tags=["commands"])
+async def reserve_components(body: ReserveComponentsRequest) -> dict:
+    """
+    Reserve components for a confirmed ManufacturingOrder.
+
+    Fetches the order → its BOM → all BOM lines → current InventoryBalance per component.
+    For each component:
+      - available >= required  → state=reserved, reservedQuantity=required, shortageQuantity=0
+      - 0 < available < required → state=partial
+      - available == 0           → state=shortage
+    Creates one InventoryReservation entity per BOM line and patches the corresponding
+    InventoryBalance (reservedQuantity +=, availableQuantity -=).
+    """
+    async with httpx.AsyncClient() as client:
+        # 1. Fetch the ManufacturingOrder
+        r = await client.get(
+            f"{ORION_URL}/ngsi-ld/v1/entities/{body.order_id}",
+            headers=HEADERS_READ,
+            timeout=10,
+        )
+        if r.status_code != 200:
+            raise HTTPException(status_code=404, detail=f"Order not found: {body.order_id}")
+        order = r.json()
+
+        order_state = _extract_str(order, "state")
+        if order_state != "confirmed":
+            raise HTTPException(
+                status_code=409,
+                detail=f"Order must be in state=confirmed, current state={order_state}",
+            )
+
+        bom_id = _rel_obj(order, "bom")
+        if not bom_id:
+            raise HTTPException(status_code=422, detail="Order has no bom Relationship")
+
+        # 2. Fetch all BOM lines for this BOM
+        r = await client.get(
+            f"{ORION_URL}/ngsi-ld/v1/entities",
+            params={"type": f"{MRP_NS}BillOfMaterialsLine"},
+            headers=HEADERS_READ,
+            timeout=10,
+        )
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail="Failed to query BOM lines")
+        all_lines = r.json() if isinstance(r.json(), list) else []
+        bom_lines = [ln for ln in all_lines if _rel_obj(ln, "bom") == bom_id]
+
+        if not bom_lines:
+            raise HTTPException(status_code=404, detail=f"No BOM lines found for {bom_id}")
+
+        order_qty_raw = None
+        for k, v in order.items():
+            if k == "quantity" or k.endswith("#quantity"):
+                if isinstance(v, dict):
+                    order_qty_raw = v.get("value")
+                break
+        order_qty = float(order_qty_raw or 1)
+
+        # 3. Fetch all InventoryBalance entities (filter by location in-process)
+        r = await client.get(
+            f"{ORION_URL}/ngsi-ld/v1/entities",
+            params={"type": f"{MRP_NS}InventoryBalance"},
+            headers=HEADERS_READ,
+            timeout=10,
+        )
+        balances = r.json() if r.status_code == 200 and isinstance(r.json(), list) else []
+        balance_by_product: dict = {}
+        for bal in balances:
+            prod_id = _rel_obj(bal, "product")
+            loc_id = _rel_obj(bal, "location")
+            if prod_id and loc_id == body.location_id:
+                balance_by_product[prod_id] = bal
+
+        # 4. Create reservations
+        reservations = []
+        now = _now_iso()
+        order_code = body.order_id.split(":")[-1]
+
+        for line in bom_lines:
+            component_id = _rel_obj(line, "component")
+            if not component_id:
+                continue
+            component_code = component_id.split(":")[-1]
+            line_qty = _extract_qty(line, "quantity")
+            required_qty = line_qty * order_qty
+
+            bal = balance_by_product.get(component_id)
+            available = _extract_qty(bal, "availableQuantity") if bal else 0.0
+            bal_id = bal.get("id") if bal else None
+
+            reserved_qty = min(available, required_qty)
+            shortage_qty = max(0.0, required_qty - available)
+
+            if shortage_qty == 0:
+                state = "reserved"
+            elif reserved_qty == 0:
+                state = "shortage"
+            else:
+                state = "partial"
+
+            ir_id = f"urn:ngsi-ld:InventoryReservation:IR-{order_code}-{component_code}"
+            ir_entity: dict = {
+                "id": ir_id,
+                "type": "InventoryReservation",
+                "reservationCode": {"type": "Property", "value": f"IR-{order_code}-{component_code}"},
+                "requiredQuantity": {"type": "Property", "value": required_qty, "unitCode": "EA"},
+                "reservedQuantity": {"type": "Property", "value": reserved_qty, "unitCode": "EA"},
+                "shortageQuantity": {"type": "Property", "value": shortage_qty, "unitCode": "EA"},
+                "state": {"type": "Property", "value": state},
+                "reservedAt": {"type": "Property", "value": now},
+                "manufacturingOrder": {"type": "Relationship", "object": body.order_id},
+                "product": {"type": "Relationship", "object": component_id},
+                "stockLocation": {"type": "Relationship", "object": body.location_id},
+                "@context": CONTEXT_URL,
+            }
+            if bal_id:
+                ir_entity["inventoryBalance"] = {"type": "Relationship", "object": bal_id}
+
+            r2 = await client.post(
+                f"{ORION_URL}/ngsi-ld/v1/entityOperations/upsert",
+                json=[ir_entity],
+                headers=HEADERS_WRITE,
+                timeout=10,
+            )
+            if r2.status_code not in (201, 204):
+                raise HTTPException(status_code=502, detail=f"Failed to create InventoryReservation: {r2.text}")
+
+            # Patch the InventoryBalance
+            if bal_id and reserved_qty > 0:
+                current_reserved = _extract_qty(bal, "reservedQuantity")
+                new_reserved = current_reserved + reserved_qty
+                new_available = max(0.0, available - reserved_qty)
+                patch = {
+                    "reservedQuantity": {"type": "Property", "value": new_reserved, "unitCode": "EA"},
+                    "availableQuantity": {"type": "Property", "value": new_available, "unitCode": "EA"},
+                    "@context": CONTEXT_URL,
+                }
+                await client.patch(
+                    f"{ORION_URL}/ngsi-ld/v1/entities/{bal_id}/attrs",
+                    json=patch,
+                    headers=HEADERS_WRITE,
+                    timeout=10,
+                )
+
+            reservations.append({
+                "reservation_id": ir_id,
+                "component_id": component_id,
+                "required_quantity": required_qty,
+                "reserved_quantity": reserved_qty,
+                "shortage_quantity": shortage_qty,
+                "state": state,
+            })
+
+    reserved_count = sum(1 for r2 in reservations if r2["state"] == "reserved")
+    partial_count = sum(1 for r2 in reservations if r2["state"] == "partial")
+    shortage_count = sum(1 for r2 in reservations if r2["state"] == "shortage")
+
+    return {
+        "status": "done",
+        "order_id": body.order_id,
+        "reservations_created": len(reservations),
+        "summary": {
+            "reserved": reserved_count,
+            "partial": partial_count,
+            "shortage": shortage_count,
+        },
+        "reservations": reservations,
+    }
+
+
+@app.get("/inventory-reservations", tags=["query"])
+async def query_reservations(
+    order_id: Optional[str] = Query(None, description="Filter by ManufacturingOrder URN"),
+    state: Optional[str] = Query(None, description="Filter by state (reserved/partial/shortage)"),
+) -> list:
+    """
+    List InventoryReservation entities. All filters are optional and cumulative.
+    """
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{ORION_URL}/ngsi-ld/v1/entities",
+            params={"type": f"{MRP_NS}InventoryReservation"},
+            headers=HEADERS_READ,
+            timeout=10,
+        )
+
+    if r.status_code != 200:
+        return []
+
+    entities = r.json()
+    if not isinstance(entities, list):
+        return []
+
+    if order_id:
+        entities = [e for e in entities if _rel_obj(e, "manufacturingOrder") == order_id]
+    if state:
+        entities = [e for e in entities if _extract_str(e, "state") == state]
+
+    return entities
 
 
 @app.get("/inventory", tags=["query"])
@@ -261,6 +467,15 @@ async def _update_balance(
     if r2.status_code not in (201, 204):
         raise HTTPException(status_code=502, detail=f"Failed to create InventoryBalance: {r2.text}")
     return new_qty
+
+
+def _extract_str(entity: dict, attr: str) -> Optional[str]:
+    for k, v in entity.items():
+        if k == attr or k.endswith(f"#{attr}"):
+            if isinstance(v, dict):
+                return v.get("value")
+            return str(v) if v else None
+    return None
 
 
 def _extract_qty(entity: dict, attr: str) -> float:

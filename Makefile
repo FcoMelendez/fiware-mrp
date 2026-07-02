@@ -3,6 +3,7 @@
         demo-02 test-02 \
         test-03 \
         test-04 \
+        test-05 \
         test-all \
         start-emulator start-mock stop-emulator \
         install-emulator \
@@ -87,7 +88,11 @@ test-04:
 	@echo "=== Running Tutorial 04 tests ==="
 	@bash tutorials/04-manufacturing-order/tests/test-04.sh
 
-test-all: test-01 test-02 test-03 test-04
+test-05:
+	@echo "=== Running Tutorial 05 tests ==="
+	@bash tutorials/05-component-reservation/tests/test-05.sh
+
+test-all: test-01 test-02 test-03 test-04 test-05
 	@echo "=== All tests passed ==="
 
 # ── Quality gates ─────────────────────────────────────────────────────────────
@@ -136,6 +141,7 @@ help:
 	@echo "  make test-02      Run Tutorial 02 automated assertions"
 	@echo "  make test-03      Run Tutorial 03 automated assertions"
 	@echo "  make test-04      Run Tutorial 04 automated assertions"
+	@echo "  make test-05      Run Tutorial 05 automated assertions"
 	@echo "  make test-all     Run all tutorial tests"
 	@echo "  make start-emulator  Start full stack + Phaser emulator (http://localhost:5173)"
 	@echo "  make start-mock      Start emulator in mock mode (no MRP backend needed)"

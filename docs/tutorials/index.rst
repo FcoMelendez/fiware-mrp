@@ -26,7 +26,7 @@ self-contained: reset, seed, execute, assert and stop.
      - :doc:`tutorial_04`
      - Manufacturing order confirmation
    * - v0.5
-     - Tutorial 05 *(coming soon)*
+     - :doc:`05-reservations`
      - Component reservations and shortages
    * - v0.6
      - Tutorial 06 *(coming soon)*
@@ -57,3 +57,4 @@ self-contained: reset, seed, execute, assert and stop.
    02-inventory
    03-bom
    tutorial_04
+   05-reservations

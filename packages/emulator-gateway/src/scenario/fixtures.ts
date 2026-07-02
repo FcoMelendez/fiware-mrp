@@ -827,3 +827,187 @@ export const TUTORIAL_04_STEPS: GuidedStep[] = [
 ];
 
 export const TUTORIAL_04_STEP_IDS = TUTORIAL_04_STEPS.map((s) => s.id);
+
+// ── Tutorial 05 mock entities ──────────────────────────────────────────────────
+
+export const MOCK_IR_PUMP_CASING = {
+  id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-PumpCasing',
+  type: 'InventoryReservation',
+  reservationCode: { type: 'Property', value: 'IR-MO-2024-001-PumpCasing' },
+  requiredQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  reservedQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  shortageQuantity: { type: 'Property', value: 0, unitCode: 'EA' },
+  state: { type: 'Property', value: 'reserved' },
+  reservedAt: { type: 'Property', value: '2024-07-01T07:50:00Z' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:PumpCasing' },
+  stockLocation: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+  inventoryBalance: { type: 'Relationship', object: 'urn:ngsi-ld:InventoryBalance:IB-PumpCasing-WH-STOCK' },
+};
+
+export const MOCK_IR_IMPELLER = {
+  id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-Impeller',
+  type: 'InventoryReservation',
+  reservationCode: { type: 'Property', value: 'IR-MO-2024-001-Impeller' },
+  requiredQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  reservedQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  shortageQuantity: { type: 'Property', value: 0, unitCode: 'EA' },
+  state: { type: 'Property', value: 'reserved' },
+  reservedAt: { type: 'Property', value: '2024-07-01T07:50:00Z' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:Impeller' },
+  stockLocation: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+  inventoryBalance: { type: 'Relationship', object: 'urn:ngsi-ld:InventoryBalance:IB-Impeller-WH-STOCK-LOT-240001' },
+};
+
+export const MOCK_IR_ELECTRIC_MOTOR = {
+  id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-ElectricMotor',
+  type: 'InventoryReservation',
+  reservationCode: { type: 'Property', value: 'IR-MO-2024-001-ElectricMotor' },
+  requiredQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  reservedQuantity: { type: 'Property', value: 0, unitCode: 'EA' },
+  shortageQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  state: { type: 'Property', value: 'shortage' },
+  reservedAt: { type: 'Property', value: '2024-07-01T07:50:00Z' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:ElectricMotor' },
+  stockLocation: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+};
+
+export const MOCK_IR_SEAL_KIT = {
+  id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-SealKit',
+  type: 'InventoryReservation',
+  reservationCode: { type: 'Property', value: 'IR-MO-2024-001-SealKit' },
+  requiredQuantity: { type: 'Property', value: 20, unitCode: 'EA' },
+  reservedQuantity: { type: 'Property', value: 0, unitCode: 'EA' },
+  shortageQuantity: { type: 'Property', value: 20, unitCode: 'EA' },
+  state: { type: 'Property', value: 'shortage' },
+  reservedAt: { type: 'Property', value: '2024-07-01T07:50:00Z' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:SealKit' },
+  stockLocation: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+};
+
+export const TUTORIAL_05_ENTITIES = [
+  MOCK_IR_PUMP_CASING,
+  MOCK_IR_IMPELLER,
+  MOCK_IR_ELECTRIC_MOTOR,
+  MOCK_IR_SEAL_KIT,
+];
+
+// ── Tutorial 05 step definitions ───────────────────────────────────────────────
+
+export const TUTORIAL_05_STEPS: GuidedStep[] = [
+  {
+    id: 'check-inventory-service-t05',
+    title: 'Verify inventory service',
+    shortDesc: 'Health-check the inventory-service (v0.5)',
+    desc: 'Tutorial 05 extends the inventory-service with a new reserve-components command. This step confirms the updated service is running.',
+    hood: { method: 'GET', url: 'http://inventory-service:8081/health', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /health → inventory-service:8081',
+      'inventory-service verifies its connection to Orion-LD internally',
+      'Returns { status: ok, service: inventory-service, version: 0.5.0 }',
+    ],
+    actionLabel: 'Check health',
+  },
+  {
+    id: 'seed-t05-data',
+    title: 'Load T05 seed data',
+    shortDesc: 'Seed 24 entities: T01 + T02 inventory + T03 BoM + T04 confirmed MO',
+    desc: 'Seeds Orion-LD with the full context for Tutorial 05: 12 master-data entities, 2 InventoryBalance entities (PumpCasing×50, Impeller×30), 5 BoM entities, and ManufacturingOrder MO-2024-001 in confirmed state.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
+      body: '24 entities  •  application/ld+json',
+      expectedStatus: 201,
+    },
+    workflow: [
+      'Gateway attaches @context URL to all 24 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD (idempotent)',
+      'Orion-LD stores 12 T01 master-data + 2 T02 InventoryBalance + 5 T03 BoM + 1 T04 MO (confirmed)',
+      'PumpCasing: 50 EA on hand · Impeller: 30 EA on hand · ElectricMotor/SealKit: 0 EA',
+    ],
+    actionLabel: 'Seed entities',
+  },
+  {
+    id: 'query-inventory-t05',
+    title: 'Query inventory balances',
+    shortDesc: 'GET /inventory — see current stock before reservation',
+    desc: 'Before running the reserve-components command, inspect the current inventory. PumpCasing and Impeller have stock; ElectricMotor and SealKit have none. This sets up the shortage scenario.',
+    hood: {
+      method: 'GET',
+      url: 'http://inventory-service:8081/inventory',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /inventory → inventory-service:8081',
+      'inventory-service → GET /ngsi-ld/v1/entities?type=InventoryBalance → Orion-LD',
+      '2 balances returned: PumpCasing (50 EA) · Impeller (30 EA, lot LOT-240001)',
+      'ElectricMotor and SealKit have no InventoryBalance — they will generate shortages',
+    ],
+    actionLabel: 'Query inventory',
+  },
+  {
+    id: 'reserve-components',
+    title: 'Reserve components',
+    shortDesc: 'POST /commands/reserve-components — check stock and lock quantities',
+    desc: 'The reserve-components command reads the confirmed ManufacturingOrder, expands its BoM, checks InventoryBalance for each component, and creates one InventoryReservation per BOM line. Components with stock are reserved; those without generate a shortage.',
+    hood: {
+      method: 'POST',
+      url: 'http://inventory-service:8081/commands/reserve-components',
+      body: JSON.stringify({
+        order_id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001',
+        location_id: 'urn:ngsi-ld:StockLocation:WH-STOCK',
+      }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/reserve-components { order_id, location_id } → inventory-service',
+      'inventory-service fetches MO → bom_id → all BillOfMaterialsLine for that BOM',
+      'For each line: queries InventoryBalance, computes reserved vs shortage quantities',
+      'Creates InventoryReservation entities: PumpCasing=reserved · Impeller=reserved · ElectricMotor=shortage · SealKit=shortage',
+      'Patches InventoryBalance.reservedQuantity += · availableQuantity -= for components with stock',
+    ],
+    actionLabel: 'Reserve components',
+  },
+  {
+    id: 'query-reservations',
+    title: 'Query reservations',
+    shortDesc: 'GET /inventory-reservations — inspect 4 InventoryReservation entities',
+    desc: 'After the reserve-components command, 4 InventoryReservation entities exist in the broker — one per BOM line. Each carries state, requiredQuantity, reservedQuantity, and shortageQuantity. The shortage lines flag that purchasing or production adjustments are needed.',
+    hood: {
+      method: 'GET',
+      url: 'http://inventory-service:8081/inventory-reservations',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /inventory-reservations → inventory-service:8081',
+      'inventory-service → GET /ngsi-ld/v1/entities?type=InventoryReservation → Orion-LD',
+      '4 reservations returned (one per BOM line)',
+      'PumpCasing: state=reserved, reserved=10 · Impeller: state=reserved, reserved=10',
+      'ElectricMotor: state=shortage, shortage=10 · SealKit: state=shortage, shortage=20',
+    ],
+    actionLabel: 'Query reservations',
+  },
+  {
+    id: 'inspect-reservation',
+    title: 'Inspect a reservation entity',
+    shortDesc: 'Fetch an InventoryReservation directly from the broker',
+    desc: 'Fetch one InventoryReservation entity directly from Orion-LD to see all NGSI-LD attributes: the manufacturingOrder, product, stockLocation, and inventoryBalance Relationships, plus the shortage quantities that drive purchasing actions.',
+    hood: {
+      method: 'GET',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entities/urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-ElectricMotor',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'GET /ngsi-ld/v1/entities/urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-ElectricMotor with Link: <context>',
+      'Orion-LD returns compacted JSON-LD (short keys via @context)',
+      'state: shortage · requiredQuantity: 10 EA · reservedQuantity: 0 EA · shortageQuantity: 10 EA',
+      'manufacturingOrder → MO-2024-001 · product → ElectricMotor (Relationships)',
+    ],
+    actionLabel: 'Inspect reservation',
+  },
+];
+
+export const TUTORIAL_05_STEP_IDS = TUTORIAL_05_STEPS.map((s) => s.id);

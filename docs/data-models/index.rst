@@ -66,6 +66,30 @@ Tutorial 03 — Bill of Materials entities
    * - :doc:`BillOfMaterialsLine <bill-of-materials-line>`
      - One component line: quantity, scrapFactor, and component Relationship
 
+Tutorial 04 — Manufacturing order entities
+-------------------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Entity type
+     - Description
+   * - :doc:`ManufacturingOrder <manufacturing-order>`
+     - Production order header with quantity, state, and BoM Relationship
+
+Tutorial 05 — Component reservation entities
+---------------------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Entity type
+     - Description
+   * - :doc:`InventoryReservation <inventory-reservation>`
+     - Stock commitment per BOM line: required, reserved, and shortage quantities
+
 ----
 
 .. toctree::
@@ -83,3 +107,5 @@ Tutorial 03 — Bill of Materials entities
    lot
    bill-of-materials
    bill-of-materials-line
+   manufacturing-order
+   inventory-reservation

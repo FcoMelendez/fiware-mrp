@@ -16,6 +16,8 @@ import {
   TUTORIAL_03_STEPS,
   TUTORIAL_04_ENTITIES,
   TUTORIAL_04_STEPS,
+  TUTORIAL_05_ENTITIES,
+  TUTORIAL_05_STEPS,
   type GuidedStep,
 } from './fixtures.js';
 
@@ -74,6 +76,11 @@ export class ScenarioEngine {
         title: 'Tutorial 04 – Manufacturing order confirmation',
         stepsCount: TUTORIAL_04_STEPS.length,
       },
+      {
+        id: 'tutorial-05',
+        title: 'Tutorial 05 – Component reservations and shortages',
+        stepsCount: TUTORIAL_05_STEPS.length,
+      },
     ];
   }
 
@@ -82,6 +89,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-02') return TUTORIAL_02_STEPS;
     if (tutorialId === 'tutorial-03') return TUTORIAL_03_STEPS;
     if (tutorialId === 'tutorial-04') return TUTORIAL_04_STEPS;
+    if (tutorialId === 'tutorial-05') return TUTORIAL_05_STEPS;
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -90,6 +98,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-02') return this.executeTutorial02Step(stepId);
     if (tutorialId === 'tutorial-03') return this.executeTutorial03Step(stepId);
     if (tutorialId === 'tutorial-04') return this.executeTutorial04Step(stepId);
+    if (tutorialId === 'tutorial-05') return this.executeTutorial05Step(stepId);
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -102,6 +111,7 @@ export class ScenarioEngine {
         'InventoryBalance', 'StockMove', 'Lot',
         'BillOfMaterials', 'BillOfMaterialsLine',
         'ManufacturingOrder',
+        'InventoryReservation',
       ]);
     }
 
@@ -171,9 +181,9 @@ export class ScenarioEngine {
     }
     const durationMs = Date.now() - t0;
 
-    const isT02 = tutorialId === 'tutorial-02';
+    const usesInventory = tutorialId === 'tutorial-02' || tutorialId === 'tutorial-05';
     const summary = this.mode === 'mock'
-      ? `Mock mode — all services considered healthy${isT02 ? ' (inventory-service, orion-ld)' : ''}`
+      ? `Mock mode — all services considered healthy${usesInventory ? ' (inventory-service, orion-ld)' : ''}`
       : brokerOk ? 'All services healthy' : 'Broker unreachable';
 
     return {
@@ -255,6 +265,7 @@ export class ScenarioEngine {
         MOCK_IB_PUMP_CASING, MOCK_IB_IMPELLER, MOCK_LOT_240001,
         ...TUTORIAL_03_ENTITIES,
         ...TUTORIAL_04_ENTITIES,
+        ...TUTORIAL_05_ENTITIES,
       ];
       entities = singleId
         ? mockPool.filter((e) => (e as { id: string }).id === singleId)
@@ -586,6 +597,150 @@ export class ScenarioEngine {
       result: `${entities.length} ManufacturingOrder entit${entities.length === 1 ? 'y' : 'ies'} with state=${state}`,
       apiTrace: [{ method: 'GET', url: step.hood.url, responseStatus, responseSummary: `${entities.length} orders`, durationMs }],
       entities,
+    };
+  }
+
+  // ── Tutorial 05 step handlers ──────────────────────────────────────────────
+
+  private async executeTutorial05Step(stepId: string): Promise<StepResult> {
+    const step = TUTORIAL_05_STEPS.find((s) => s.id === stepId);
+    if (!step) throw new Error(`Unknown step: ${stepId} in tutorial-05`);
+    switch (stepId) {
+      case 'check-inventory-service-t05': return this.stepStackHealth(step, 'tutorial-05');
+      case 'seed-t05-data':              return this.stepSeedT05Data(step);
+      case 'query-inventory-t05':        return this.stepQueryEntities(step, 'InventoryBalance');
+      case 'reserve-components':         return this.stepReserveComponents(step);
+      case 'query-reservations':         return this.stepQueryEntities(step, 'InventoryReservation');
+      case 'inspect-reservation':        return this.stepQueryEntities(
+        step, 'InventoryReservation',
+        'urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-ElectricMotor',
+      );
+      default: throw new Error(`No executor for step: ${stepId}`);
+    }
+  }
+
+  private async stepSeedT05Data(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 201;
+    let responseSummary = '24 entities upserted';
+
+    // T05 seed: T01 (12) + T02 IBs (2) + T03 BoM (5) + T04 MO confirmed (1) + Lot (1) = 21 (+Lot=22 but
+    // IB for impeller includes lot ref; seed file has 21 core entities)
+    const t05SeedEntities = [
+      ...TUTORIAL_01_ENTITIES,
+      MOCK_IB_PUMP_CASING,
+      MOCK_IB_IMPELLER,
+      MOCK_LOT_240001,
+      ...TUTORIAL_03_ENTITIES,
+      MOCK_MO_CONFIRMED,
+    ];
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl, contextUrl } = this.ngsi as unknown as { orionUrl: string; contextUrl: string };
+        const withContext = t05SeedEntities.map((e) => ({ ...e, '@context': contextUrl }));
+        const res = await fetch(
+          `${orionUrl}/ngsi-ld/v1/entityOperations/upsert`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/ld+json' },
+            body: JSON.stringify(withContext),
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        responseStatus = res.status;
+        responseSummary = res.ok
+          ? `${t05SeedEntities.length} entities upserted`
+          : `Error: ${res.status}`;
+      } catch (err) {
+        responseStatus = 503;
+        responseSummary = err instanceof Error ? err.message : 'Broker unreachable';
+      }
+    }
+
+    const durationMs = Date.now() - t0;
+    const snapshot = { ...MOCK_SCENE, entities: t05SeedEntities };
+    this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(t05SeedEntities as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `${responseSummary} — 12 T01 master-data + 2 T02 InventoryBalance + Lot + 5 T03 BoM + 1 T04 MO (confirmed)`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `${t05SeedEntities.length} entities  •  application/ld+json`,
+        responseStatus,
+        responseSummary,
+        durationMs,
+      }],
+      entities: t05SeedEntities,
+    };
+  }
+
+  private async stepReserveComponents(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const orderId = MOCK_MO_CONFIRMED.id;
+    const locationId = 'urn:ngsi-ld:StockLocation:WH-STOCK';
+
+    const mockResult = {
+      status: 'done',
+      order_id: orderId,
+      reservations_created: 4,
+      summary: { reserved: 2, partial: 0, shortage: 2 },
+      reservations: [
+        { reservation_id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-PumpCasing', component_id: 'urn:ngsi-ld:Product:PumpCasing', required_quantity: 10, reserved_quantity: 10, shortage_quantity: 0, state: 'reserved' },
+        { reservation_id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-Impeller', component_id: 'urn:ngsi-ld:Product:Impeller', required_quantity: 10, reserved_quantity: 10, shortage_quantity: 0, state: 'reserved' },
+        { reservation_id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-ElectricMotor', component_id: 'urn:ngsi-ld:Product:ElectricMotor', required_quantity: 10, reserved_quantity: 0, shortage_quantity: 10, state: 'shortage' },
+        { reservation_id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-SealKit', component_id: 'urn:ngsi-ld:Product:SealKit', required_quantity: 20, reserved_quantity: 0, shortage_quantity: 20, state: 'shortage' },
+      ],
+    };
+
+    if (this.mode === 'live') {
+      try {
+        const invUrl = (this.ngsi as unknown as { orionUrl: string }).orionUrl
+          .replace(':1026', ':8081').replace('orion-ld', 'inventory-service');
+        const res = await fetch(`${invUrl}/commands/reserve-components`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: orderId, location_id: locationId }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    // Highlight WH-STOCK zone
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: locationId,
+      entityType: 'StockLocation',
+      payload: { message: '4 reservations created — 2 reserved, 2 shortage' },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(TUTORIAL_05_ENTITIES as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `4 InventoryReservation entities created — PumpCasing: reserved · Impeller: reserved · ElectricMotor: shortage · SealKit: shortage`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ order_id: "${orderId}", location_id: "WH-STOCK" }`,
+        responseStatus,
+        responseSummary: `{ reservations_created: 4, summary: { reserved: 2, shortage: 2 } }`,
+        durationMs,
+      }],
+      entities: TUTORIAL_05_ENTITIES,
     };
   }
 

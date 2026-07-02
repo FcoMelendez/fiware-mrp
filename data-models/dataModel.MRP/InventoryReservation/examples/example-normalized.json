@@ -1,0 +1,15 @@
+{
+  "id": "urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-PumpCasing",
+  "type": "InventoryReservation",
+  "reservationCode":   { "type": "Property",     "value": "IR-MO-2024-001-PumpCasing" },
+  "requiredQuantity":  { "type": "Property",     "value": 10, "unitCode": "EA" },
+  "reservedQuantity":  { "type": "Property",     "value": 10, "unitCode": "EA" },
+  "shortageQuantity":  { "type": "Property",     "value": 0,  "unitCode": "EA" },
+  "state":             { "type": "Property",     "value": "reserved" },
+  "reservedAt":        { "type": "Property",     "value": "2024-07-01T07:50:00Z" },
+  "manufacturingOrder":{ "type": "Relationship", "object": "urn:ngsi-ld:ManufacturingOrder:MO-2024-001" },
+  "product":           { "type": "Relationship", "object": "urn:ngsi-ld:Product:PumpCasing" },
+  "stockLocation":     { "type": "Relationship", "object": "urn:ngsi-ld:StockLocation:WH-STOCK" },
+  "inventoryBalance":  { "type": "Relationship", "object": "urn:ngsi-ld:InventoryBalance:IB-PumpCasing-WH-STOCK" },
+  "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"
+}
