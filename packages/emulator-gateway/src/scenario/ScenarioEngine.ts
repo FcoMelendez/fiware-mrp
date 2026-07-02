@@ -105,17 +105,12 @@ export class ScenarioEngine {
       ]);
     }
 
-    // Always broadcast the clean starting snapshot so the canvas resets correctly
-    // in both mock and live mode. T02/T03/T04 all start from T01 base entities on canvas.
-    const startingEntities =
-      tutorialId === 'tutorial-02' || tutorialId === 'tutorial-03' || tutorialId === 'tutorial-04'
-        ? TUTORIAL_01_ENTITIES
-        : [];
-    this.hub.broadcast({ eventType: 'contextSnapshot', payload: { ...MOCK_SCENE, entities: startingEntities } });
+    // Broadcast an empty snapshot so the canvas resets to blank.
+    // Entities only appear after the user explicitly runs the seed step.
+    this.hub.broadcast({ eventType: 'contextSnapshot', payload: { ...MOCK_SCENE, entities: [] } });
 
-    // Reset the mock entity store to match the starting broker state
     if (this.mode === 'mock' && this.mockStore) {
-      this.mockStore.seedFrom(startingEntities as Array<Record<string, unknown>>);
+      this.mockStore.seedFrom([]);
     }
 
     return { deleted };
