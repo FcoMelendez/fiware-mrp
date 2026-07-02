@@ -29,7 +29,7 @@ self-contained: reset, seed, execute, assert and stop.
      - :doc:`05-reservations`
      - Component reservations and shortages
    * - v0.6
-     - Tutorial 06 *(coming soon)*
+     - :doc:`06-work-orders`
      - Work orders and finite-capacity scheduling
    * - v0.7
      - Tutorial 07 *(coming soon)*
@@ -58,3 +58,4 @@ self-contained: reset, seed, execute, assert and stop.
    03-bom
    tutorial_04
    05-reservations
+   06-work-orders

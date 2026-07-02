@@ -90,6 +90,18 @@ Tutorial 05 — Component reservation entities
    * - :doc:`InventoryReservation <inventory-reservation>`
      - Stock commitment per BOM line: required, reserved, and shortage quantities
 
+Tutorial 06 — Work order entities
+-----------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Entity type
+     - Description
+   * - :doc:`WorkOrder <work-order>`
+     - One routing step in MO execution: operation, WorkCenter, planned dates, duration
+
 ----
 
 .. toctree::
@@ -109,3 +121,4 @@ Tutorial 05 — Component reservation entities
    bill-of-materials-line
    manufacturing-order
    inventory-reservation
+   work-order

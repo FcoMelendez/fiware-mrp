@@ -18,6 +18,11 @@ import {
   TUTORIAL_04_STEPS,
   TUTORIAL_05_ENTITIES,
   TUTORIAL_05_STEPS,
+  TUTORIAL_06_ENTITIES,
+  TUTORIAL_06_STEPS,
+  MOCK_WO_ASSEMBLY,
+  MOCK_WO_LEAK_TEST,
+  MOCK_WO_PACKAGING,
   type GuidedStep,
 } from './fixtures.js';
 
@@ -81,6 +86,11 @@ export class ScenarioEngine {
         title: 'Tutorial 05 – Component reservations and shortages',
         stepsCount: TUTORIAL_05_STEPS.length,
       },
+      {
+        id: 'tutorial-06',
+        title: 'Tutorial 06 – Work orders and finite-capacity scheduling',
+        stepsCount: TUTORIAL_06_STEPS.length,
+      },
     ];
   }
 
@@ -90,6 +100,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-03') return TUTORIAL_03_STEPS;
     if (tutorialId === 'tutorial-04') return TUTORIAL_04_STEPS;
     if (tutorialId === 'tutorial-05') return TUTORIAL_05_STEPS;
+    if (tutorialId === 'tutorial-06') return TUTORIAL_06_STEPS;
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -99,6 +110,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-03') return this.executeTutorial03Step(stepId);
     if (tutorialId === 'tutorial-04') return this.executeTutorial04Step(stepId);
     if (tutorialId === 'tutorial-05') return this.executeTutorial05Step(stepId);
+    if (tutorialId === 'tutorial-06') return this.executeTutorial06Step(stepId);
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -112,6 +124,7 @@ export class ScenarioEngine {
         'BillOfMaterials', 'BillOfMaterialsLine',
         'ManufacturingOrder',
         'InventoryReservation',
+        'WorkOrder',
       ]);
     }
 
@@ -181,9 +194,13 @@ export class ScenarioEngine {
     }
     const durationMs = Date.now() - t0;
 
-    const usesInventory = tutorialId === 'tutorial-02' || tutorialId === 'tutorial-05';
+    const serviceNote = tutorialId === 'tutorial-02' || tutorialId === 'tutorial-05'
+      ? ' (inventory-service, orion-ld)'
+      : tutorialId === 'tutorial-06'
+      ? ' (scheduler-service, orion-ld)'
+      : '';
     const summary = this.mode === 'mock'
-      ? `Mock mode — all services considered healthy${usesInventory ? ' (inventory-service, orion-ld)' : ''}`
+      ? `Mock mode — all services considered healthy${serviceNote}`
       : brokerOk ? 'All services healthy' : 'Broker unreachable';
 
     return {
@@ -266,6 +283,7 @@ export class ScenarioEngine {
         ...TUTORIAL_03_ENTITIES,
         ...TUTORIAL_04_ENTITIES,
         ...TUTORIAL_05_ENTITIES,
+        ...TUTORIAL_06_ENTITIES,
       ];
       entities = singleId
         ? mockPool.filter((e) => (e as { id: string }).id === singleId)
@@ -741,6 +759,147 @@ export class ScenarioEngine {
         durationMs,
       }],
       entities: TUTORIAL_05_ENTITIES,
+    };
+  }
+
+  // ── Tutorial 06 step handlers ──────────────────────────────────────────────
+
+  private async executeTutorial06Step(stepId: string): Promise<StepResult> {
+    const step = TUTORIAL_06_STEPS.find((s) => s.id === stepId);
+    if (!step) throw new Error(`Unknown step: ${stepId} in tutorial-06`);
+    switch (stepId) {
+      case 'check-scheduler-service': return this.stepStackHealth(step, 'tutorial-06');
+      case 'seed-t06-data':           return this.stepSeedT06Data(step);
+      case 'query-confirmed-mo':      return this.stepQueryEntities(step, 'ManufacturingOrder', MOCK_WO_ASSEMBLY.manufacturingOrder.object);
+      case 'create-work-orders':      return this.stepCreateWorkOrders(step);
+      case 'query-work-orders':       return this.stepQueryEntities(step, 'WorkOrder');
+      case 'inspect-work-order':      return this.stepQueryEntities(step, 'WorkOrder', MOCK_WO_ASSEMBLY.id);
+      default: throw new Error(`No executor for step: ${stepId}`);
+    }
+  }
+
+  private async stepSeedT06Data(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 201;
+    let responseSummary = '25 entities upserted';
+
+    // T06 seed = T05 seed (21) + 4 InventoryReservations (reserved/shortage state)
+    const t06SeedEntities = [
+      ...TUTORIAL_01_ENTITIES,
+      MOCK_IB_PUMP_CASING,
+      MOCK_IB_IMPELLER,
+      MOCK_LOT_240001,
+      ...TUTORIAL_03_ENTITIES,
+      MOCK_MO_CONFIRMED,
+      ...TUTORIAL_05_ENTITIES,
+    ];
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl, contextUrl } = this.ngsi as unknown as { orionUrl: string; contextUrl: string };
+        const withContext = t06SeedEntities.map((e) => ({ ...e, '@context': contextUrl }));
+        const res = await fetch(
+          `${orionUrl}/ngsi-ld/v1/entityOperations/upsert`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/ld+json' },
+            body: JSON.stringify(withContext),
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        responseStatus = res.status;
+        responseSummary = res.ok
+          ? `${t06SeedEntities.length} entities upserted`
+          : `Error: ${res.status}`;
+      } catch (err) {
+        responseStatus = 503;
+        responseSummary = err instanceof Error ? err.message : 'Broker unreachable';
+      }
+    }
+
+    const durationMs = Date.now() - t0;
+    const snapshot = { ...MOCK_SCENE, entities: t06SeedEntities };
+    this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(t06SeedEntities as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `${responseSummary} — T05 state: 12 T01 + 2 IB + Lot + 5 BoM + 1 MO (confirmed) + 4 InventoryReservations`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `${t06SeedEntities.length} entities  •  application/ld+json`,
+        responseStatus,
+        responseSummary,
+        durationMs,
+      }],
+      entities: t06SeedEntities,
+    };
+  }
+
+  private async stepCreateWorkOrders(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const orderId = MOCK_WO_ASSEMBLY.manufacturingOrder.object;
+    const plannedStart = '2024-07-01T08:00:00Z';
+
+    const mockResult = {
+      status: 'done',
+      order_id: orderId,
+      work_orders_created: 3,
+      work_orders: [
+        { work_order_id: MOCK_WO_ASSEMBLY.id, operation: 'Assembly', sequence: 1, work_center_id: 'urn:ngsi-ld:WorkCenter:WC-Assembly', planned_start: '2024-07-01T08:00:00Z', planned_end: '2024-07-01T18:00:00Z', duration_hours: 10.0, state: 'planned' },
+        { work_order_id: MOCK_WO_LEAK_TEST.id, operation: 'LeakTest', sequence: 2, work_center_id: 'urn:ngsi-ld:WorkCenter:WC-LeakTest', planned_start: '2024-07-01T18:00:00Z', planned_end: '2024-07-01T23:00:00Z', duration_hours: 5.0, state: 'planned' },
+        { work_order_id: MOCK_WO_PACKAGING.id, operation: 'Packaging', sequence: 3, work_center_id: 'urn:ngsi-ld:WorkCenter:WC-Packaging', planned_start: '2024-07-01T23:00:00Z', planned_end: '2024-07-02T01:30:00Z', duration_hours: 2.5, state: 'planned' },
+      ],
+    };
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const schedulerUrl = orionUrl.replace(':1026', ':8084').replace('orion-ld', 'scheduler-service');
+        const res = await fetch(`${schedulerUrl}/commands/create-work-orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: orderId, planned_start: plannedStart }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    // Highlight all three work center zones
+    for (const wc of ['WC-Assembly', 'WC-LeakTest', 'WC-Packaging']) {
+      this.hub.broadcast({
+        eventType: 'entityChanged',
+        entityId: `urn:ngsi-ld:WorkCenter:${wc}`,
+        entityType: 'WorkCenter',
+        payload: { message: 'WorkOrder scheduled — state: planned' },
+      });
+    }
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(TUTORIAL_06_ENTITIES as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `3 WorkOrder entities created — Assembly: 10h · LeakTest: 5h · Packaging: 2.5h (all state: planned)`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ order_id: "${orderId}", planned_start: "${plannedStart}" }`,
+        responseStatus,
+        responseSummary: JSON.stringify({ status: 'done', work_orders_created: 3 }),
+        durationMs,
+      }],
+      entities: TUTORIAL_06_ENTITIES,
     };
   }
 

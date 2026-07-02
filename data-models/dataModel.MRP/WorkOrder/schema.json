@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fiware-mrp.io/dataModel.MRP/WorkOrder/schema.json",
+  "title": "WorkOrder",
+  "description": "An NGSI-LD entity representing one routing step in the production of a ManufacturingOrder. Created by the scheduler-service from a hardcoded routing table (Assembly → LeakTest → Packaging).",
+  "type": "object",
+  "required": ["id", "type", "workOrderCode", "operationName", "sequence", "plannedStart", "plannedEnd", "durationHours", "state", "manufacturingOrder", "workCenter"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^urn:ngsi-ld:WorkOrder:.+$"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["WorkOrder"]
+    },
+    "workOrderCode": {
+      "type": "object",
+      "description": "Human-readable work order code, e.g. WO-MO-2024-001-Assembly",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string" }
+      }
+    },
+    "operationName": {
+      "type": "object",
+      "description": "Name of the production operation, e.g. Assembly",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string" }
+      }
+    },
+    "sequence": {
+      "type": "object",
+      "description": "Routing step position (1=first, 2=second, ...)",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "plannedStart": {
+      "type": "object",
+      "description": "Planned start timestamp (ISO 8601)",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string", "format": "date-time" }
+      }
+    },
+    "plannedEnd": {
+      "type": "object",
+      "description": "Planned end timestamp (ISO 8601)",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string", "format": "date-time" }
+      }
+    },
+    "durationHours": {
+      "type": "object",
+      "description": "Planned duration in hours (quantity × hours-per-unit for the operation)",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "state": {
+      "type": "object",
+      "description": "Work order state: planned | in_progress | completed | cancelled",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string", "enum": ["planned", "in_progress", "completed", "cancelled"] }
+      }
+    },
+    "manufacturingOrder": {
+      "type": "object",
+      "description": "Relationship to the parent ManufacturingOrder",
+      "required": ["type", "object"],
+      "properties": {
+        "type": { "type": "string", "enum": ["Relationship"] },
+        "object": { "type": "string", "pattern": "^urn:ngsi-ld:ManufacturingOrder:.+$" }
+      }
+    },
+    "workCenter": {
+      "type": "object",
+      "description": "Relationship to the WorkCenter that performs this operation",
+      "required": ["type", "object"],
+      "properties": {
+        "type": { "type": "string", "enum": ["Relationship"] },
+        "object": { "type": "string", "pattern": "^urn:ngsi-ld:WorkCenter:.+$" }
+      }
+    },
+    "product": {
+      "type": "object",
+      "description": "Relationship to the finished Product being produced",
+      "required": ["type", "object"],
+      "properties": {
+        "type": { "type": "string", "enum": ["Relationship"] },
+        "object": { "type": "string", "pattern": "^urn:ngsi-ld:Product:.+$" }
+      }
+    }
+  }
+}

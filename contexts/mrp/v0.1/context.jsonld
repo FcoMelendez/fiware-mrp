@@ -145,6 +145,10 @@
     "reservedAt":           "mrp:reservedAt",
     "releasedAt":           "mrp:releasedAt",
 
+    "workOrderCode":        "mrp:workOrderCode",
+    "operationName":        "mrp:operationName",
+    "durationHours":        "mrp:durationHours",
+
     "orderCode":            "mrp:orderCode",
     "plannedStart":         "mrp:plannedStart",
     "plannedEnd":           "mrp:plannedEnd",

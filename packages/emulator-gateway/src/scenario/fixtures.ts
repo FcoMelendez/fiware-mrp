@@ -1011,3 +1011,169 @@ export const TUTORIAL_05_STEPS: GuidedStep[] = [
 ];
 
 export const TUTORIAL_05_STEP_IDS = TUTORIAL_05_STEPS.map((s) => s.id);
+
+// ── Tutorial 06 mock entities ──────────────────────────────────────────────────
+
+export const MOCK_WO_ASSEMBLY = {
+  id: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-001-Assembly',
+  type: 'WorkOrder',
+  workOrderCode:  { type: 'Property', value: 'WO-MO-2024-001-Assembly' },
+  operationName:  { type: 'Property', value: 'Assembly' },
+  sequence:       { type: 'Property', value: 1 },
+  plannedStart:   { type: 'Property', value: '2024-07-01T08:00:00Z' },
+  plannedEnd:     { type: 'Property', value: '2024-07-01T18:00:00Z' },
+  durationHours:  { type: 'Property', value: 10.0 },
+  state:          { type: 'Property', value: 'planned' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  workCenter:     { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+  product:        { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+};
+
+export const MOCK_WO_LEAK_TEST = {
+  id: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-001-LeakTest',
+  type: 'WorkOrder',
+  workOrderCode:  { type: 'Property', value: 'WO-MO-2024-001-LeakTest' },
+  operationName:  { type: 'Property', value: 'LeakTest' },
+  sequence:       { type: 'Property', value: 2 },
+  plannedStart:   { type: 'Property', value: '2024-07-01T18:00:00Z' },
+  plannedEnd:     { type: 'Property', value: '2024-07-01T23:00:00Z' },
+  durationHours:  { type: 'Property', value: 5.0 },
+  state:          { type: 'Property', value: 'planned' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  workCenter:     { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-LeakTest' },
+  product:        { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+};
+
+export const MOCK_WO_PACKAGING = {
+  id: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-001-Packaging',
+  type: 'WorkOrder',
+  workOrderCode:  { type: 'Property', value: 'WO-MO-2024-001-Packaging' },
+  operationName:  { type: 'Property', value: 'Packaging' },
+  sequence:       { type: 'Property', value: 3 },
+  plannedStart:   { type: 'Property', value: '2024-07-01T23:00:00Z' },
+  plannedEnd:     { type: 'Property', value: '2024-07-02T01:30:00Z' },
+  durationHours:  { type: 'Property', value: 2.5 },
+  state:          { type: 'Property', value: 'planned' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  workCenter:     { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Packaging' },
+  product:        { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+};
+
+export const TUTORIAL_06_ENTITIES = [
+  MOCK_WO_ASSEMBLY,
+  MOCK_WO_LEAK_TEST,
+  MOCK_WO_PACKAGING,
+];
+
+// ── Tutorial 06 step definitions ───────────────────────────────────────────────
+
+export const TUTORIAL_06_STEPS: GuidedStep[] = [
+  {
+    id: 'check-scheduler-service',
+    title: 'Verify scheduler service',
+    shortDesc: 'Health-check the scheduler-service (v0.6)',
+    desc: 'Tutorial 06 introduces the scheduler-service, which generates work orders from a confirmed manufacturing order. This step confirms the new service is running and reachable.',
+    hood: { method: 'GET', url: 'http://scheduler-service:8084/health', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /health → scheduler-service:8084',
+      'scheduler-service verifies its own startup (no external call)',
+      'Returns { status: ok, service: scheduler-service, version: 0.6.0 }',
+    ],
+    actionLabel: 'Check health',
+  },
+  {
+    id: 'seed-t06-data',
+    title: 'Load T06 seed data',
+    shortDesc: 'Seed 25 entities: T05 context + 4 InventoryReservations (reserved/shortage)',
+    desc: 'Seeds Orion-LD with the full context for Tutorial 06: all T05 entities plus the 4 InventoryReservation entities that were created by the reserve-components command in T05 — representing the completed T05 state.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
+      body: '25 entities  •  application/ld+json',
+      expectedStatus: 201,
+    },
+    workflow: [
+      'Gateway attaches @context URL to all 25 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD (idempotent)',
+      'T05 state: 12 T01 + 2 T02 IBs + Lot + 5 T03 BoM + 1 T04 MO (confirmed)',
+      'T05 result: 4 InventoryReservations — PumpCasing/Impeller: reserved · ElectricMotor/SealKit: shortage',
+    ],
+    actionLabel: 'Seed entities',
+  },
+  {
+    id: 'query-confirmed-mo',
+    title: 'Query confirmed manufacturing order',
+    shortDesc: 'GET /manufacturing-orders?state=confirmed — verify MO is ready to schedule',
+    desc: 'Before scheduling work orders, confirm that the ManufacturingOrder exists in confirmed state. The scheduler-service will validate this before creating work orders.',
+    hood: {
+      method: 'GET',
+      url: 'http://manufacturing-service:8083/manufacturing-orders?state=confirmed',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /manufacturing-orders?state=confirmed → manufacturing-service:8083',
+      'manufacturing-service → GET /ngsi-ld/v1/entities?type=ManufacturingOrder → Orion-LD',
+      'Filters results client-side: state == confirmed',
+      '1 ManufacturingOrder returned: MO-2024-001 (quantity: 10 EA, plannedStart: 2024-07-01)',
+    ],
+    actionLabel: 'Query confirmed orders',
+  },
+  {
+    id: 'create-work-orders',
+    title: 'Create work orders',
+    shortDesc: 'POST /commands/create-work-orders — schedule 3 operations sequentially',
+    desc: 'The create-work-orders command reads MO-2024-001, applies the hardcoded routing (Assembly → LeakTest → Packaging), and generates 3 WorkOrder entities with back-to-back planned dates. Each operation\'s duration is proportional to the MO quantity.',
+    hood: {
+      method: 'POST',
+      url: 'http://scheduler-service:8084/commands/create-work-orders',
+      body: JSON.stringify({
+        order_id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001',
+        planned_start: '2024-07-01T08:00:00Z',
+      }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/create-work-orders { order_id, planned_start } → scheduler-service',
+      'scheduler-service fetches MO → validates state=confirmed → reads quantity=10',
+      'Assembly (10h): 08:00 → 18:00 · LeakTest (5h): 18:00 → 23:00 · Packaging (2.5h): 23:00 → 01:30',
+      'Upserts 3 WorkOrder entities to Orion-LD with state=planned and WorkCenter Relationships',
+    ],
+    actionLabel: 'Create work orders',
+  },
+  {
+    id: 'query-work-orders',
+    title: 'Query work orders',
+    shortDesc: 'GET /work-orders — inspect 3 WorkOrder entities',
+    desc: 'After the create-work-orders command, 3 WorkOrder entities exist in the broker — one per routing step. Each carries a planned date range, duration, and Relationship to its WorkCenter and ManufacturingOrder.',
+    hood: {
+      method: 'GET',
+      url: 'http://scheduler-service:8084/work-orders',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /work-orders → scheduler-service:8084',
+      'scheduler-service → GET /ngsi-ld/v1/entities?type=WorkOrder → Orion-LD',
+      '3 work orders returned (one per routing step)',
+      'Assembly: WC-Assembly, 10h · LeakTest: WC-LeakTest, 5h · Packaging: WC-Packaging, 2.5h',
+    ],
+    actionLabel: 'Query work orders',
+  },
+  {
+    id: 'inspect-work-order',
+    title: 'Inspect a work order entity',
+    shortDesc: 'Fetch the Assembly WorkOrder directly from the broker',
+    desc: 'Fetch the Assembly WorkOrder entity directly from Orion-LD to see all NGSI-LD attributes: the manufacturingOrder and workCenter Relationships, the sequential planned dates, and the state=planned.',
+    hood: {
+      method: 'GET',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entities/urn:ngsi-ld:WorkOrder:WO-MO-2024-001-Assembly',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'GET /ngsi-ld/v1/entities/urn:ngsi-ld:WorkOrder:WO-MO-2024-001-Assembly with Link: <context>',
+      'Orion-LD returns compacted JSON-LD (short keys via @context)',
+      'state: planned · operationName: Assembly · durationHours: 10 · sequence: 1',
+      'workCenter → WC-Assembly · manufacturingOrder → MO-2024-001 (Relationships)',
+    ],
+    actionLabel: 'Inspect work order',
+  },
+];

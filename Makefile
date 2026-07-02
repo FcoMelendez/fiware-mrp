@@ -4,6 +4,7 @@
         test-03 \
         test-04 \
         test-05 \
+        test-06 \
         test-all \
         start-emulator start-mock stop-emulator \
         install-emulator \
@@ -49,12 +50,13 @@ install-emulator:
 
 start-emulator:
 	$(COMPOSE) down -v --remove-orphans
-	EMULATOR_MODE=live $(COMPOSE) up -d --build mongo orion-ld context-server mrp-api inventory-service bom-service manufacturing-service emulator-gateway emulator-ui
+	EMULATOR_MODE=live $(COMPOSE) up -d --build mongo orion-ld context-server mrp-api inventory-service bom-service manufacturing-service scheduler-service emulator-gateway emulator-ui
 	@echo "Emulator UI         → http://localhost:5173"
 	@echo "Gateway API         → http://localhost:8090/api/health"
 	@echo "Inventory API       → http://localhost:8081/health"
 	@echo "BoM API             → http://localhost:8082/health"
 	@echo "Manufacturing API   → http://localhost:8083/health"
+	@echo "Scheduler API       → http://localhost:8084/health"
 
 start-mock:
 	EMULATOR_MODE=mock $(COMPOSE) up -d --build emulator-gateway emulator-ui
@@ -92,16 +94,21 @@ test-05:
 	@echo "=== Running Tutorial 05 tests ==="
 	@bash tutorials/05-component-reservation/tests/test-05.sh
 
+test-06:
+	@echo "=== Running Tutorial 06 tests ==="
+	@bash tutorials/06-work-orders/tests/test-06.sh
+
 test-all:
 	@echo "=== Clean reset for full test suite ==="
 	$(COMPOSE) down -v --remove-orphans
-	$(COMPOSE) up -d mongo orion-ld context-server mrp-api inventory-service bom-service manufacturing-service
+	$(COMPOSE) up -d mongo orion-ld context-server mrp-api inventory-service bom-service manufacturing-service scheduler-service
 	./scripts/wait-for-orion.sh
 	@echo "=== Tutorial 01 ===" && TUTORIAL=01 $(COMPOSE) run --rm --build -e TUTORIAL=01 seed && bash tutorials/01-getting-started-context/tests/test-01.sh
 	@echo "=== Tutorial 02 ===" && TUTORIAL=02 $(COMPOSE) run --rm --build -e TUTORIAL=02 seed && bash tutorials/02-inventory/tests/test-02.sh
 	@echo "=== Tutorial 03 ===" && TUTORIAL=03 $(COMPOSE) run --rm --build -e TUTORIAL=03 seed && bash tutorials/03-bom/tests/test-03.sh
 	@echo "=== Tutorial 04 ===" && TUTORIAL=04 $(COMPOSE) run --rm --build -e TUTORIAL=04 seed && bash tutorials/04-manufacturing-order/tests/test-04.sh
 	@echo "=== Tutorial 05 ===" && TUTORIAL=05 $(COMPOSE) run --rm --build -e TUTORIAL=05 seed && bash tutorials/05-component-reservation/tests/test-05.sh
+	@echo "=== Tutorial 06 ===" && TUTORIAL=06 $(COMPOSE) run --rm --build -e TUTORIAL=06 seed && bash tutorials/06-work-orders/tests/test-06.sh
 	@echo ""
 	@echo "=== All tests passed ==="
 
@@ -152,6 +159,7 @@ help:
 	@echo "  make test-03      Run Tutorial 03 automated assertions"
 	@echo "  make test-04      Run Tutorial 04 automated assertions"
 	@echo "  make test-05      Run Tutorial 05 automated assertions"
+	@echo "  make test-06      Run Tutorial 06 automated assertions"
 	@echo "  make test-all     Run all tutorial tests"
 	@echo "  make start-emulator  Start full stack + Phaser emulator (http://localhost:5173)"
 	@echo "  make start-mock      Start emulator in mock mode (no MRP backend needed)"
