@@ -25,12 +25,25 @@ async function shot(page, name) {
   await page.waitForTimeout(1000);
   await shot(page, '02-t04-loaded.png');
 
-  for (let i = 0; i < 6; i++) {
+  const totalSteps = 6;
+  for (let i = 0; i < totalSteps; i++) {
     console.log('  Executing step ' + (i+1) + '…');
-    const btn = page.locator('.btn-execute').first();
-    const visible = await btn.isVisible({ timeout: 3000 }).catch(() => false);
-    if (visible) { await btn.click(); await page.waitForTimeout(1500); }
-    else console.log('    (no button at step ' + (i+1) + ')');
+    const execBtn = page.locator('.btn-execute').first();
+    const execVisible = await execBtn.isVisible({ timeout: 3000 }).catch(() => false);
+    if (execVisible) {
+      await execBtn.click();
+      // wait for step to complete (success message appears)
+      await page.waitForSelector('.step-success-msg', { timeout: 10000 }).catch(() => {});
+      await page.waitForTimeout(800);
+    } else {
+      console.log('    (no execute button at step ' + (i+1) + ')');
+    }
+    // advance to next step if not on last
+    if (i < totalSteps - 1) {
+      const nextBtn = page.locator('.btn-step-next:not([disabled])').first();
+      const nextVisible = await nextBtn.isVisible({ timeout: 2000 }).catch(() => false);
+      if (nextVisible) { await nextBtn.click(); await page.waitForTimeout(600); }
+    }
   }
   await shot(page, '03-all-steps-done.png');
 

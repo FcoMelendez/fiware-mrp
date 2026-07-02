@@ -67,7 +67,7 @@ const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
 export class TutorialChecklist {
   private el: HTMLElement;
   private steps: StepState[] = [];
-  private expandedIds = new Set<string>();
+  private currentIdx = 0;
   private tutorialId = 'tutorial-01';
 
   constructor(containerId: string) {
@@ -82,12 +82,10 @@ export class TutorialChecklist {
     });
 
     document.getElementById('restart-scenario-btn')?.addEventListener('click', () => {
-      // Reset UI immediately so overlay shows, then server broadcasts clean snapshot via SSE
       this.reset();
       fetch(`/api/scenarios/${this.tutorialId}/reset`, { method: 'POST' }).catch(() => {});
     });
 
-    // Tutorial selector in top bar
     const selector = document.getElementById('tutorial-selector') as HTMLSelectElement | null;
     selector?.addEventListener('change', () => {
       this.switchTutorial(selector.value);
@@ -98,22 +96,13 @@ export class TutorialChecklist {
     if (this.tutorialId === tutorialId) return;
     this.tutorialId = tutorialId;
     this.updateTopBar(tutorialId);
-    this.expandedIds.clear();
-
-    // Clear steps immediately so old tutorial's completed steps aren't visible
-    // during the async loadSteps() fetch. Without this, old green steps stay
-    // in the DOM and can be clicked with the wrong tutorialId context.
+    this.currentIdx = 0;
     this.steps = [];
     this.render();
 
-    // Ask the server to broadcast the clean starting snapshot for this tutorial
     fetch(`/api/scenarios/${tutorialId}/reset`, { method: 'POST' }).catch(() => {});
-
-    // Start the async step fetch before bus.emit so it's in-flight even if a
-    // listener throws and aborts the forEach (EventBus propagates exceptions).
     this.loadSteps().then(() => this.render());
 
-    // Reset canvas overlay, welcome banner, and console locally
     document.getElementById('canvas-overlay')?.classList.remove('hidden');
     document.getElementById('welcome-banner')?.classList.remove('hidden');
     this.clearConsolePanels();
@@ -160,68 +149,108 @@ export class TutorialChecklist {
   private render(): void {
     this.el.innerHTML = '';
 
-    for (let i = 0; i < this.steps.length; i++) {
-      const s = this.steps[i];
-      const isExpanded = this.expandedIds.has(s.def.id) || s.status === 'active' || s.status === 'running';
-      const card = document.createElement('div');
-      card.className = `step-card step-${s.status}`;
-      card.dataset['stepId'] = s.def.id;
+    if (this.steps.length === 0) return;
 
-      card.innerHTML = `
-        <div class="step-header" data-step="${s.def.id}">
-          <div class="step-indicator">${this.icon(s.status, i + 1)}</div>
-          <div class="step-info">
-            <div class="step-title">${s.def.title}</div>
-            <div class="step-short">${s.def.shortDesc}</div>
-          </div>
-          <div class="step-chevron">${isExpanded ? '▲' : '▼'}</div>
+    this.currentIdx = Math.max(0, Math.min(this.currentIdx, this.steps.length - 1));
+    const total = this.steps.length;
+    const s     = this.steps[this.currentIdx];
+    const prev  = this.currentIdx > 0             ? this.steps[this.currentIdx - 1] : null;
+    const next  = this.currentIdx < total - 1     ? this.steps[this.currentIdx + 1] : null;
+
+    // ── Progress strip: coloured dots + "X / N" label ─────────────────────
+    const progressEl = document.createElement('div');
+    progressEl.className = 'step-progress';
+    const dots = this.steps.map((step, i) => {
+      const cur = i === this.currentIdx ? ' step-dot-current' : '';
+      return `<button class="step-dot step-dot-${step.status}${cur}" data-idx="${i}" title="Step ${i + 1}: ${step.def.title}"></button>`;
+    }).join('');
+    progressEl.innerHTML = `
+      <div class="step-dots">${dots}</div>
+      <span class="step-progress-label">${this.currentIdx + 1} / ${total}</span>
+    `;
+    progressEl.querySelectorAll<HTMLButtonElement>('.step-dot').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.currentIdx = parseInt(btn.dataset['idx'] ?? '0', 10);
+        this.render();
+      });
+    });
+    this.el.appendChild(progressEl);
+
+    // ── Single step card (always fully expanded) ───────────────────────────
+    const card = document.createElement('div');
+    card.className = `step-card-solo step-${s.status}`;
+    const isLast = this.currentIdx === this.steps.length - 1;
+    card.innerHTML = `
+      <div class="step-header-solo">
+        <div class="step-indicator">${this.icon(s.status, this.currentIdx + 1)}</div>
+        <div class="step-info">
+          <div class="step-title">${s.def.title}</div>
+          <div class="step-short">${s.def.shortDesc}</div>
         </div>
-        <div class="step-body ${isExpanded ? '' : 'hidden'}">
-          <p class="step-desc">${s.def.desc}</p>
-          ${this.renderHood(s)}
-          ${this.renderAction(s)}
-        </div>
-      `;
+      </div>
+      <div class="step-body-solo">
+        <p class="step-desc">${s.def.desc}</p>
+        ${this.renderHood(s)}
+        ${this.renderAction(s, isLast)}
+      </div>
+    `;
 
-      // Step header → expand/collapse
-      card.querySelector<HTMLElement>('.step-header')!.addEventListener('click', () => {
-        this.toggleExpand(s.def.id);
-      });
+    card.querySelector<HTMLElement>('.btn-execute')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.executeStep(s.def.id).catch(console.error);
+    });
+    card.querySelector<HTMLElement>('.btn-retry')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const stepId = (e.currentTarget as HTMLElement).dataset['retry']!;
+      this.retryStep(stepId);
+    });
 
-      // Execute button
-      card.querySelector<HTMLElement>('.btn-execute')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.executeStep(s.def.id).catch(console.error);
-      });
+    this.el.appendChild(card);
 
-      // Retry button
-      card.querySelector<HTMLElement>('.btn-retry')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const stepId = (e.currentTarget as HTMLElement).dataset['retry']!;
-        this.retryStep(stepId);
-      });
-
-
-      this.el.appendChild(card);
-    }
+    // ── Prev / Next nav ────────────────────────────────────────────────────
+    const nav = document.createElement('div');
+    nav.className = 'step-nav';
+    const nextLocked = !next || s.status !== 'completed';
+    nav.innerHTML = `
+      <button class="btn-step-nav btn-step-prev" ${!prev ? 'disabled' : ''}>
+        <span class="step-nav-arrow">◀</span>
+        <span class="step-nav-name">${prev ? prev.def.title : '—'}</span>
+      </button>
+      <button class="btn-step-nav btn-step-next" ${nextLocked ? 'disabled' : ''}>
+        <span class="step-nav-name">${next ? next.def.title : '—'}</span>
+        <span class="step-nav-arrow">▶</span>
+      </button>
+    `;
+    nav.querySelector<HTMLButtonElement>('.btn-step-prev')?.addEventListener('click', () => {
+      if (this.currentIdx > 0) { this.currentIdx--; this.render(); }
+    });
+    nav.querySelector<HTMLButtonElement>('.btn-step-next')?.addEventListener('click', () => {
+      if (this.currentIdx < this.steps.length - 1) { this.currentIdx++; this.render(); }
+    });
+    this.el.appendChild(nav);
   }
 
   private icon(status: StepStatus, num: number): string {
     if (status === 'completed') return '✓';
-    if (status === 'failed') return '✗';
-    if (status === 'running') return '⟳';
-    if (status === 'active') return '▶';
+    if (status === 'failed')    return '✗';
+    if (status === 'running')   return '⟳';
+    if (status === 'active')    return '▶';
     return String(num);
   }
 
-  private renderAction(s: StepState): string {
+  private renderAction(s: StepState, isLast = false): string {
     if (s.status === 'running') return '<div class="step-running-label">Running…</div>';
 
     const retryBtn = (s.status === 'completed' || s.status === 'failed')
       ? `<button class="btn-retry" data-retry="${s.def.id}">↺ Retry</button>`
       : '';
 
-    if (s.status === 'completed') return retryBtn;
+    if (s.status === 'completed') {
+      const msg = isLast
+        ? '✓ All steps completed!'
+        : '✓ Step completed — click Next ▶ to continue';
+      return `<div class="step-success-msg">${msg}</div>${retryBtn}`;
+    }
     if (s.status !== 'active') return '';
 
     if (s.def.promptLabel) {
@@ -265,15 +294,6 @@ export class TutorialChecklist {
     `;
   }
 
-  private toggleExpand(stepId: string): void {
-    if (this.expandedIds.has(stepId)) {
-      this.expandedIds.delete(stepId);
-    } else {
-      this.expandedIds.add(stepId);
-    }
-    this.render();
-  }
-
   private async executeStep(stepId: string): Promise<void> {
     const idx = this.steps.findIndex((s) => s.def.id === stepId);
     if (idx < 0) return;
@@ -292,35 +312,25 @@ export class TutorialChecklist {
         entities?: NgsiLdEntity[];
       };
 
-      this.steps[idx].status = data.status === 'completed' ? 'completed' : 'failed';
-      this.steps[idx].result = data.result;
+      this.steps[idx].status  = data.status === 'completed' ? 'completed' : 'failed';
+      this.steps[idx].result  = data.result;
       this.steps[idx].apiTrace = data.apiTrace;
       this.steps[idx].entities = data.entities;
 
-      // Auto-expand result
-      this.expandedIds.add(stepId);
-
-      // Advance to next step
       if (data.status === 'completed' && idx + 1 < this.steps.length) {
-        const next = this.steps[idx + 1];
-        if (next.status === 'pending') {
-          next.status = 'active';
-          this.expandedIds.add(next.def.id);
-        }
+        const nextStep = this.steps[idx + 1];
+        if (nextStep.status === 'pending') nextStep.status = 'active';
       }
 
-      // Highlight matching canvas zones for returned entities
       if (data.entities?.length) {
         bus.emit(BUS.ZONES_HIGHLIGHTED, data.entities.map((e: NgsiLdEntity) => e.id));
       }
-      // Show entities in inspector: list for multiple, single select for one
       if (data.entities?.length === 1) {
         bus.emit(BUS.ENTITY_SELECTED, data.entities[0].id);
       } else if ((data.entities?.length ?? 0) > 1) {
         bus.emit(BUS.ENTITIES_LISTED, data.entities);
       }
 
-      // Update request + response consoles
       this.updateConsole(data.result, data, this.steps[idx].def);
 
     } catch (err) {
@@ -332,7 +342,6 @@ export class TutorialChecklist {
   }
 
   private updateConsole(result: string, data: { apiTrace?: ApiTrace[]; [key: string]: unknown }, def: GuidedStep): void {
-    // ── REQUEST console ────────────────────────────────────────────────────
     const reqEl = document.getElementById('request-console');
     if (reqEl && def) {
       const t = data.apiTrace?.[0];
@@ -363,7 +372,6 @@ export class TutorialChecklist {
       }
     }
 
-    // ── RESPONSE console ───────────────────────────────────────────────────
     const resEl = document.getElementById('response-console');
     if (!resEl) return;
 
@@ -419,33 +427,28 @@ export class TutorialChecklist {
   private retryStep(stepId: string): void {
     const idx = this.steps.findIndex((s) => s.def.id === stepId);
     if (idx < 0) return;
-    this.steps[idx].status = 'active';
-    this.steps[idx].result = undefined;
+    this.steps[idx].status   = 'active';
+    this.steps[idx].result   = undefined;
     this.steps[idx].apiTrace = undefined;
     this.steps[idx].entities = undefined;
-    this.expandedIds.add(stepId);
+    this.currentIdx = idx;
     this.render();
     this.executeStep(stepId).catch(console.error);
   }
 
   private reset(): void {
-    // Reset all step states
     this.steps.forEach((s, i) => {
-      s.status = i === 0 ? 'active' : 'pending';
-      s.result = undefined;
+      s.status   = i === 0 ? 'active' : 'pending';
+      s.result   = undefined;
       s.apiTrace = undefined;
       s.entities = undefined;
     });
-    this.expandedIds.clear();
-    if (this.steps[0]) this.expandedIds.add(this.steps[0].def.id);
+    this.currentIdx = 0;
     this.render();
 
-    // Re-show canvas overlay and welcome banner; reset console panels
     document.getElementById('canvas-overlay')?.classList.remove('hidden');
     document.getElementById('welcome-banner')?.classList.remove('hidden');
     this.clearConsolePanels();
-
-    // Broadcast reset so inspector and canvas clear
     bus.emit(BUS.SCENARIO_RESET, undefined);
   }
 
@@ -456,7 +459,6 @@ export class TutorialChecklist {
       const idx = this.steps.indexOf(step);
       if (idx + 1 < this.steps.length && this.steps[idx + 1].status === 'pending') {
         this.steps[idx + 1].status = 'active';
-        this.expandedIds.add(this.steps[idx + 1].def.id);
       }
       this.render();
     }

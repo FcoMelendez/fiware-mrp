@@ -102,7 +102,85 @@
       #welcome-banner strong { display: block; font-size: 13px; margin-bottom: 4px; }
       #welcome-banner.hidden { display: none; }
 
-      #tutorial-steps { padding: 8px 10px; flex: 1; overflow-y: auto; }
+      #tutorial-steps { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+
+      /* ── Single-step pager ───────────────────────────────────────────────── */
+      .step-progress {
+        display: flex; align-items: center; gap: 10px;
+        padding: 8px 12px; flex-shrink: 0;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .step-dots { display: flex; gap: 5px; align-items: center; flex: 1; flex-wrap: wrap; }
+      .step-dot {
+        width: 10px; height: 10px; border-radius: 50%; border: none; cursor: pointer;
+        flex-shrink: 0; padding: 0; transition: transform 0.15s;
+        background: #e2e8f0;
+      }
+      .step-dot:hover:not(:disabled) { transform: scale(1.3); }
+      .step-dot-current { outline: 2px solid #3b82f6; outline-offset: 2px; transform: scale(1.15); }
+      .step-dot-completed { background: #22c55e; }
+      .step-dot-active    { background: #3b82f6; }
+      .step-dot-running   { background: #7dd3fc; }
+      .step-dot-failed    { background: #ef4444; }
+      .step-dot-pending   { background: #e2e8f0; }
+      .step-progress-label { font-size: 10px; font-weight: 700; color: #94a3b8; white-space: nowrap; }
+
+      .step-card-solo {
+        flex: 1; min-height: 0; overflow: hidden;
+        display: flex; flex-direction: column;
+        border: 1.5px solid #e2e8f0; border-radius: 10px;
+        background: #f8fafc; margin: 8px 10px 0;
+      }
+      .step-card-solo.step-active    { border-color: #3b82f6; background: #fff; box-shadow: 0 1px 6px rgba(59,130,246,0.12); }
+      .step-card-solo.step-completed { border-color: #bbf7d0; background: #f0fdf4; }
+      .step-card-solo.step-failed    { border-color: #fecaca; background: #fff5f5; }
+      .step-card-solo.step-running   { border-color: #7dd3fc; background: #fff; }
+      .step-card-solo.step-pending   { opacity: 0.65; }
+      .step-header-solo {
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0;
+      }
+      .step-body-solo {
+        flex: 1; overflow-y: auto; min-height: 0;
+        padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+      }
+
+      .step-nav {
+        display: flex; gap: 8px; padding: 10px; flex-shrink: 0;
+        border-top: 2px solid #e2e8f0; background: #f8fafc;
+      }
+      .btn-step-nav {
+        flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px;
+        border-radius: 10px; padding: 10px 12px; cursor: pointer;
+        transition: all 0.15s; overflow: hidden; font-family: inherit; border: 2px solid;
+      }
+      .btn-step-prev {
+        background: #f1f5f9; border-color: #e2e8f0; color: #475569;
+      }
+      .btn-step-prev:not(:disabled):hover { background: #e2e8f0; border-color: #cbd5e1; }
+      .btn-step-prev:disabled { opacity: 0.35; cursor: not-allowed; }
+      .btn-step-prev .step-nav-arrow { color: #64748b; }
+      .btn-step-prev .step-nav-name  { color: #374151; }
+
+      .btn-step-next {
+        background: #2563eb; border-color: #2563eb; color: #fff;
+        justify-content: flex-end; text-align: right;
+      }
+      .btn-step-next:not(:disabled):hover { background: #1d4ed8; border-color: #1d4ed8; }
+      .btn-step-next:disabled {
+        background: #e2e8f0; border-color: #e2e8f0; color: #94a3b8; cursor: not-allowed;
+      }
+      .step-nav-arrow { font-size: 13px; flex-shrink: 0; font-weight: 700; }
+      .step-nav-name {
+        font-size: 11px; font-weight: 700;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+      }
+
+      .step-success-msg {
+        background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
+        padding: 8px 12px; font-size: 12px; font-weight: 600; color: #16a34a;
+        display: flex; align-items: center; gap: 6px;
+      }
 
       /* ── Step cards ───────────────────────────────────────────────────────── */
       .step-card {
@@ -536,15 +614,19 @@
       .btn-secondary { background: #64748b; }
       .btn-sm { font-size: 10px; padding: 4px 8px; }
 
-      /* ── Bottom — event timeline ──────────────────────────────────────────── */
-      #bottom-bar {
-        background: #ffffff; border-top: 1px solid #e2e8f0;
-        padding: 8px 14px; flex-shrink: 0;
+      /* ── Center viewport — live event timeline strip ─────────────────────── */
+      #timeline-bar {
+        flex-shrink: 0; height: 120px;
+        background: #f8fafc; border-top: 1px solid #e2e8f0;
         display: flex; align-items: flex-start; gap: 10px;
-        overflow-x: auto; height: 140px; align-items: flex-start;
+        padding: 8px 12px 0; overflow: hidden;
       }
-      #bottom-bar h2 { font-size: 12px; font-weight: 700; color: #374151; flex-shrink: 0; line-height: 1; margin-top: 2px; }
-      #timeline-events { display: flex; gap: 8px; overflow-x: auto; flex: 1; }
+      #timeline-bar > .tl-label {
+        font-size: 9px; font-weight: 700; color: #94a3b8;
+        letter-spacing: 0.7px; text-transform: uppercase;
+        flex-shrink: 0; margin-top: 3px; white-space: nowrap;
+      }
+      #timeline-events { display: flex; gap: 8px; overflow-x: auto; flex: 1; padding-bottom: 8px; }
 
       .timeline-card {
         background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
@@ -792,6 +874,12 @@
           </div>
         </div><!-- /#game-container -->
 
+        <!-- Live event timeline — inside the viewport, below the canvas -->
+        <div id="timeline-bar">
+          <span class="tl-label">Live Events</span>
+          <div id="timeline-events"></div>
+        </div>
+
       </div><!-- /#center-column -->
 
       <!-- Right: tabbed panel — Entity Inspector + Broker Explorer -->
@@ -854,12 +942,6 @@
 
       </aside>
     </main>
-
-    <!-- Bottom: event timeline -->
-    <footer id="bottom-bar">
-      <h2>Live event timeline</h2>
-      <div id="timeline-events"></div>
-    </footer>
 
     <!-- Shared event hover tooltip -->
     <div id="event-tooltip" class="hidden">
