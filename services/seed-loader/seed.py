@@ -42,7 +42,14 @@ def load_entities(client: httpx.Client, entities: list) -> None:
         },
         timeout=30,
     )
-    if r.status_code not in (201, 204):
+    if r.status_code == 207:
+        # Mixed creates + updates in one batch — check for errors in the response body
+        body = r.json() if r.text else {}
+        errors = body.get("errors", [])
+        if errors:
+            log.error("Batch upsert had errors: %s", errors)
+            sys.exit(1)
+    elif r.status_code not in (201, 204):
         log.error("Batch upsert failed: %s — %s", r.status_code, r.text)
         sys.exit(1)
     log.info("Batch upsert completed (HTTP %d).", r.status_code)

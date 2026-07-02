@@ -92,7 +92,17 @@ test-05:
 	@echo "=== Running Tutorial 05 tests ==="
 	@bash tutorials/05-component-reservation/tests/test-05.sh
 
-test-all: test-01 test-02 test-03 test-04 test-05
+test-all:
+	@echo "=== Clean reset for full test suite ==="
+	$(COMPOSE) down -v --remove-orphans
+	$(COMPOSE) up -d mongo orion-ld context-server mrp-api inventory-service bom-service manufacturing-service
+	./scripts/wait-for-orion.sh
+	@echo "=== Tutorial 01 ===" && TUTORIAL=01 $(COMPOSE) run --rm --build -e TUTORIAL=01 seed && bash tutorials/01-getting-started-context/tests/test-01.sh
+	@echo "=== Tutorial 02 ===" && TUTORIAL=02 $(COMPOSE) run --rm --build -e TUTORIAL=02 seed && bash tutorials/02-inventory/tests/test-02.sh
+	@echo "=== Tutorial 03 ===" && TUTORIAL=03 $(COMPOSE) run --rm --build -e TUTORIAL=03 seed && bash tutorials/03-bom/tests/test-03.sh
+	@echo "=== Tutorial 04 ===" && TUTORIAL=04 $(COMPOSE) run --rm --build -e TUTORIAL=04 seed && bash tutorials/04-manufacturing-order/tests/test-04.sh
+	@echo "=== Tutorial 05 ===" && TUTORIAL=05 $(COMPOSE) run --rm --build -e TUTORIAL=05 seed && bash tutorials/05-component-reservation/tests/test-05.sh
+	@echo ""
 	@echo "=== All tests passed ==="
 
 # ── Quality gates ─────────────────────────────────────────────────────────────
