@@ -57,17 +57,18 @@ export class NgsiLdClient {
   }
 
   async deleteEntitiesByType(_types: string[]): Promise<number> {
-    // Type-agnostic purge: fetch all entities without a type filter so we
-    // never hit Orion-LD's context-expansion quirks with short type names.
+    // Use local=true (Orion-LD extension) to list ALL locally-stored entities
+    // without a type filter — avoids the "Too broad query" 400 and context-
+    // expansion issues that make per-type deletes return 0 results.
     const ids: string[] = [];
     let offset = 0;
     while (true) {
       try {
-        const params = new URLSearchParams({ limit: '200', offset: String(offset) });
+        const params = new URLSearchParams({ limit: '200', offset: String(offset), local: 'true' });
         const res = await fetch(
           `${this.orionUrl}/ngsi-ld/v1/entities?${params}`,
           {
-            headers: { Accept: 'application/ld+json' },
+            headers: { Accept: 'application/json' },
             signal: AbortSignal.timeout(8000),
           },
         );
