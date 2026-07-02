@@ -56,37 +56,35 @@ export class NgsiLdClient {
     }
   }
 
-  async deleteEntitiesByType(types: string[]): Promise<number> {
-    // Query each type individually — Orion-LD 1.6 silently drops some types
-    // when they are comma-joined, and its default page size is 20.
+  async deleteEntitiesByType(_types: string[]): Promise<number> {
+    // Type-agnostic purge: fetch all entities without a type filter so we
+    // never hit Orion-LD's context-expansion quirks with short type names.
     const ids: string[] = [];
-    for (const type of types) {
-      let offset = 0;
-      while (true) {
-        try {
-          const params = new URLSearchParams({ type, limit: '200', offset: String(offset) });
-          const res = await fetch(
-            `${this.orionUrl}/ngsi-ld/v1/entities?${params}`,
-            {
-              headers: { Accept: 'application/ld+json' },
-              signal: AbortSignal.timeout(8000),
-            },
-          );
-          if (!res.ok) break;
-          const page = (await res.json()) as NgsiLdEntity[];
-          if (!Array.isArray(page) || page.length === 0) break;
-          ids.push(...page.map((e) => e.id));
-          if (page.length < 200) break;
-          offset += 200;
-        } catch {
-          break;
-        }
+    let offset = 0;
+    while (true) {
+      try {
+        const params = new URLSearchParams({ limit: '200', offset: String(offset) });
+        const res = await fetch(
+          `${this.orionUrl}/ngsi-ld/v1/entities?${params}`,
+          {
+            headers: { Accept: 'application/ld+json' },
+            signal: AbortSignal.timeout(8000),
+          },
+        );
+        if (!res.ok) break;
+        const page = (await res.json()) as NgsiLdEntity[];
+        if (!Array.isArray(page) || page.length === 0) break;
+        ids.push(...page.map((e) => e.id));
+        if (page.length < 200) break;
+        offset += 200;
+      } catch {
+        break;
       }
     }
 
     if (ids.length === 0) return 0;
 
-    // Batch-delete in chunks of 200 to stay within broker limits.
+    // Batch-delete in chunks of 200.
     let deleted = 0;
     for (let i = 0; i < ids.length; i += 200) {
       const chunk = ids.slice(i, i + 200);
