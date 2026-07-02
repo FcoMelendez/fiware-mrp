@@ -57,20 +57,52 @@ export class NgsiLdClient {
   }
 
   async deleteEntitiesByType(types: string[]): Promise<number> {
-    const entities = await this.queryEntities(types);
-    if (entities.length === 0) return 0;
-    const ids = entities.map((e) => e.id);
-    try {
-      const res = await fetch(`${this.orionUrl}/ngsi-ld/v1/entityOperations/delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ids),
-        signal: AbortSignal.timeout(10000),
-      });
-      return res.ok ? ids.length : 0;
-    } catch {
-      return 0;
+    // Query each type individually — Orion-LD 1.6 silently drops some types
+    // when they are comma-joined, and its default page size is 20.
+    const ids: string[] = [];
+    for (const type of types) {
+      let offset = 0;
+      while (true) {
+        try {
+          const params = new URLSearchParams({ type, limit: '200', offset: String(offset) });
+          const res = await fetch(
+            `${this.orionUrl}/ngsi-ld/v1/entities?${params}`,
+            {
+              headers: { Accept: 'application/ld+json' },
+              signal: AbortSignal.timeout(8000),
+            },
+          );
+          if (!res.ok) break;
+          const page = (await res.json()) as NgsiLdEntity[];
+          if (!Array.isArray(page) || page.length === 0) break;
+          ids.push(...page.map((e) => e.id));
+          if (page.length < 200) break;
+          offset += 200;
+        } catch {
+          break;
+        }
+      }
     }
+
+    if (ids.length === 0) return 0;
+
+    // Batch-delete in chunks of 200 to stay within broker limits.
+    let deleted = 0;
+    for (let i = 0; i < ids.length; i += 200) {
+      const chunk = ids.slice(i, i + 200);
+      try {
+        const res = await fetch(`${this.orionUrl}/ngsi-ld/v1/entityOperations/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(chunk),
+          signal: AbortSignal.timeout(10000),
+        });
+        if (res.ok) deleted += chunk.length;
+      } catch {
+        // continue with remaining chunks
+      }
+    }
+    return deleted;
   }
 
   async createSubscription(body: Record<string, unknown>): Promise<string | null> {
