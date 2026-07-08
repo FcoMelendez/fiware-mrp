@@ -141,9 +141,10 @@ Data model introduced
 What's next
 -----------
 
-Tutorial 08 introduces **finished-goods receipt**: when the last WorkOrder
-for an MO completes, inventory is automatically updated (finished-goods
-location, lot assignment, and StockMove creation).
+Tutorial 08 introduces **finished-goods receipt**: once every WorkOrder for
+an MO is completed, ``finished-goods-service`` closes the order and receipts
+the produced quantity into the finished-goods warehouse (StockMove +
+InventoryBalance).
 
 
 ----

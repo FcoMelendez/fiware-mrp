@@ -114,6 +114,25 @@ Tutorial 07 — Shop-floor execution entities
    * - :doc:`ProductionEvent <production-event>`
      - Immutable audit record of a work-order-started or work-order-completed event
 
+Tutorial 08 — Finished goods receipt
+---------------------------------------
+
+Tutorial 08 introduces **no new entity type**.  It closes the production
+loop by reusing two entities already defined in Tutorial 02:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Entity type
+     - How Tutorial 08 uses it
+   * - :doc:`StockMove <stock-move>`
+     - A ``moveType: receipt`` move into the finished-goods ``StockLocation``, with ``origin`` pointing back at the ``ManufacturingOrder`` for traceability
+   * - :doc:`InventoryBalance <inventory-balance>`
+     - Created or incremented for the finished product at the finished-goods location
+   * - :doc:`ManufacturingOrder <manufacturing-order>`
+     - Gains a new ``completedAt`` attribute, set when the order reaches ``state: completed``
+
 ----
 
 .. toctree::

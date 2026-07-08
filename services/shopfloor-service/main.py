@@ -128,8 +128,10 @@ async def start_work_order(req: StartWorkOrderRequest) -> dict:
         product_id = _extract_rel(wo, "product")
         actual_start = _now_iso()
 
-        # 3. Patch WorkOrder: planned → in_progress
-        patch_r = await client.patch(
+        # 3. Append WorkOrder attrs: planned → in_progress
+        # actualStart does not yet exist on this entity, so POST (append-or-overwrite)
+        # is required — PATCH /attrs only updates attributes that already exist.
+        patch_r = await client.post(
             f"{ORION_URL}/ngsi-ld/v1/entities/{req.work_order_id}/attrs",
             json={
                 "@context": CONTEXT_URL,
@@ -214,8 +216,10 @@ async def complete_work_order(req: CompleteWorkOrderRequest) -> dict:
         product_id = _extract_rel(wo, "product")
         actual_end = _now_iso()
 
-        # 3. Patch WorkOrder: in_progress → completed
-        patch_r = await client.patch(
+        # 3. Append WorkOrder attrs: in_progress → completed
+        # actualEnd does not yet exist on this entity, so POST (append-or-overwrite)
+        # is required — PATCH /attrs only updates attributes that already exist.
+        patch_r = await client.post(
             f"{ORION_URL}/ngsi-ld/v1/entities/{req.work_order_id}/attrs",
             json={
                 "@context": CONTEXT_URL,

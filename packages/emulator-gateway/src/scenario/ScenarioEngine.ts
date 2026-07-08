@@ -22,11 +22,20 @@ import {
   TUTORIAL_06_STEPS,
   TUTORIAL_07_ENTITIES,
   TUTORIAL_07_STEPS,
+  TUTORIAL_08_ENTITIES,
+  TUTORIAL_08_STEPS,
   MOCK_WO_ASSEMBLY,
   MOCK_WO_LEAK_TEST,
   MOCK_WO_PACKAGING,
   MOCK_WO_ASSEMBLY_IN_PROGRESS,
+  MOCK_WO_ASSEMBLY_COMPLETED,
+  MOCK_WO_LEAK_TEST_COMPLETED,
+  MOCK_WO_PACKAGING_COMPLETED,
+  MOCK_PE_ASSEMBLY_STARTED,
   MOCK_PE_ASSEMBLY_COMPLETED,
+  MOCK_MO_COMPLETED,
+  MOCK_SM_RECEIPT,
+  MOCK_IB_FINISHED,
   type GuidedStep,
 } from './fixtures.js';
 
@@ -100,6 +109,11 @@ export class ScenarioEngine {
         title: 'Tutorial 07 – Shop-floor execution',
         stepsCount: TUTORIAL_07_STEPS.length,
       },
+      {
+        id: 'tutorial-08',
+        title: 'Tutorial 08 – Finished goods receipt',
+        stepsCount: TUTORIAL_08_STEPS.length,
+      },
     ];
   }
 
@@ -111,6 +125,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-05') return TUTORIAL_05_STEPS;
     if (tutorialId === 'tutorial-06') return TUTORIAL_06_STEPS;
     if (tutorialId === 'tutorial-07') return TUTORIAL_07_STEPS;
+    if (tutorialId === 'tutorial-08') return TUTORIAL_08_STEPS;
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -122,6 +137,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-05') return this.executeTutorial05Step(stepId);
     if (tutorialId === 'tutorial-06') return this.executeTutorial06Step(stepId);
     if (tutorialId === 'tutorial-07') return this.executeTutorial07Step(stepId);
+    if (tutorialId === 'tutorial-08') return this.executeTutorial08Step(stepId);
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -212,6 +228,8 @@ export class ScenarioEngine {
       ? ' (scheduler-service, orion-ld)'
       : tutorialId === 'tutorial-07'
       ? ' (shopfloor-service, orion-ld)'
+      : tutorialId === 'tutorial-08'
+      ? ' (finished-goods-service, orion-ld)'
       : '';
     const summary = this.mode === 'mock'
       ? `Mock mode — all services considered healthy${serviceNote}`
@@ -299,6 +317,7 @@ export class ScenarioEngine {
         ...TUTORIAL_05_ENTITIES,
         ...TUTORIAL_06_ENTITIES,
         ...TUTORIAL_07_ENTITIES,
+        ...TUTORIAL_08_ENTITIES,
       ];
       entities = singleId
         ? mockPool.filter((e) => (e as { id: string }).id === singleId)
@@ -983,6 +1002,167 @@ export class ScenarioEngine {
         durationMs,
       }],
       entities: [MOCK_PE_ASSEMBLY_COMPLETED],
+    };
+  }
+
+  // ── Tutorial 08 step handlers ──────────────────────────────────────────────
+
+  private async executeTutorial08Step(stepId: string): Promise<StepResult> {
+    const step = TUTORIAL_08_STEPS.find((s) => s.id === stepId);
+    if (!step) throw new Error(`Unknown step: ${stepId} in tutorial-08`);
+    switch (stepId) {
+      case 'check-finished-goods-service': return this.stepStackHealth(step, 'tutorial-08');
+      case 'seed-t08-data':                return this.stepSeedT08Data(step);
+      case 'query-work-orders-t08':         return this.stepQueryWorkOrdersT08(step);
+      case 'receive-finished-goods':        return this.stepReceiveFinishedGoods(step);
+      case 'query-manufacturing-order-t08': return this.stepQueryEntities(step, 'ManufacturingOrder', MOCK_MO_COMPLETED.id);
+      case 'query-stock-moves':             return this.stepQueryEntities(step, 'StockMove');
+      default: throw new Error(`No executor for step: ${stepId}`);
+    }
+  }
+
+  private async stepSeedT08Data(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 201;
+    let responseSummary = '30 entities upserted';
+
+    // T08 seed = T07 seed (28) but WorkOrders completed, + 2 ProductionEvents (started + completed)
+    const t08SeedEntities = [
+      ...TUTORIAL_01_ENTITIES,
+      MOCK_IB_PUMP_CASING,
+      MOCK_IB_IMPELLER,
+      MOCK_LOT_240001,
+      ...TUTORIAL_03_ENTITIES,
+      MOCK_MO_CONFIRMED,
+      ...TUTORIAL_05_ENTITIES,
+      MOCK_WO_ASSEMBLY_COMPLETED,
+      MOCK_WO_LEAK_TEST_COMPLETED,
+      MOCK_WO_PACKAGING_COMPLETED,
+      MOCK_PE_ASSEMBLY_STARTED,
+      MOCK_PE_ASSEMBLY_COMPLETED,
+    ];
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl, contextUrl } = this.ngsi as unknown as { orionUrl: string; contextUrl: string };
+        const withContext = t08SeedEntities.map((e) => ({ ...e, '@context': contextUrl }));
+        const res = await fetch(
+          `${orionUrl}/ngsi-ld/v1/entityOperations/upsert`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/ld+json' },
+            body: JSON.stringify(withContext),
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        responseStatus = res.status;
+        responseSummary = res.ok
+          ? `${t08SeedEntities.length} entities upserted`
+          : `Error: ${res.status}`;
+      } catch (err) {
+        responseStatus = 503;
+        responseSummary = err instanceof Error ? err.message : 'Broker unreachable';
+      }
+    }
+
+    const durationMs = Date.now() - t0;
+    const snapshot = { ...MOCK_SCENE, entities: t08SeedEntities };
+    this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(t08SeedEntities as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `${responseSummary} — T07 state: 28 entities + 3 WorkOrders (completed) + 2 ProductionEvents`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `${t08SeedEntities.length} entities  •  application/ld+json`,
+        responseStatus,
+        responseSummary,
+        durationMs,
+      }],
+      entities: t08SeedEntities,
+    };
+  }
+
+  private async stepQueryWorkOrdersT08(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let entities: unknown[];
+    let responseStatus = 200;
+
+    if (this.mode === 'live') {
+      entities = await this.ngsi.queryEntities(['WorkOrder']);
+      if (entities.length === 0) responseStatus = 404;
+    } else {
+      entities = [MOCK_WO_ASSEMBLY_COMPLETED, MOCK_WO_LEAK_TEST_COMPLETED, MOCK_WO_PACKAGING_COMPLETED];
+    }
+
+    const durationMs = Date.now() - t0;
+    return {
+      stepId: step.id,
+      status: 'completed',
+      result: `3 WorkOrder entities — Assembly, LeakTest, Packaging: all completed`,
+      apiTrace: [{ method: 'GET', url: step.hood.url, responseStatus, responseSummary: `${entities.length} entities`, durationMs }],
+      entities,
+    };
+  }
+
+  private async stepReceiveFinishedGoods(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const moId = MOCK_MO_CONFIRMED.id;
+    const mockCompletedAt = '2024-07-02T01:25:00Z';
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const fgUrl = orionUrl.replace(':1026', ':8086').replace('orion-ld', 'finished-goods-service');
+        const res = await fetch(`${fgUrl}/commands/receive-finished-goods`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ manufacturing_order_id: moId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: 'urn:ngsi-ld:StockLocation:WH-FINISHED',
+      entityType: 'StockLocation',
+      payload: { message: 'MO-2024-001 received — 10 EA HydraulicPump-P100 into WH-FINISHED' },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(moId, {
+        state:       { type: 'Property', value: 'completed' },
+        completedAt: { type: 'Property', value: mockCompletedAt },
+      });
+      this.mockStore.upsertMany([
+        MOCK_SM_RECEIPT as Record<string, unknown>,
+        MOCK_IB_FINISHED as Record<string, unknown>,
+      ]);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `ManufacturingOrder MO-2024-001 completed — StockMove receipt created, InventoryBalance updated (10 EA)`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ manufacturing_order_id: "${moId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", quantity_received: 10, stock_move_id: "${MOCK_SM_RECEIPT.id}" }`,
+        durationMs,
+      }],
+      entities: [MOCK_SM_RECEIPT, MOCK_IB_FINISHED],
     };
   }
 

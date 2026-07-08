@@ -1313,3 +1313,179 @@ export const TUTORIAL_07_STEPS: GuidedStep[] = [
     actionLabel: 'Query production events',
   },
 ];
+
+// ── Tutorial 08 mock entities ──────────────────────────────────────────────────
+
+export const MOCK_PE_ASSEMBLY_STARTED = {
+  id: 'urn:ngsi-ld:ProductionEvent:PE-WO-MO-2024-001-Assembly-started',
+  type: 'ProductionEvent',
+  eventType: { type: 'Property', value: 'work_order_started' },
+  eventTime: { type: 'Property', value: '2024-07-01T08:05:00Z' },
+  workOrder:         { type: 'Relationship', object: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-001-Assembly' },
+  workCenter:        { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+  manufacturingOrder:{ type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  product:           { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+};
+
+export const MOCK_WO_ASSEMBLY_COMPLETED = {
+  ...MOCK_WO_ASSEMBLY,
+  state:       { type: 'Property', value: 'completed' },
+  actualStart: { type: 'Property', value: '2024-07-01T08:05:00Z' },
+  actualEnd:   { type: 'Property', value: '2024-07-01T18:05:00Z' },
+};
+
+export const MOCK_WO_LEAK_TEST_COMPLETED = {
+  ...MOCK_WO_LEAK_TEST,
+  state:       { type: 'Property', value: 'completed' },
+  actualStart: { type: 'Property', value: '2024-07-01T18:10:00Z' },
+  actualEnd:   { type: 'Property', value: '2024-07-01T23:00:00Z' },
+};
+
+export const MOCK_WO_PACKAGING_COMPLETED = {
+  ...MOCK_WO_PACKAGING,
+  state:       { type: 'Property', value: 'completed' },
+  actualStart: { type: 'Property', value: '2024-07-01T23:05:00Z' },
+  actualEnd:   { type: 'Property', value: '2024-07-02T01:20:00Z' },
+};
+
+export const MOCK_MO_COMPLETED = {
+  ...MOCK_MO_CONFIRMED,
+  state:       { type: 'Property', value: 'completed' },
+  completedAt: { type: 'Property', value: '2024-07-02T01:25:00Z' },
+};
+
+export const MOCK_SM_RECEIPT = {
+  id: 'urn:ngsi-ld:StockMove:SM-MO-2024-001-receipt',
+  type: 'StockMove',
+  moveType:   { type: 'Property', value: 'receipt' },
+  quantity:   { type: 'Property', value: 10, unitCode: 'EA' },
+  state:      { type: 'Property', value: 'done' },
+  actualDate: { type: 'Property', value: '2024-07-02T01:25:00Z' },
+  origin:     { type: 'Property', value: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  product:    { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  toLocation: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-FINISHED' },
+};
+
+export const MOCK_IB_FINISHED = {
+  id: 'urn:ngsi-ld:InventoryBalance:IB-HydraulicPump-P100-WH-FINISHED',
+  type: 'InventoryBalance',
+  quantityOnHand:    { type: 'Property', value: 10, unitCode: 'EA' },
+  reservedQuantity:  { type: 'Property', value: 0, unitCode: 'EA' },
+  availableQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  inventoryDate:     { type: 'Property', value: '2024-07-02T01:25:00Z' },
+  state:             { type: 'Property', value: 'active' },
+  product:           { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  location:          { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-FINISHED' },
+};
+
+export const TUTORIAL_08_ENTITIES = [MOCK_SM_RECEIPT, MOCK_IB_FINISHED];
+
+// ── Tutorial 08 step definitions ───────────────────────────────────────────────
+
+export const TUTORIAL_08_STEPS: GuidedStep[] = [
+  {
+    id: 'check-finished-goods-service',
+    title: 'Verify finished goods service',
+    shortDesc: 'Health-check the finished-goods-service (v0.8)',
+    desc: 'Tutorial 08 introduces the finished-goods-service, which closes out a ManufacturingOrder by receiving its finished product into stock once every WorkOrder is done. This step confirms the new service is running and reachable.',
+    hood: { method: 'GET', url: 'http://finished-goods-service:8086/health', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /health → finished-goods-service:8086',
+      'finished-goods-service verifies its own startup',
+      'Returns { status: ok, service: finished-goods-service, version: 0.8.0 }',
+    ],
+    actionLabel: 'Check health',
+  },
+  {
+    id: 'seed-t08-data',
+    title: 'Load T08 seed data',
+    shortDesc: 'Seed 30 entities: T07 context + 3 completed WorkOrders + 2 ProductionEvents',
+    desc: 'Seeds Orion-LD with the full context for Tutorial 08: all T07 entities, but with the 3 WorkOrders for MO-2024-001 already transitioned to completed (Assembly, LeakTest, Packaging) and the two ProductionEvents recorded for the Assembly operation — ready for finished-goods receipt.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
+      body: '30 entities  •  application/ld+json',
+      expectedStatus: 201,
+    },
+    workflow: [
+      'Gateway attaches @context URL to all 30 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD (idempotent)',
+      'T07 state: 28 entities, but Assembly/LeakTest/Packaging WorkOrders are now state: completed',
+      'Plus 2 ProductionEvents for the Assembly operation (started + completed)',
+    ],
+    actionLabel: 'Seed entities',
+  },
+  {
+    id: 'query-work-orders-t08',
+    title: 'Query work orders',
+    shortDesc: 'GET /work-orders — all three WorkOrders are completed',
+    desc: 'Before receiving finished goods, confirm every WorkOrder for MO-2024-001 has reached the completed state — the precondition the finished-goods-service checks before closing out the order.',
+    hood: {
+      method: 'GET',
+      url: 'http://scheduler-service:8084/work-orders',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /work-orders → scheduler-service:8084',
+      'scheduler-service → GET /ngsi-ld/v1/entities?type=WorkOrder → Orion-LD',
+      '3 work orders returned',
+      'Assembly, LeakTest, Packaging: all state=completed',
+    ],
+    actionLabel: 'Query work orders',
+  },
+  {
+    id: 'receive-finished-goods',
+    title: 'Receive finished goods',
+    shortDesc: 'POST /commands/receive-finished-goods — close out MO-2024-001',
+    desc: 'The receive-finished-goods command validates that every WorkOrder for the ManufacturingOrder is completed, patches the MO to state=completed with a completedAt timestamp, creates a StockMove receipt into the finished-goods warehouse, and updates (or creates) the InventoryBalance for the finished product there.',
+    hood: {
+      method: 'POST',
+      url: 'http://finished-goods-service:8086/commands/receive-finished-goods',
+      body: JSON.stringify({ manufacturing_order_id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/receive-finished-goods { manufacturing_order_id } → finished-goods-service',
+      'finished-goods-service fetches MO → fetches its WorkOrders → validates all state=completed',
+      'PATCH /ngsi-ld/v1/entities/{moId}/attrs → state: completed, completedAt: <now>',
+      'POST /ngsi-ld/v1/entityOperations/upsert → StockMove (moveType: receipt, toLocation: WH-FINISHED)',
+      'GET/PATCH or POST /ngsi-ld/v1/entities → InventoryBalance (quantityOnHand += 10 EA)',
+    ],
+    actionLabel: 'Receive finished goods',
+  },
+  {
+    id: 'query-manufacturing-order-t08',
+    title: 'Query the manufacturing order',
+    shortDesc: 'GET manufacturing order — state=completed',
+    desc: 'After the receipt, MO-2024-001 shows state=completed with a completedAt timestamp — the production loop from confirmation through finished-goods receipt is now closed.',
+    hood: {
+      method: 'GET',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entities/urn:ngsi-ld:ManufacturingOrder:MO-2024-001',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'GET /ngsi-ld/v1/entities/urn:ngsi-ld:ManufacturingOrder:MO-2024-001 with Link: <context>',
+      'Orion-LD returns compacted JSON-LD (short keys via @context)',
+      'state: completed · completedAt: 2024-07-02T01:25:00Z',
+    ],
+    actionLabel: 'Inspect manufacturing order',
+  },
+  {
+    id: 'query-stock-moves',
+    title: 'Query production receipts',
+    shortDesc: 'GET /production-receipts — inspect the finished-goods StockMove',
+    desc: 'After the receipt, one StockMove entity exists capturing the finished-goods receipt: moveType=receipt, quantity=10 EA, destination=WH-FINISHED, with origin pointing back at the ManufacturingOrder for traceability.',
+    hood: {
+      method: 'GET',
+      url: 'http://finished-goods-service:8086/production-receipts',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /production-receipts → finished-goods-service:8086',
+      'finished-goods-service → GET /ngsi-ld/v1/entities?type=StockMove → Orion-LD',
+      '1 StockMove returned: moveType=receipt, quantity=10 EA, toLocation=WH-FINISHED',
+      'origin → urn:ngsi-ld:ManufacturingOrder:MO-2024-001 (traceability back to the order)',
+    ],
+    actionLabel: 'Query production receipts',
+  },
+];

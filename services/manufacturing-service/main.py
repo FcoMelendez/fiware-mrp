@@ -142,7 +142,9 @@ async def confirm_manufacturing_order(body: ConfirmOrderRequest) -> dict:
             "confirmedAt": {"type": "Property", "value": now},
         }
 
-        patch_r = await client.patch(
+        # confirmedAt does not yet exist on this entity, so POST (append-or-overwrite)
+        # is required — PATCH /attrs only updates attributes that already exist.
+        patch_r = await client.post(
             f"{ORION_URL}/ngsi-ld/v1/entities/{body.order_id}/attrs",
             json=patch,
             headers={"Content-Type": "application/ld+json"},

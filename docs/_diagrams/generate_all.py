@@ -61,10 +61,10 @@ def full_architecture():
                 bom  = Python("bom-service\n:8082", **NODE_ACTIVE)
                 mfg  = Python("manufacturing-service\n:8083", **NODE_ACTIVE)
                 sched = Python("scheduler-service\n:8084", **NODE_ACTIVE)
-            with Cluster("Execution  (T07)"):
-                sf   = Python("shopfloor-service\n:8085", **NODE_ACTIVE)
-            with Cluster("Future  (T08–T12)"):
-                fg   = Server("finished-goods-service\n:8086  [T08]", **NODE_FUTURE)
+            with Cluster("Execution  (T07–T08)"):
+                sf = Python("shopfloor-service\n:8085", **NODE_ACTIVE)
+                fg = Python("finished-goods-service\n:8086", **NODE_ACTIVE)
+            with Cluster("Future  (T09–T12)"):
                 qual = Server("quality-service\n:8087  [T09]", **NODE_FUTURE)
                 mps  = Server("mps-service\n:8088  [T10]", **NODE_FUTURE)
                 iot  = Server("iot-simulator\n:8089  [T11]", **NODE_FUTURE)
@@ -81,7 +81,7 @@ def full_architecture():
         ui   >> Edge(**EDGE_LIVE) >> gw
 
         # Emulator → MRP Services
-        gw >> Edge(**EDGE_LIVE) >> [api, inv, bom, mfg, sched, sf]
+        gw >> Edge(**EDGE_LIVE) >> [api, inv, bom, mfg, sched, sf, fg]
 
         # MRP Services → Orion-LD
         api   >> Edge(**EDGE_DATA) >> orion
@@ -90,9 +90,9 @@ def full_architecture():
         mfg   >> Edge(**EDGE_DATA) >> orion
         sched >> Edge(**EDGE_DATA) >> orion
         sf    >> Edge(**EDGE_DATA) >> orion
+        fg    >> Edge(**EDGE_DATA) >> orion
 
         # Future services → Orion-LD (dashed)
-        fg   >> Edge(**EDGE_FUTURE) >> orion
         qual >> Edge(**EDGE_FUTURE) >> orion
         mps  >> Edge(**EDGE_FUTURE) >> orion
         iot  >> Edge(**EDGE_FUTURE) >> orion
@@ -381,6 +381,42 @@ def t07():
     print("  ✓ arch-t07.png")
 
 
+def t08():
+    path = os.path.join(OUT, "arch-t08")
+    with Diagram(
+        "Tutorial 08 — Finished Goods Receipt",
+        filename=path, outformat="png", show=False,
+        graph_attr={**GRAPH_ATTR, "ranksep": "0.6"}, direction="TB",
+    ):
+        with Cluster("Emulator"):
+            gw = Python("emulator-gateway\n:8090", **NODE_EMUL)
+
+        with Cluster("MRP Services"):
+            with Cluster("Previous"):
+                api   = Python("mrp-api\n:8080", **PREV)
+                inv   = Python("inventory-service\n:8081", **PREV)
+                bom   = Python("bom-service\n:8082", **PREV)
+                mfg   = Python("manufacturing-service\n:8083", **PREV)
+                sched = Python("scheduler-service\n:8084", **PREV)
+                sf    = Python("shopfloor-service\n:8085", **PREV)
+            with Cluster("NEW"):
+                fg = Python("finished-goods-service\n:8086", **ACTIVE)
+
+        with Cluster("NGSI-LD"):
+            orion = Server("Orion-LD\n:1026", **NODE_INFRA)
+            ctx   = Nginx("context-server\n:3000", **NODE_INFRA)
+
+        with Cluster("Data"):
+            mongo = MongoDB("MongoDB 5.0", **NODE_INFRA)
+
+        gw >> Edge(**EDGE_LIVE) >> [api, inv, bom, mfg, sched, sf, fg]
+        for n in [api, inv, bom, mfg, sched, sf, fg]:
+            n >> Edge(**EDGE_DATA) >> orion
+        orion >> Edge(color="#94a3b8", style="dotted") >> ctx
+        orion >> Edge(**EDGE_DATA) >> mongo
+    print("  ✓ arch-t08.png")
+
+
 if __name__ == "__main__":
     print("Generating architecture diagrams...")
     full_architecture()
@@ -391,4 +427,5 @@ if __name__ == "__main__":
     t05()
     t06()
     t07()
+    t08()
     print("Done — PNGs written to docs/_static/architecture/")

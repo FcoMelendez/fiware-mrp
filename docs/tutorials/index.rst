@@ -35,8 +35,8 @@ self-contained: reset, seed, execute, assert and stop.
      - :doc:`07-shop-floor`
      - Shop-floor execution
    * - v0.8
-     - Tutorial 08 *(coming soon)*
-     - Finished goods, lots and traceability
+     - :doc:`08-finished-goods`
+     - Finished goods receipt
    * - v0.9
      - Tutorial 09 *(coming soon)*
      - Quality, scrap, rework and backorders
@@ -60,3 +60,4 @@ self-contained: reset, seed, execute, assert and stop.
    05-reservations
    06-work-orders
    07-shop-floor
+   08-finished-goods

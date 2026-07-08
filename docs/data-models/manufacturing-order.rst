@@ -49,6 +49,10 @@ Attribute table
      - Property
      - DateTime
      - Timestamp set when the order transitions to ``confirmed``
+   * - ``completedAt``
+     - Property
+     - DateTime
+     - Timestamp set when the order transitions to ``completed`` (see :doc:`Tutorial 08 </tutorials/08-finished-goods>`)
    * - ``product``
      - Relationship
      - Product
@@ -75,6 +79,7 @@ NGSI-LD normalised example
      "plannedEnd":   { "type": "Property",     "value": "2024-07-03T17:00:00Z" },
      "priority":     { "type": "Property",     "value": "normal" },
      "confirmedAt":  { "type": "Property",     "value": "2024-07-01T07:45:00Z" },
+     "completedAt":  { "type": "Property",     "value": "2024-07-02T01:25:00Z" },
      "product":      { "type": "Relationship", "object": "urn:ngsi-ld:Product:HydraulicPump-P100" },
      "bom":          { "type": "Relationship", "object": "urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1" },
      "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld"

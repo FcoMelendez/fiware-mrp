@@ -86,7 +86,7 @@ Component reference
      - 8085
      - T07
      - Work order execution — start, complete, production events
-   * - **finished-goods-service** *(planned)*
+   * - **finished-goods-service**
      - 8086
      - T08
      - Finished-goods receipt and inventory update on MO completion
@@ -131,7 +131,8 @@ Data flow
      ├─ bom-service ────────►│   NGSI-LD context broker         │
      ├─ manufacturing-service►│   (entity CRUD + subscriptions)  │
      ├─ scheduler-service ──►│                                  │
-     └─ shopfloor-service ──►│                                  │
+     ├─ shopfloor-service ──►│                                  │
+     └─ finished-goods-service►│                                │
                              └──────────────┬───────────────────┘
                                             │
                                    ┌────────▼────────┐
@@ -203,6 +204,13 @@ NGSI-LD entity types
      - T07
      - Immutable record of a work order start or completion
 
+.. note::
+
+   T08 introduces no new entity type — it closes the production loop by
+   reusing **StockMove** (``moveType: receipt``) and **InventoryBalance**
+   at the finished-goods location, plus a new ``completedAt`` attribute on
+   **ManufacturingOrder**.
+
 ----
 
 Architecture evolution by tutorial
@@ -258,5 +266,12 @@ shown for context.
 
 .. image:: ../_static/architecture/arch-t07.png
    :alt: T07 architecture
+   :align: center
+   :width: 80%
+
+**Tutorial 08** — Finished goods receipt
+
+.. image:: ../_static/architecture/arch-t08.png
+   :alt: T08 architecture
    :align: center
    :width: 80%
