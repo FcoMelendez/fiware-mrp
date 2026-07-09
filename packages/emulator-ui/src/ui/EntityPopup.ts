@@ -44,6 +44,16 @@ export class EntityPopup {
 
     this.popupEl.querySelector('.entity-popup-close')?.addEventListener('click', () => this.close());
 
+    // Phaser's pointer input isn't scoped to the canvas element — it does its own
+    // coordinate-based hit-testing against every interactive zone regardless of which
+    // DOM element the browser actually dispatched the click to. Without this, any click
+    // inside the popup (a relationship link, the back button, anywhere) that happens to
+    // land over a canvas zone underneath also fires that zone's own click, re-opening
+    // the popup for a *different* entity and resetting the nav history — which looks
+    // exactly like "clicking back closed the popup" from the user's perspective.
+    this.popupEl.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.popupEl.addEventListener('mousedown', (e) => e.stopPropagation());
+
     document.addEventListener('mousedown', (e) => {
       if (!this.armedForOutsideClose) return;
       if (this.popupEl.classList.contains('hidden')) return;
