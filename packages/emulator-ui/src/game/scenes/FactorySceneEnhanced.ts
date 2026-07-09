@@ -92,6 +92,28 @@ const WO_STATE_TO_BADGE: Record<string, keyof typeof P.badgeColor> = {
   completed:   'done',
 };
 
+// A WorkOrder going in_progress means "this station just picked up the previous station's
+// output" — so it's the trigger for animating that handoff. Keyed by the zone whose
+// WorkOrder just started; the value is where the material is coming FROM and what it
+// should look like at that point in its journey from raw part to finished product.
+type FlowStage = 'parts' | 'assembled' | 'tested' | 'packaged';
+const ZONE_FLOW_SOURCE: Record<string, string> = {
+  assembly:    'warehouse',
+  'leak-test': 'assembly',
+  packaging:   'leak-test',
+};
+const ZONE_FLOW_STAGE: Record<string, FlowStage> = {
+  assembly:    'parts',
+  'leak-test': 'assembled',
+  packaging:   'tested',
+};
+const FLOW_STAGE_LABEL: Record<FlowStage, string> = {
+  parts:     'parts',
+  assembled: 'WIP',
+  tested:    'tested',
+  packaged:  'product',
+};
+
 interface MachineObj {
   zoneId: string;
   entityId: string | undefined;
@@ -130,9 +152,10 @@ export class FactorySceneEnhanced extends Phaser.Scene {
   private lightTweens = new Map<string, Phaser.Tweens.Tween>();
   private conveyorDots: ConveyorDot[] = [];
   private unsubs: Array<() => void> = [];
-  // Cart animation
-  private cartContainer: Phaser.GameObjects.Container | null = null;
-  private cartLabel: Phaser.GameObjects.Text | null = null;
+  // Material-flow animations — several can be in flight at once (e.g. a part entering
+  // Assembly while a tested unit is already moving into Packaging), so each carrier tracks
+  // its own container/label pair instead of sharing one slot.
+  private activeCarriers: Array<{ container: Phaser.GameObjects.Container; label: Phaser.GameObjects.Text }> = [];
   // Live counters for zones with no single bound entity (Production Buffer, Quality) and
   // for stock zones, whose bound StockLocation entity never changes — the real quantity
   // lives on InventoryBalance entities tracked here by location.
@@ -140,6 +163,12 @@ export class FactorySceneEnhanced extends Phaser.Scene {
   private wipWorkOrders = new Set<string>();
   private qualityStats = { pass: 0, fail: 0 };
   private seenQualityChecks = new Set<string>();
+  private seenInProgressWorkOrders = new Set<string>();
+  // Units received into Finished Goods — incremented in lockstep with each arriving
+  // "packaged" carrier, with an icon matching what's flying.
+  private unitsReceived = 0;
+  private receivedCounterIcon?: Phaser.GameObjects.Rectangle;
+  private receivedCounterText?: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: 'FactoryEnhanced' });
@@ -281,6 +310,16 @@ export class FactorySceneEnhanced extends Phaser.Scene {
       zoneObj.quantityLabel = this.add.text(x + w / 2, y + h - 14, '', {
         fontSize: '10px', fontFamily: 'monospace', fontStyle: 'bold', color: '#166534',
       }).setOrigin(0.5).setDepth(2);
+
+      // Units-received counter — icon matches the "packaged" carrier that flies in from
+      // Packaging, so the count visibly ticks up in the same visual language as the animation.
+      if (zone.kind === 'finishedGoods') {
+        this.receivedCounterIcon = this.add.rectangle(x + w - 34, y + 20, 14, 10, P.cartOrange)
+          .setStrokeStyle(1, 0x9a3412).setDepth(2);
+        this.receivedCounterText = this.add.text(x + w - 22, y + 20, '× 0', {
+          fontSize: '12px', fontFamily: 'monospace', fontStyle: 'bold', color: '#9a3412',
+        }).setOrigin(0, 0.5).setDepth(2);
+      }
     } else if (zone.kind === 'quality') {
       // Unbound (no entityId) but still gets the inspection-table decoration + counter above
       this.drawInspectionTable(x + w / 2, y + h / 2 + 8, w * 0.6, h * 0.4);
@@ -613,11 +652,76 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     this.operatorLabel = labelText;
   }
 
-  // ── Material cart animation ───────────────────────────────────────────────
+  // ── Material-flow animation — the asset evolves as it moves ───────────────
+  //
+  // One carrier graphic per stage of the journey from raw part to finished product:
+  //   parts (grey, scattered components) → assembled (grey-blue body) →
+  //   tested (blue body + a passed check) → packaged (the orange cart, boxed and shipped).
+  // Multiple can be in flight at once, so each gets its own container rather than sharing
+  // a single slot the way the old single-cart implementation did.
 
-  private spawnCart(fromZoneId: string, toZoneId: string, label: string, width: number, height: number): void {
-    this.killCart();
+  private buildCarrierVisual(stage: FlowStage): Phaser.GameObjects.Graphics {
+    const gfx = this.add.graphics();
+    switch (stage) {
+      case 'parts':
+        // A loose cluster of raw components — nothing assembled yet.
+        gfx.fillStyle(P.palletBrown, 0.9);
+        gfx.fillRect(-11, -6, 8, 8);
+        gfx.fillRect(-1, -7, 7, 7);
+        gfx.fillStyle(P.machineLight, 0.9);
+        gfx.fillRect(-6, 2, 11, 5);
+        gfx.lineStyle(1, 0x1e293b, 0.4);
+        gfx.strokeRect(-11, -6, 8, 8);
+        gfx.strokeRect(-1, -7, 7, 7);
+        break;
+      case 'assembled':
+        // One assembled body — a single unit now, but not yet proven to work.
+        gfx.fillStyle(P.machineMid, 1);
+        gfx.fillCircle(0, 0, 10);
+        gfx.lineStyle(1.5, P.machineDark, 1);
+        gfx.strokeCircle(0, 0, 10);
+        gfx.lineStyle(1, P.machineLight, 0.5);
+        gfx.strokeCircle(0, 0, 5);
+        break;
+      case 'tested':
+        // Same body, now blue (matches the machine accent colour) with a passed check.
+        gfx.fillStyle(P.machineAccent, 1);
+        gfx.fillCircle(0, 0, 10);
+        gfx.lineStyle(1.5, 0x0f172a, 1);
+        gfx.strokeCircle(0, 0, 10);
+        gfx.lineStyle(2.5, 0x22c55e, 1);
+        gfx.beginPath();
+        gfx.moveTo(-4, 0);
+        gfx.lineTo(-1, 3);
+        gfx.lineTo(5, -4);
+        gfx.strokePath();
+        break;
+      case 'packaged': {
+        // Boxed and ready to ship — the original cart look.
+        const cw = 46, ch = 24;
+        gfx.fillStyle(P.cartOrange, 1);
+        gfx.fillRect(-cw / 2, -ch / 2, cw, ch);
+        gfx.lineStyle(2, 0x9a3412, 1);
+        gfx.strokeRect(-cw / 2, -ch / 2, cw, ch);
+        gfx.lineStyle(1.5, 0xfed7aa, 0.6);
+        gfx.lineBetween(-cw / 2 + 4, -2, cw / 2 - 4, -2);
+        gfx.lineBetween(-cw / 2 + 4,  3, cw / 2 - 4,  3);
+        [[-cw / 2 + 7, ch / 2], [cw / 2 - 7, ch / 2]].forEach(([wx, wy]) => {
+          gfx.fillStyle(P.cartWheel, 1);
+          gfx.fillCircle(wx, wy, 5);
+          gfx.fillStyle(0x475569, 0.7);
+          gfx.fillCircle(wx, wy, 2);
+        });
+        break;
+      }
+    }
+    return gfx;
+  }
 
+  private spawnFlowCarrier(
+    fromZoneId: string, toZoneId: string, stage: FlowStage, quantity: number,
+    width: number, height: number,
+  ): void {
     const fromZone = this.snapshot?.layout.zones.find((z) => z.id === fromZoneId);
     const toZone   = this.snapshot?.layout.zones.find((z) => z.id === toZoneId);
     if (!fromZone || !toZone) return;
@@ -627,48 +731,50 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     const ex = toZone.xPct * width;
     const ey = (toZone.yPct + toZone.hPct * 0.5) * height;
 
-    const gfx = this.add.graphics().setDepth(8);
-    const cw = 46, ch = 24;
-    gfx.fillStyle(P.cartOrange, 1);
-    gfx.fillRect(-cw / 2, -ch / 2, cw, ch);
-    gfx.lineStyle(2, 0x9a3412, 1);
-    gfx.strokeRect(-cw / 2, -ch / 2, cw, ch);
-    gfx.lineStyle(1.5, 0xfed7aa, 0.6);
-    gfx.lineBetween(-cw / 2 + 4, -2, cw / 2 - 4, -2);
-    gfx.lineBetween(-cw / 2 + 4,  3, cw / 2 - 4,  3);
-    // Wheels
-    [[-cw / 2 + 7, ch / 2], [cw / 2 - 7, ch / 2]].forEach(([wx, wy]) => {
-      gfx.fillStyle(P.cartWheel, 1);
-      gfx.fillCircle(wx, wy, 5);
-      gfx.fillStyle(0x475569, 0.7);
-      gfx.fillCircle(wx, wy, 2);
-    });
-
+    const gfx = this.buildCarrierVisual(stage).setDepth(8);
+    const label = stage === 'packaged' ? `${quantity} EA` : FLOW_STAGE_LABEL[stage];
     const txt = this.add.text(0, -1, label, {
       fontSize: '9px', fontFamily: 'monospace', fontStyle: 'bold', color: '#fff',
     }).setOrigin(0.5).setDepth(9);
 
-    this.cartContainer = this.add.container(sx, sy, [gfx]).setDepth(8);
-    this.cartLabel = txt;
+    const container = this.add.container(sx, sy, [gfx]).setDepth(8);
     txt.setPosition(sx, sy - 20);
+    const carrier = { container, label: txt };
+    this.activeCarriers.push(carrier);
 
     this.tweens.add({
-      targets: [this.cartContainer, txt],
+      targets: [container, txt],
       x: ex,
-      y: { from: sy, to: ey, duration: 2800 },
+      y: { from: sy, to: ey, duration: 2200 },
       ease: 'Sine.easeInOut',
-      duration: 2800,
+      duration: 2200,
       onComplete: () => {
-        this.killCart();
+        container.destroy();
+        txt.destroy();
+        this.activeCarriers = this.activeCarriers.filter((c) => c !== carrier);
+        if (stage === 'packaged') this.bumpReceivedCounter(quantity);
       },
     });
   }
 
-  private killCart(): void {
-    this.cartContainer?.destroy();
-    this.cartLabel?.destroy();
-    this.cartContainer = null;
-    this.cartLabel = null;
+  private bumpReceivedCounter(by: number): void {
+    this.unitsReceived += by;
+    this.receivedCounterText?.setText(`× ${this.unitsReceived}`);
+    if (this.receivedCounterIcon) {
+      this.tweens.add({
+        targets: this.receivedCounterIcon,
+        scaleX: { from: 1.6, to: 1 }, scaleY: { from: 1.6, to: 1 },
+        duration: 300, ease: 'Back.easeOut',
+      });
+    }
+  }
+
+  private killAllCarriers(): void {
+    for (const c of this.activeCarriers) {
+      c.container.destroy();
+      c.label.destroy();
+    }
+    this.activeCarriers = [];
   }
 
   // ── Entity state reactions ────────────────────────────────────────────────
@@ -783,6 +889,20 @@ export class FactorySceneEnhanced extends Phaser.Scene {
 
     const wcRel = (entity['workCenter'] as { type: string; object: string } | undefined)?.object;
     const obj   = wcRel ? this.findMachineForEntity(wcRel) : undefined;
+
+    // A WorkOrder starting is the handoff moment — the previous station's output (or, for
+    // Assembly, raw stock) is what's moving into this one. Guarded so a duplicate broadcast
+    // for the same WorkOrder can't spawn the same leg's carrier twice.
+    if (state0 === 'in_progress' && obj && !this.seenInProgressWorkOrders.has(entity.id)) {
+      this.seenInProgressWorkOrders.add(entity.id);
+      const fromZone = ZONE_FLOW_SOURCE[obj.zoneId];
+      const stage = ZONE_FLOW_STAGE[obj.zoneId];
+      if (fromZone && stage) {
+        const { width, height } = this.scale;
+        this.spawnFlowCarrier(fromZone, obj.zoneId, stage, 1, width, height);
+      }
+    }
+
     if (!obj) return;
 
     const state    = propValue<string>(entity, 'state') ?? '';
@@ -839,11 +959,11 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     if (state !== 'done' || moveType !== 'receipt') return;
 
     const toLoc = relObject(entity, 'toLocation');
-    const product = relObject(entity, 'product')?.split(':').pop() ?? 'parts';
+    const quantity = propValue<number>(entity, 'quantity') ?? 1;
     const { width, height } = this.scale;
 
     if (toLoc === 'urn:ngsi-ld:StockLocation:WH-FINISHED') {
-      this.spawnCart('packaging', 'finished-goods', product, width, height);
+      this.spawnFlowCarrier('packaging', 'finished-goods', 'packaged', quantity, width, height);
       this.flashZoneById('finished-goods');
     } else if (toLoc === 'urn:ngsi-ld:StockLocation:WH-STOCK') {
       this.flashZoneById('warehouse');
@@ -889,7 +1009,7 @@ export class FactorySceneEnhanced extends Phaser.Scene {
   }
 
   private onReset(): void {
-    this.killCart();
+    this.killAllCarriers();
     for (const [, obj] of this.machineObjs) {
       obj.lightCircle.setFillStyle(P.light.off, 1);
       obj.lightGlow.setFillStyle(P.light.off, 0.15);
@@ -914,6 +1034,9 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     }
     this.zoneObjs.get('production-buffer')?.counterLabel?.setText('No work in progress');
     this.zoneObjs.get('quality-area')?.counterLabel?.setText('0 passed · 0 failed');
+    this.seenInProgressWorkOrders.clear();
+    this.unitsReceived = 0;
+    this.receivedCounterText?.setText('× 0');
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -934,7 +1057,7 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     this.lightTweens.clear();
     this.conveyorDots.forEach((d) => d.tween.stop());
     this.conveyorDots = [];
-    this.killCart();
+    this.killAllCarriers();
     this.machineObjs.clear();
     this.zoneObjs.clear();
   }

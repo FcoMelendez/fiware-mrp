@@ -2746,8 +2746,14 @@ export class ScenarioEngine {
       this.mockStore.upsertMany([MOCK_WO2_LEAK_TEST_COMPLETED, MOCK_QC2_LEAKTEST_PASS] as Array<Record<string, unknown>>);
     }
 
-    // Broadcast the final states unconditionally (both modes) — the canvas's WorkCenter
-    // coloring and the Quality/Inspection pass-fail counter both react to these.
+    // Broadcast in_progress first — this is what triggers the canvas's Assembly →
+    // LeakTest material-flow carrier — then completed. Both unconditional (both modes).
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: woId,
+      entityType: 'WorkOrder',
+      payload: { state: { type: 'Property', value: 'in_progress' }, workCenter: MOCK_WO2_LEAK_TEST['workCenter'] },
+    });
     this.hub.broadcast({
       eventType: 'entityChanged',
       entityId: woId,
@@ -2812,6 +2818,13 @@ export class ScenarioEngine {
       this.mockStore.upsertMany([MOCK_WO2_PACKAGING_COMPLETED] as Array<Record<string, unknown>>);
     }
 
+    // in_progress first — triggers the canvas's LeakTest → Packaging material-flow carrier.
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: woId,
+      entityType: 'WorkOrder',
+      payload: { state: { type: 'Property', value: 'in_progress' }, workCenter: MOCK_WO2_PACKAGING['workCenter'] },
+    });
     this.hub.broadcast({
       eventType: 'entityChanged',
       entityId: woId,
@@ -2872,6 +2885,7 @@ export class ScenarioEngine {
         state: { type: 'Property', value: 'done' },
         moveType: { type: 'Property', value: 'receipt' },
         toLocation: MOCK_SM2_RECEIPT['toLocation'],
+        quantity: { type: 'Property', value: newQty, unitCode: 'EA' },
       },
     });
     this.hub.broadcast({
