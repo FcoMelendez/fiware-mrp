@@ -24,6 +24,8 @@ import {
   TUTORIAL_07_STEPS,
   TUTORIAL_08_ENTITIES,
   TUTORIAL_08_STEPS,
+  TUTORIAL_09_ENTITIES,
+  TUTORIAL_09_STEPS,
   MOCK_WO_ASSEMBLY,
   MOCK_WO_LEAK_TEST,
   MOCK_WO_PACKAGING,
@@ -36,6 +38,9 @@ import {
   MOCK_MO_COMPLETED,
   MOCK_SM_RECEIPT,
   MOCK_IB_FINISHED,
+  MOCK_QC_LEAKTEST_FAIL,
+  MOCK_RW_LEAKTEST,
+  MOCK_QA_LEAKTEST,
   type GuidedStep,
 } from './fixtures.js';
 
@@ -114,6 +119,11 @@ export class ScenarioEngine {
         title: 'Tutorial 08 – Finished goods receipt',
         stepsCount: TUTORIAL_08_STEPS.length,
       },
+      {
+        id: 'tutorial-09',
+        title: 'Tutorial 09 – Quality, scrap and rework',
+        stepsCount: TUTORIAL_09_STEPS.length,
+      },
     ];
   }
 
@@ -126,6 +136,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-06') return TUTORIAL_06_STEPS;
     if (tutorialId === 'tutorial-07') return TUTORIAL_07_STEPS;
     if (tutorialId === 'tutorial-08') return TUTORIAL_08_STEPS;
+    if (tutorialId === 'tutorial-09') return TUTORIAL_09_STEPS;
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -138,6 +149,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-06') return this.executeTutorial06Step(stepId);
     if (tutorialId === 'tutorial-07') return this.executeTutorial07Step(stepId);
     if (tutorialId === 'tutorial-08') return this.executeTutorial08Step(stepId);
+    if (tutorialId === 'tutorial-09') return this.executeTutorial09Step(stepId);
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -153,6 +165,7 @@ export class ScenarioEngine {
         'InventoryReservation',
         'WorkOrder',
         'ProductionEvent',
+        'QualityCheck', 'ScrapEvent', 'ReworkOrder', 'QualityAlert',
       ]);
     }
 
@@ -230,6 +243,8 @@ export class ScenarioEngine {
       ? ' (shopfloor-service, orion-ld)'
       : tutorialId === 'tutorial-08'
       ? ' (finished-goods-service, orion-ld)'
+      : tutorialId === 'tutorial-09'
+      ? ' (quality-service, orion-ld)'
       : '';
     const summary = this.mode === 'mock'
       ? `Mock mode — all services considered healthy${serviceNote}`
@@ -318,6 +333,7 @@ export class ScenarioEngine {
         ...TUTORIAL_06_ENTITIES,
         ...TUTORIAL_07_ENTITIES,
         ...TUTORIAL_08_ENTITIES,
+        ...TUTORIAL_09_ENTITIES,
       ];
       entities = singleId
         ? mockPool.filter((e) => (e as { id: string }).id === singleId)
@@ -1163,6 +1179,151 @@ export class ScenarioEngine {
         durationMs,
       }],
       entities: [MOCK_SM_RECEIPT, MOCK_IB_FINISHED],
+    };
+  }
+
+  // ── Tutorial 09 step handlers ──────────────────────────────────────────────
+
+  private async executeTutorial09Step(stepId: string): Promise<StepResult> {
+    const step = TUTORIAL_09_STEPS.find((s) => s.id === stepId);
+    if (!step) throw new Error(`Unknown step: ${stepId} in tutorial-09`);
+    switch (stepId) {
+      case 'check-quality-service': return this.stepStackHealth(step, 'tutorial-09');
+      case 'seed-t09-data':         return this.stepSeedT09Data(step);
+      case 'inspect-work-order':    return this.stepInspectWorkOrder(step);
+      case 'query-quality-checks':  return this.stepQueryEntities(step, 'QualityCheck');
+      case 'query-rework-orders':   return this.stepQueryEntities(step, 'ReworkOrder');
+      case 'query-quality-alerts':  return this.stepQueryEntities(step, 'QualityAlert');
+      default: throw new Error(`No executor for step: ${stepId}`);
+    }
+  }
+
+  private async stepSeedT09Data(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 201;
+    let responseSummary = '30 entities upserted';
+
+    // T09 seed = T08 seed unchanged (30 entities) — quality entities are created live
+    const t09SeedEntities = [
+      ...TUTORIAL_01_ENTITIES,
+      MOCK_IB_PUMP_CASING,
+      MOCK_IB_IMPELLER,
+      MOCK_LOT_240001,
+      ...TUTORIAL_03_ENTITIES,
+      MOCK_MO_CONFIRMED,
+      ...TUTORIAL_05_ENTITIES,
+      MOCK_WO_ASSEMBLY_COMPLETED,
+      MOCK_WO_LEAK_TEST_COMPLETED,
+      MOCK_WO_PACKAGING_COMPLETED,
+      MOCK_PE_ASSEMBLY_STARTED,
+      MOCK_PE_ASSEMBLY_COMPLETED,
+    ];
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl, contextUrl } = this.ngsi as unknown as { orionUrl: string; contextUrl: string };
+        const withContext = t09SeedEntities.map((e) => ({ ...e, '@context': contextUrl }));
+        const res = await fetch(
+          `${orionUrl}/ngsi-ld/v1/entityOperations/upsert`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/ld+json' },
+            body: JSON.stringify(withContext),
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        responseStatus = res.status;
+        responseSummary = res.ok
+          ? `${t09SeedEntities.length} entities upserted`
+          : `Error: ${res.status}`;
+      } catch (err) {
+        responseStatus = 503;
+        responseSummary = err instanceof Error ? err.message : 'Broker unreachable';
+      }
+    }
+
+    const durationMs = Date.now() - t0;
+    const snapshot = { ...MOCK_SCENE, entities: t09SeedEntities };
+    this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(t09SeedEntities as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `${responseSummary} — T08 state unchanged: 30 entities, 3 WorkOrders completed`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `${t09SeedEntities.length} entities  •  application/ld+json`,
+        responseStatus,
+        responseSummary,
+        durationMs,
+      }],
+      entities: t09SeedEntities,
+    };
+  }
+
+  private async stepInspectWorkOrder(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const woId = MOCK_WO_LEAK_TEST.id;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const qsUrl = orionUrl.replace(':1026', ':8087').replace('orion-ld', 'quality-service');
+        const res = await fetch(`${qsUrl}/commands/inspect-work-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            work_order_id: woId,
+            check_type: 'leak_test',
+            expected_value: 0,
+            actual_value: 0.2,
+            tolerance: 0.1,
+            quantity_inspected: 10,
+            quantity_failed: 2,
+            disposition: 'rework',
+            reason_code: 'seal_leak',
+          }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: 'urn:ngsi-ld:WorkCenter:WC-LeakTest',
+      entityType: 'WorkCenter',
+      payload: { message: 'LeakTest inspection: 2 of 10 units failed — routed to rework' },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany([
+        MOCK_QC_LEAKTEST_FAIL as Record<string, unknown>,
+        MOCK_RW_LEAKTEST as Record<string, unknown>,
+        MOCK_QA_LEAKTEST as Record<string, unknown>,
+      ]);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `LeakTest inspected — result: fail, 2 EA routed to rework, QualityAlert raised (severity: high)`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ work_order_id: "${woId}", check_type: "leak_test", quantity_failed: 2, disposition: "rework" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", result: "fail", rework_order_id: "${MOCK_RW_LEAKTEST.id}", quality_alert_id: "${MOCK_QA_LEAKTEST.id}" }`,
+        durationMs,
+      }],
+      entities: [MOCK_QC_LEAKTEST_FAIL, MOCK_RW_LEAKTEST, MOCK_QA_LEAKTEST],
     };
   }
 

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dataModel.MRP/ReworkOrder/schema.json",
+  "title": "ReworkOrder",
+  "description": "An order to correct a quantity of product that failed a QualityCheck with disposition=rework, routing the failed units back through production instead of scrapping them.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:ngsi-ld:ReworkOrder:.+$",
+          "description": "NGSI-LD entity URN"
+        },
+        "type": {
+          "type": "string",
+          "const": "ReworkOrder"
+        },
+        "quantity": {
+          "type": "object",
+          "description": "Quantity to be reworked",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "exclusiveMinimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "state": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "enum": ["planned", "in_progress", "completed"] }
+          },
+          "required": ["type", "value"]
+        },
+        "reasonCode": {
+          "type": "object",
+          "description": "Short code for why the units need rework, e.g. seal_leak, dimension_out_of_spec",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "createdAt": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "originWorkOrder": {
+          "type": "object",
+          "description": "The WorkOrder whose failed units this rework order corrects",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:WorkOrder:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "manufacturingOrder": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:ManufacturingOrder:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "product": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:Product:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "qualityCheck": {
+          "type": "object",
+          "description": "The QualityCheck that triggered this rework order",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:QualityCheck:.+$" }
+          },
+          "required": ["type", "object"]
+        }
+      },
+      "required": ["id", "type", "quantity", "state", "createdAt", "originWorkOrder", "product"]
+    }
+  ],
+  "examples": [
+    {
+      "id": "urn:ngsi-ld:ReworkOrder:RW-WO-MO-2024-001-LeakTest",
+      "type": "ReworkOrder",
+      "quantity":   { "type": "Property", "value": 2, "unitCode": "EA" },
+      "state":      { "type": "Property", "value": "planned" },
+      "reasonCode": { "type": "Property", "value": "seal_leak" },
+      "createdAt":  { "type": "Property", "value": "2024-07-01T23:10:00Z" },
+      "originWorkOrder":    { "type": "Relationship", "object": "urn:ngsi-ld:WorkOrder:WO-MO-2024-001-LeakTest" },
+      "manufacturingOrder": { "type": "Relationship", "object": "urn:ngsi-ld:ManufacturingOrder:MO-2024-001" },
+      "product":            { "type": "Relationship", "object": "urn:ngsi-ld:Product:HydraulicPump-P100" },
+      "qualityCheck":       { "type": "Relationship", "object": "urn:ngsi-ld:QualityCheck:QC-WO-MO-2024-001-LeakTest" }
+    }
+  ]
+}

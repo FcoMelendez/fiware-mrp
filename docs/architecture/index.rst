@@ -90,10 +90,10 @@ Component reference
      - 8086
      - T08
      - Finished-goods receipt and inventory update on MO completion
-   * - **quality-service** *(planned)*
+   * - **quality-service**
      - 8087
      - T09
-     - Quality inspection, scrap, rework, and backorders
+     - Quality inspection, scrap, and rework
    * - **mps-service** *(planned)*
      - 8088
      - T10
@@ -132,7 +132,8 @@ Data flow
      ├─ manufacturing-service►│   (entity CRUD + subscriptions)  │
      ├─ scheduler-service ──►│                                  │
      ├─ shopfloor-service ──►│                                  │
-     └─ finished-goods-service►│                                │
+     ├─ finished-goods-service►│                                │
+     └─ quality-service ─────►│                                │
                              └──────────────┬───────────────────┘
                                             │
                                    ┌────────▼────────┐
@@ -203,6 +204,18 @@ NGSI-LD entity types
    * - ProductionEvent
      - T07
      - Immutable record of a work order start or completion
+   * - QualityCheck
+     - T09
+     - Inspection result on a completed WorkOrder
+   * - ScrapEvent
+     - T09
+     - Immutable record of units written off after a failed check
+   * - ReworkOrder
+     - T09
+     - Order to correct units routed back through production
+   * - QualityAlert
+     - T09
+     - Auto-raised when a check's failure rate reaches 20%
 
 .. note::
 
@@ -273,5 +286,12 @@ shown for context.
 
 .. image:: ../_static/architecture/arch-t08.png
    :alt: T08 architecture
+   :align: center
+   :width: 80%
+
+**Tutorial 09** — Quality inspection, scrap and rework
+
+.. image:: ../_static/architecture/arch-t09.png
+   :alt: T09 architecture
    :align: center
    :width: 80%

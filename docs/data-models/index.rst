@@ -133,6 +133,24 @@ loop by reusing two entities already defined in Tutorial 02:
    * - :doc:`ManufacturingOrder <manufacturing-order>`
      - Gains a new ``completedAt`` attribute, set when the order reaches ``state: completed``
 
+Tutorial 09 — Quality, scrap and rework entities
+---------------------------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Entity type
+     - Description
+   * - :doc:`QualityCheck <quality-check>`
+     - Inspection result on a completed WorkOrder: measured value vs. tolerance, quantity failed, disposition
+   * - :doc:`ScrapEvent <scrap-event>`
+     - Immutable record of units written off following a failed check with ``disposition: scrap``
+   * - :doc:`ReworkOrder <rework-order>`
+     - Order to correct failed units following a check with ``disposition: rework``
+   * - :doc:`QualityAlert <quality-alert>`
+     - Auto-raised when a check's failure rate reaches 20%
+
 ----
 
 .. toctree::
@@ -154,3 +172,7 @@ loop by reusing two entities already defined in Tutorial 02:
    inventory-reservation
    work-order
    production-event
+   quality-check
+   scrap-event
+   rework-order
+   quality-alert

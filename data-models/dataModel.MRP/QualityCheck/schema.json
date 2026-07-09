@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dataModel.MRP/QualityCheck/schema.json",
+  "title": "QualityCheck",
+  "description": "A quality inspection performed on a completed WorkOrder, comparing a measured value against an expected value and tolerance, and recording how many inspected units failed.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:ngsi-ld:QualityCheck:.+$",
+          "description": "NGSI-LD entity URN"
+        },
+        "type": {
+          "type": "string",
+          "const": "QualityCheck"
+        },
+        "checkType": {
+          "type": "object",
+          "description": "Kind of inspection performed, e.g. leak_test, dimensional, visual",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "result": {
+          "type": "object",
+          "description": "Outcome of comparing actualValue against expectedValue within tolerance",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "enum": ["pass", "fail"] }
+          },
+          "required": ["type", "value"]
+        },
+        "expectedValue": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        },
+        "actualValue": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        },
+        "tolerance": {
+          "type": "object",
+          "description": "Maximum allowed deviation of actualValue from expectedValue for result=pass",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "number", "minimum": 0 }
+          },
+          "required": ["type", "value"]
+        },
+        "required": {
+          "type": "object",
+          "description": "Whether passing this check is mandatory before the WorkOrder may proceed to finished-goods receipt",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "boolean" }
+          },
+          "required": ["type", "value"]
+        },
+        "quantityInspected": {
+          "type": "object",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "exclusiveMinimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "quantityFailed": {
+          "type": "object",
+          "description": "Units rejected by this check; 0 when result=pass",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "minimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "disposition": {
+          "type": "object",
+          "description": "How failed units are handled; present only when quantityFailed > 0",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "enum": ["scrap", "rework", "use_as_is"] }
+          },
+          "required": ["type", "value"]
+        },
+        "eventTime": {
+          "type": "object",
+          "description": "ISO-8601 timestamp when the inspection was recorded",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "workOrder": {
+          "type": "object",
+          "description": "WorkOrder that was inspected",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:WorkOrder:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "manufacturingOrder": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:ManufacturingOrder:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "product": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:Product:.+$" }
+          },
+          "required": ["type", "object"]
+        }
+      },
+      "required": ["id", "type", "checkType", "result", "eventTime", "workOrder", "quantityInspected", "quantityFailed"]
+    }
+  ],
+  "examples": [
+    {
+      "id": "urn:ngsi-ld:QualityCheck:QC-WO-MO-2024-001-LeakTest",
+      "type": "QualityCheck",
+      "checkType":      { "type": "Property", "value": "leak_test" },
+      "result":         { "type": "Property", "value": "fail" },
+      "expectedValue":  { "type": "Property", "value": 0.0 },
+      "actualValue":    { "type": "Property", "value": 0.2 },
+      "tolerance":      { "type": "Property", "value": 0.1 },
+      "required":       { "type": "Property", "value": true },
+      "quantityInspected": { "type": "Property", "value": 10, "unitCode": "EA" },
+      "quantityFailed":    { "type": "Property", "value": 2, "unitCode": "EA" },
+      "disposition":    { "type": "Property", "value": "rework" },
+      "eventTime":      { "type": "Property", "value": "2024-07-01T23:10:00Z" },
+      "workOrder":          { "type": "Relationship", "object": "urn:ngsi-ld:WorkOrder:WO-MO-2024-001-LeakTest" },
+      "manufacturingOrder": { "type": "Relationship", "object": "urn:ngsi-ld:ManufacturingOrder:MO-2024-001" },
+      "product":            { "type": "Relationship", "object": "urn:ngsi-ld:Product:HydraulicPump-P100" }
+    }
+  ]
+}

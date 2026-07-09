@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dataModel.MRP/QualityAlert/schema.json",
+  "title": "QualityAlert",
+  "description": "Raised automatically when a QualityCheck's failure rate crosses a threshold, drawing attention to a WorkOrder with an unusually high reject rate.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:ngsi-ld:QualityAlert:.+$",
+          "description": "NGSI-LD entity URN"
+        },
+        "type": {
+          "type": "string",
+          "const": "QualityAlert"
+        },
+        "severity": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "enum": ["low", "medium", "high", "critical"] }
+          },
+          "required": ["type", "value"]
+        },
+        "detectedAt": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "comment": {
+          "type": "object",
+          "description": "Human-readable summary of what triggered the alert",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "workOrder": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:WorkOrder:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "manufacturingOrder": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:ManufacturingOrder:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "product": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:Product:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "qualityCheck": {
+          "type": "object",
+          "description": "The QualityCheck that triggered this alert",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:QualityCheck:.+$" }
+          },
+          "required": ["type", "object"]
+        }
+      },
+      "required": ["id", "type", "severity", "detectedAt", "workOrder", "qualityCheck"]
+    }
+  ],
+  "examples": [
+    {
+      "id": "urn:ngsi-ld:QualityAlert:QA-WO-MO-2024-001-LeakTest",
+      "type": "QualityAlert",
+      "severity":   { "type": "Property", "value": "high" },
+      "detectedAt": { "type": "Property", "value": "2024-07-01T23:10:00Z" },
+      "comment":    { "type": "Property", "value": "20% failure rate on LeakTest inspection (2 of 10 units)" },
+      "workOrder":          { "type": "Relationship", "object": "urn:ngsi-ld:WorkOrder:WO-MO-2024-001-LeakTest" },
+      "manufacturingOrder": { "type": "Relationship", "object": "urn:ngsi-ld:ManufacturingOrder:MO-2024-001" },
+      "product":            { "type": "Relationship", "object": "urn:ngsi-ld:Product:HydraulicPump-P100" },
+      "qualityCheck":       { "type": "Relationship", "object": "urn:ngsi-ld:QualityCheck:QC-WO-MO-2024-001-LeakTest" }
+    }
+  ]
+}

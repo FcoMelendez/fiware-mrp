@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dataModel.MRP/ScrapEvent/schema.json",
+  "title": "ScrapEvent",
+  "description": "Immutable record of a quantity of product written off following a failed QualityCheck with disposition=scrap.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:ngsi-ld:ScrapEvent:.+$",
+          "description": "NGSI-LD entity URN"
+        },
+        "type": {
+          "type": "string",
+          "const": "ScrapEvent"
+        },
+        "quantity": {
+          "type": "object",
+          "description": "Quantity scrapped",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "exclusiveMinimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "reasonCode": {
+          "type": "object",
+          "description": "Short code for why the units were scrapped, e.g. seal_leak, dimension_out_of_spec",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "scrapCost": {
+          "type": "object",
+          "description": "Value of the scrapped quantity, computed from the product's standardCost",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "minimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "comment": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "eventTime": {
+          "type": "object",
+          "description": "ISO-8601 timestamp when the scrap event was recorded",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "workOrder": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:WorkOrder:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "product": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:Product:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "qualityCheck": {
+          "type": "object",
+          "description": "The QualityCheck that triggered this scrap event",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:QualityCheck:.+$" }
+          },
+          "required": ["type", "object"]
+        }
+      },
+      "required": ["id", "type", "quantity", "reasonCode", "eventTime", "workOrder", "product"]
+    }
+  ],
+  "examples": [
+    {
+      "id": "urn:ngsi-ld:ScrapEvent:SE-WO-MO-2024-001-LeakTest",
+      "type": "ScrapEvent",
+      "quantity":   { "type": "Property", "value": 2, "unitCode": "EA" },
+      "reasonCode": { "type": "Property", "value": "seal_leak" },
+      "scrapCost":  { "type": "Property", "value": 500.0, "unitCode": "EUR" },
+      "eventTime":  { "type": "Property", "value": "2024-07-01T23:10:00Z" },
+      "workOrder":    { "type": "Relationship", "object": "urn:ngsi-ld:WorkOrder:WO-MO-2024-001-LeakTest" },
+      "product":      { "type": "Relationship", "object": "urn:ngsi-ld:Product:HydraulicPump-P100" },
+      "qualityCheck": { "type": "Relationship", "object": "urn:ngsi-ld:QualityCheck:QC-WO-MO-2024-001-LeakTest" }
+    }
+  ]
+}

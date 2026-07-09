@@ -206,6 +206,8 @@
     "actualValue":          "mrp:actualValue",
     "tolerance":            "mrp:tolerance",
     "required":             "mrp:required",
+    "quantityInspected":    "mrp:quantityInspected",
+    "quantityFailed":       "mrp:quantityFailed",
 
     "severity":             "mrp:severity",
     "detectedAt":           "mrp:detectedAt",

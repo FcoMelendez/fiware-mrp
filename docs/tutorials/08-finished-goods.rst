@@ -158,9 +158,10 @@ Data model changes
 What's next
 -----------
 
-Tutorial 09 introduces **quality gates**: inspection results, scrap
-recording, and rework orders feed into the same production loop before
-goods are allowed to reach finished-goods receipt.
+Tutorial 09 introduces **quality inspection**: ``quality-service``
+records pass/fail checks against completed WorkOrders and routes failed
+units to scrap or rework, raising an alert when the failure rate crosses
+a threshold.
 
 
 ----

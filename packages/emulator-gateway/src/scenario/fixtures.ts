@@ -1489,3 +1489,169 @@ export const TUTORIAL_08_STEPS: GuidedStep[] = [
     actionLabel: 'Query production receipts',
   },
 ];
+
+// ── Tutorial 09 mock entities ──────────────────────────────────────────────────
+
+export const MOCK_QC_LEAKTEST_FAIL = {
+  id: 'urn:ngsi-ld:QualityCheck:QC-WO-MO-2024-001-LeakTest',
+  type: 'QualityCheck',
+  checkType:         { type: 'Property', value: 'leak_test' },
+  result:            { type: 'Property', value: 'fail' },
+  expectedValue:     { type: 'Property', value: 0 },
+  actualValue:       { type: 'Property', value: 0.2 },
+  tolerance:         { type: 'Property', value: 0.1 },
+  required:          { type: 'Property', value: true },
+  quantityInspected: { type: 'Property', value: 10, unitCode: 'EA' },
+  quantityFailed:    { type: 'Property', value: 2, unitCode: 'EA' },
+  disposition:       { type: 'Property', value: 'rework' },
+  eventTime:         { type: 'Property', value: '2024-07-01T23:10:00Z' },
+  workOrder:          { type: 'Relationship', object: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-001-LeakTest' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  product:            { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+};
+
+export const MOCK_RW_LEAKTEST = {
+  id: 'urn:ngsi-ld:ReworkOrder:RW-WO-MO-2024-001-LeakTest',
+  type: 'ReworkOrder',
+  quantity:   { type: 'Property', value: 2, unitCode: 'EA' },
+  state:      { type: 'Property', value: 'planned' },
+  reasonCode: { type: 'Property', value: 'seal_leak' },
+  createdAt:  { type: 'Property', value: '2024-07-01T23:10:00Z' },
+  originWorkOrder:    { type: 'Relationship', object: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-001-LeakTest' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  product:            { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  qualityCheck:       { type: 'Relationship', object: 'urn:ngsi-ld:QualityCheck:QC-WO-MO-2024-001-LeakTest' },
+};
+
+export const MOCK_QA_LEAKTEST = {
+  id: 'urn:ngsi-ld:QualityAlert:QA-WO-MO-2024-001-LeakTest',
+  type: 'QualityAlert',
+  severity:   { type: 'Property', value: 'high' },
+  detectedAt: { type: 'Property', value: '2024-07-01T23:10:00Z' },
+  comment:    { type: 'Property', value: '20% failure rate on leak_test inspection (2 of 10 units)' },
+  workOrder:          { type: 'Relationship', object: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-001-LeakTest' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
+  product:            { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  qualityCheck:       { type: 'Relationship', object: 'urn:ngsi-ld:QualityCheck:QC-WO-MO-2024-001-LeakTest' },
+};
+
+export const TUTORIAL_09_ENTITIES = [MOCK_QC_LEAKTEST_FAIL, MOCK_RW_LEAKTEST, MOCK_QA_LEAKTEST];
+
+// ── Tutorial 09 step definitions ───────────────────────────────────────────────
+
+export const TUTORIAL_09_STEPS: GuidedStep[] = [
+  {
+    id: 'check-quality-service',
+    title: 'Verify quality service',
+    shortDesc: 'Health-check the quality-service (v0.9)',
+    desc: 'Tutorial 09 introduces the quality-service, which inspects completed WorkOrders and routes failed units to scrap or rework. This step confirms the new service is running and reachable.',
+    hood: { method: 'GET', url: 'http://quality-service:8087/health', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /health → quality-service:8087',
+      'quality-service verifies its own startup',
+      'Returns { status: ok, service: quality-service, version: 0.9.0 }',
+    ],
+    actionLabel: 'Check health',
+  },
+  {
+    id: 'seed-t09-data',
+    title: 'Load T09 seed data',
+    shortDesc: 'Seed 30 entities: identical to T08 — 3 completed WorkOrders, ready to inspect',
+    desc: 'Seeds Orion-LD with the same 30-entity context as Tutorial 08: MO-2024-001 with all 3 WorkOrders completed. Tutorial 09 adds no new seed entities — QualityCheck, ReworkOrder, and QualityAlert are created live by the inspect-work-order command.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
+      body: '30 entities  •  application/ld+json',
+      expectedStatus: 201,
+    },
+    workflow: [
+      'Gateway attaches @context URL to all 30 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD (idempotent)',
+      'T08 state: 30 entities — Assembly, LeakTest, Packaging WorkOrders all completed',
+    ],
+    actionLabel: 'Seed entities',
+  },
+  {
+    id: 'inspect-work-order',
+    title: 'Inspect the LeakTest work order',
+    shortDesc: 'POST /commands/inspect-work-order — leak test finds 2 of 10 units over tolerance',
+    desc: 'The inspect-work-order command records a leak_test QualityCheck on the completed LeakTest WorkOrder. actualValue (0.2) exceeds expectedValue (0) by more than tolerance (0.1), so result=fail. 2 of the 10 inspected units failed with disposition=rework, so a ReworkOrder is created. The 20% failure rate also crosses the alerting threshold, so a QualityAlert (severity=high) is raised automatically.',
+    hood: {
+      method: 'POST',
+      url: 'http://quality-service:8087/commands/inspect-work-order',
+      body: JSON.stringify({
+        work_order_id: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-001-LeakTest',
+        check_type: 'leak_test',
+        expected_value: 0,
+        actual_value: 0.2,
+        tolerance: 0.1,
+        quantity_inspected: 10,
+        quantity_failed: 2,
+        disposition: 'rework',
+        reason_code: 'seal_leak',
+      }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/inspect-work-order → quality-service',
+      'quality-service fetches WorkOrder → validates state=completed',
+      'result = fail  (|0.2 − 0| = 0.2 > tolerance 0.1)',
+      'POST /ngsi-ld/v1/entityOperations/upsert → QualityCheck (result: fail, disposition: rework)',
+      'POST /ngsi-ld/v1/entityOperations/upsert → ReworkOrder (quantity: 2 EA, state: planned)',
+      'failure rate 2/10 = 20% ≥ threshold → POST → QualityAlert (severity: high)',
+    ],
+    actionLabel: 'Inspect work order',
+  },
+  {
+    id: 'query-quality-checks',
+    title: 'Query quality checks',
+    shortDesc: 'GET /quality-checks — inspect the leak-test result',
+    desc: 'After the inspection, one QualityCheck entity exists recording the leak-test outcome: checkType, result, expected/actual/tolerance values, and how many of the 10 inspected units failed.',
+    hood: {
+      method: 'GET',
+      url: 'http://quality-service:8087/quality-checks',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /quality-checks → quality-service:8087',
+      'quality-service → GET /ngsi-ld/v1/entities?type=QualityCheck → Orion-LD',
+      '1 QualityCheck returned: checkType=leak_test, result=fail, quantityFailed=2 EA',
+    ],
+    actionLabel: 'Query quality checks',
+  },
+  {
+    id: 'query-rework-orders',
+    title: 'Query rework orders',
+    shortDesc: 'GET /rework-orders — the 2 failed units routed back for rework',
+    desc: 'The ReworkOrder created by the inspection routes the 2 failed units back through production instead of scrapping them, with a Relationship back to the originating WorkOrder and the QualityCheck that triggered it.',
+    hood: {
+      method: 'GET',
+      url: 'http://quality-service:8087/rework-orders',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /rework-orders → quality-service:8087',
+      'quality-service → GET /ngsi-ld/v1/entities?type=ReworkOrder → Orion-LD',
+      '1 ReworkOrder returned: quantity=2 EA, state=planned',
+      'originWorkOrder → WO-LeakTest · qualityCheck → QC-WO-MO-2024-001-LeakTest',
+    ],
+    actionLabel: 'Query rework orders',
+  },
+  {
+    id: 'query-quality-alerts',
+    title: 'Query quality alerts',
+    shortDesc: 'GET /quality-alerts — the auto-raised high-severity alert',
+    desc: 'Because the leak-test failure rate (20%) crossed the alerting threshold, quality-service automatically raised a QualityAlert. This is the entity a quality manager dashboard would subscribe to.',
+    hood: {
+      method: 'GET',
+      url: 'http://quality-service:8087/quality-alerts',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /quality-alerts → quality-service:8087',
+      'quality-service → GET /ngsi-ld/v1/entities?type=QualityAlert → Orion-LD',
+      '1 QualityAlert returned: severity=high, comment="20% failure rate on leak_test inspection (2 of 10 units)"',
+    ],
+    actionLabel: 'Query quality alerts',
+  },
+];

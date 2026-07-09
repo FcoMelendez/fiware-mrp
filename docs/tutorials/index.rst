@@ -38,8 +38,8 @@ self-contained: reset, seed, execute, assert and stop.
      - :doc:`08-finished-goods`
      - Finished goods receipt
    * - v0.9
-     - Tutorial 09 *(coming soon)*
-     - Quality, scrap, rework and backorders
+     - :doc:`09-quality`
+     - Quality inspection, scrap and rework
    * - v0.10
      - Tutorial 10 *(coming soon)*
      - MPS-lite demand planning
@@ -61,3 +61,4 @@ self-contained: reset, seed, execute, assert and stop.
    06-work-orders
    07-shop-floor
    08-finished-goods
+   09-quality
