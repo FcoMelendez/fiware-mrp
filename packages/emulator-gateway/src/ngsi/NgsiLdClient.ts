@@ -106,13 +106,14 @@ export class NgsiLdClient {
 
   async createSubscription(body: Record<string, unknown>): Promise<string | null> {
     try {
+      // Orion-LD rejects a request that combines Content-Type: application/ld+json
+      // with a Link header ("invalid combination of HTTP headers") — the context
+      // must be inline in the body instead, same as every entity write in this stack.
+      const withContext = { '@context': this.contextUrl, ...body };
       const res = await fetch(`${this.orionUrl}/ngsi-ld/v1/subscriptions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/ld+json',
-          Link: `<${this.contextUrl}>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"`,
-        },
-        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/ld+json' },
+        body: JSON.stringify(withContext),
         signal: AbortSignal.timeout(5000),
       });
       if (!res.ok) return null;

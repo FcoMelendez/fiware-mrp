@@ -44,8 +44,8 @@ self-contained: reset, seed, execute, assert and stop.
      - :doc:`10-mps`
      - MPS-lite demand planning
    * - v0.11
-     - Tutorial 11 *(coming soon)*
-     - IoT/MES signals, subscriptions and temporal data
+     - :doc:`11-iot-mes`
+     - IoT/MES signals and NGSI-LD subscriptions
    * - v0.12
      - Tutorial 12 *(coming soon)*
      - End-to-end demo and v1.0 release
@@ -63,3 +63,4 @@ self-contained: reset, seed, execute, assert and stop.
    08-finished-goods
    09-quality
    10-mps
+   11-iot-mes

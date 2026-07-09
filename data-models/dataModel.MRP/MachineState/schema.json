@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dataModel.MRP/MachineState/schema.json",
+  "title": "MachineState",
+  "description": "The current derived operational state of a WorkCenter's machine — one entity per WorkCenter, overwritten (not appended) each time a new MachineSignal is processed. This is the entity iot-simulator's NGSI-LD subscription watches, so changes push live to any subscriber.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:ngsi-ld:MachineState:.+$",
+          "description": "NGSI-LD entity URN, one per WorkCenter"
+        },
+        "type": {
+          "type": "string",
+          "const": "MachineState"
+        },
+        "state": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "enum": ["running", "idle", "fault"] }
+          },
+          "required": ["type", "value"]
+        },
+        "detectedAt": {
+          "type": "object",
+          "description": "When this state was last (re)computed",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "workCenter": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:WorkCenter:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "lastSignal": {
+          "type": "object",
+          "description": "The MachineSignal that produced this state",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:MachineSignal:.+$" }
+          },
+          "required": ["type", "object"]
+        }
+      },
+      "required": ["id", "type", "state", "detectedAt", "workCenter"]
+    }
+  ],
+  "examples": [
+    {
+      "id": "urn:ngsi-ld:MachineState:MST-WC-Assembly",
+      "type": "MachineState",
+      "state":      { "type": "Property", "value": "fault" },
+      "detectedAt": { "type": "Property", "value": "2024-07-01T09:15:00Z" },
+      "workCenter": { "type": "Relationship", "object": "urn:ngsi-ld:WorkCenter:WC-Assembly" },
+      "lastSignal": { "type": "Relationship", "object": "urn:ngsi-ld:MachineSignal:MS-WC-Assembly-20240701T091500" }
+    }
+  ]
+}

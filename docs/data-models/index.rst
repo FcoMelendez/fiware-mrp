@@ -167,6 +167,22 @@ Tutorial 10 — MPS-lite demand planning entities
    * - :doc:`MasterProductionScheduleLine <master-production-schedule-line>`
      - Computed projected inventory and suggested production quantity, confirmable by a planner
 
+Tutorial 11 — IoT/MES signals and subscriptions entities
+-------------------------------------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Entity type
+     - Description
+   * - :doc:`MachineSignal <machine-signal>`
+     - Immutable telemetry reading for a WorkCenter, with an ``observedAt``-timestamped value
+   * - :doc:`MachineState <machine-state>`
+     - Derived running/idle/fault state per WorkCenter — watched by a live NGSI-LD subscription
+   * - :doc:`OperatorAssignment <operator-assignment>`
+     - An Operator's clock-in/clock-out record at a WorkCenter
+
 ----
 
 .. toctree::
@@ -195,3 +211,6 @@ Tutorial 10 — MPS-lite demand planning entities
    demand-forecast
    reordering-rule
    master-production-schedule-line
+   machine-signal
+   machine-state
+   operator-assignment

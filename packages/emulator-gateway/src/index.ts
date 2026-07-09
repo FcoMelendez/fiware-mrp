@@ -21,7 +21,7 @@ const hub = new ClientHub();
 const ngsi = new NgsiLdClient(config.orionUrl, config.contextUrl);
 const proxy = new CommandProxy(config.mrpApiUrl);
 const mockStore = new MockEntityStore();
-const engine = new ScenarioEngine(hub, ngsi, config.mode, mockStore);
+const engine = new ScenarioEngine(hub, ngsi, config.mode, mockStore, config.notifyUrl);
 
 // ── System endpoints ──────────────────────────────────────────────────────────
 app.get('/api/health', healthHandler);

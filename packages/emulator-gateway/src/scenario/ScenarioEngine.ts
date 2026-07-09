@@ -28,6 +28,8 @@ import {
   TUTORIAL_09_STEPS,
   TUTORIAL_10_ENTITIES,
   TUTORIAL_10_STEPS,
+  TUTORIAL_11_ENTITIES,
+  TUTORIAL_11_STEPS,
   MOCK_WO_ASSEMBLY,
   MOCK_WO_LEAK_TEST,
   MOCK_WO_PACKAGING,
@@ -46,6 +48,11 @@ import {
   MOCK_DF_HP_P100_2024_08,
   MOCK_MPSL_HP_P100_SUGGESTED,
   MOCK_MPSL_HP_P100_CONFIRMED,
+  MOCK_MS_WC_ASSEMBLY_FAULT,
+  MOCK_MST_WC_ASSEMBLY_FAULT,
+  MOCK_OA_JANE_DOE_CLOCKED_IN,
+  MOCK_OA_JANE_DOE_CLOCKED_OUT,
+  MOCK_OPERATOR_JANE_DOE,
   type GuidedStep,
 } from './fixtures.js';
 
@@ -78,7 +85,13 @@ export class ScenarioEngine {
     private readonly ngsi: NgsiLdClient,
     private readonly mode: string,
     private readonly mockStore?: MockEntityStore,
+    private readonly notifyUrl: string = 'http://emulator-gateway:8090/notify',
   ) {}
+
+  // iot-simulator generates a unique OperatorAssignment ID per clock-in (unlike the
+  // deterministic IDs every other service uses), so the real ID from a live clock-in
+  // must be threaded through to the matching clock-out step rather than hardcoded.
+  private lastAssignmentId: string | null = null;
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -134,6 +147,11 @@ export class ScenarioEngine {
         title: 'Tutorial 10 – MPS-lite demand planning',
         stepsCount: TUTORIAL_10_STEPS.length,
       },
+      {
+        id: 'tutorial-11',
+        title: 'Tutorial 11 – IoT/MES signals and subscriptions',
+        stepsCount: TUTORIAL_11_STEPS.length,
+      },
     ];
   }
 
@@ -148,6 +166,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-08') return TUTORIAL_08_STEPS;
     if (tutorialId === 'tutorial-09') return TUTORIAL_09_STEPS;
     if (tutorialId === 'tutorial-10') return TUTORIAL_10_STEPS;
+    if (tutorialId === 'tutorial-11') return TUTORIAL_11_STEPS;
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -162,6 +181,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-08') return this.executeTutorial08Step(stepId);
     if (tutorialId === 'tutorial-09') return this.executeTutorial09Step(stepId);
     if (tutorialId === 'tutorial-10') return this.executeTutorial10Step(stepId);
+    if (tutorialId === 'tutorial-11') return this.executeTutorial11Step(stepId);
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -179,6 +199,7 @@ export class ScenarioEngine {
         'ProductionEvent',
         'QualityCheck', 'ScrapEvent', 'ReworkOrder', 'QualityAlert',
         'DemandForecast', 'ReorderingRule', 'MasterProductionScheduleLine',
+        'MachineSignal', 'MachineState', 'OperatorAssignment', 'Operator',
       ]);
     }
 
@@ -260,6 +281,8 @@ export class ScenarioEngine {
       ? ' (quality-service, orion-ld)'
       : tutorialId === 'tutorial-10'
       ? ' (mps-service, orion-ld)'
+      : tutorialId === 'tutorial-11'
+      ? ' (iot-simulator, orion-ld)'
       : '';
     const summary = this.mode === 'mock'
       ? `Mock mode — all services considered healthy${serviceNote}`
@@ -350,6 +373,7 @@ export class ScenarioEngine {
         ...TUTORIAL_08_ENTITIES,
         ...TUTORIAL_09_ENTITIES,
         ...TUTORIAL_10_ENTITIES,
+        ...TUTORIAL_11_ENTITIES,
       ];
       entities = singleId
         ? mockPool.filter((e) => (e as { id: string }).id === singleId)
@@ -1515,6 +1539,276 @@ export class ScenarioEngine {
         durationMs,
       }],
       entities: [MOCK_MPSL_HP_P100_CONFIRMED],
+    };
+  }
+
+  // ── Tutorial 11 step handlers ──────────────────────────────────────────────
+
+  private async executeTutorial11Step(stepId: string): Promise<StepResult> {
+    const step = TUTORIAL_11_STEPS.find((s) => s.id === stepId);
+    if (!step) throw new Error(`Unknown step: ${stepId} in tutorial-11`);
+    switch (stepId) {
+      case 'check-iot-simulator':   return this.stepStackHealth(step, 'tutorial-11');
+      case 'seed-t11-data':         return this.stepSeedT11Data(step);
+      case 'register-subscription': return this.stepRegisterSubscription(step);
+      case 'emit-signal':           return this.stepEmitSignal(step);
+      case 'clock-in-operator':     return this.stepClockInOperator(step);
+      case 'clock-out-operator':    return this.stepClockOutOperator(step);
+      default: throw new Error(`No executor for step: ${stepId}`);
+    }
+  }
+
+  private async stepSeedT11Data(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 201;
+    let responseSummary = '34 entities upserted';
+
+    // T11 seed = T10 seed (33) + 1 Operator
+    const t11SeedEntities = [
+      ...TUTORIAL_01_ENTITIES,
+      MOCK_IB_PUMP_CASING,
+      MOCK_IB_IMPELLER,
+      MOCK_LOT_240001,
+      ...TUTORIAL_03_ENTITIES,
+      MOCK_MO_CONFIRMED,
+      ...TUTORIAL_05_ENTITIES,
+      MOCK_WO_ASSEMBLY_COMPLETED,
+      MOCK_WO_LEAK_TEST_COMPLETED,
+      MOCK_WO_PACKAGING_COMPLETED,
+      MOCK_PE_ASSEMBLY_STARTED,
+      MOCK_PE_ASSEMBLY_COMPLETED,
+      ...TUTORIAL_10_ENTITIES,
+      ...TUTORIAL_11_ENTITIES,
+    ];
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl, contextUrl } = this.ngsi as unknown as { orionUrl: string; contextUrl: string };
+        const withContext = t11SeedEntities.map((e) => ({ ...e, '@context': contextUrl }));
+        const res = await fetch(
+          `${orionUrl}/ngsi-ld/v1/entityOperations/upsert`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/ld+json' },
+            body: JSON.stringify(withContext),
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        responseStatus = res.status;
+        responseSummary = res.ok
+          ? `${t11SeedEntities.length} entities upserted`
+          : `Error: ${res.status}`;
+      } catch (err) {
+        responseStatus = 503;
+        responseSummary = err instanceof Error ? err.message : 'Broker unreachable';
+      }
+    }
+
+    const durationMs = Date.now() - t0;
+    const snapshot = { ...MOCK_SCENE, entities: t11SeedEntities };
+    this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(t11SeedEntities as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `${responseSummary} — T10 state: 33 entities + 1 Operator (Jane Doe, active)`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `${t11SeedEntities.length} entities  •  application/ld+json`,
+        responseStatus,
+        responseSummary,
+        durationMs,
+      }],
+      entities: t11SeedEntities,
+    };
+  }
+
+  private async stepRegisterSubscription(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 201;
+    let subscriptionId: string | null = null;
+
+    if (this.mode === 'live') {
+      subscriptionId = await this.ngsi.createSubscription({
+        type: 'Subscription',
+        entities: [{ type: 'MachineState' }],
+        notification: {
+          endpoint: { uri: this.notifyUrl, accept: 'application/json' },
+        },
+      });
+      responseStatus = subscriptionId ? 201 : 502;
+    }
+
+    const durationMs = Date.now() - t0;
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: this.mode === 'live'
+        ? `Subscription registered${subscriptionId ? ` (${subscriptionId})` : ''} — Orion-LD will now push MachineState changes to ${this.notifyUrl}`
+        : 'Mock mode — subscription registration simulated (no real Orion-LD to subscribe to)',
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: 'entities: [{ type: "MachineState" }]',
+        responseStatus,
+        responseSummary: subscriptionId ? `{ id: "${subscriptionId}" }` : '{ status: "simulated" }',
+        durationMs,
+      }],
+    };
+  }
+
+  private async stepEmitSignal(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const wcId = 'urn:ngsi-ld:WorkCenter:WC-Assembly';
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const iotUrl = orionUrl.replace(':1026', ':8089').replace('orion-ld', 'iot-simulator');
+        const res = await fetch(`${iotUrl}/commands/emit-signal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            work_center_id: wcId,
+            signal_type: 'temperature',
+            actual_value: 92,
+            unit_code: 'CEL',
+            quality: 'bad',
+          }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    // In live mode this broadcast is redundant with the real subscription push (which
+    // arrives asynchronously via /notify) — kept so mock mode gets the same UX.
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: wcId,
+      entityType: 'WorkCenter',
+      payload: { message: 'MachineState → fault (92°C, quality: bad)' },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany([
+        MOCK_MS_WC_ASSEMBLY_FAULT as Record<string, unknown>,
+        MOCK_MST_WC_ASSEMBLY_FAULT as Record<string, unknown>,
+      ]);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `MachineSignal recorded (92°C, quality: bad) — MachineState derived: fault`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ work_center_id: "${wcId}", signal_type: "temperature", actual_value: 92, quality: "bad" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", state: "fault" }`,
+        durationMs,
+      }],
+      entities: [MOCK_MS_WC_ASSEMBLY_FAULT, MOCK_MST_WC_ASSEMBLY_FAULT],
+    };
+  }
+
+  private async stepClockInOperator(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const operatorId = MOCK_OPERATOR_JANE_DOE.id;
+    const wcId = 'urn:ngsi-ld:WorkCenter:WC-Assembly';
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const iotUrl = orionUrl.replace(':1026', ':8089').replace('orion-ld', 'iot-simulator');
+        const res = await fetch(`${iotUrl}/commands/clock-in`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operator_id: operatorId, work_center_id: wcId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+        if (res.ok) {
+          const data = await res.json() as { assignment_id?: string };
+          this.lastAssignmentId = data.assignment_id ?? null;
+        }
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany([MOCK_OA_JANE_DOE_CLOCKED_IN as Record<string, unknown>]);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `Jane Doe clocked in at WC-Assembly`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ operator_id: "${operatorId}", work_center_id: "${wcId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", timer_status: "clocked_in" }`,
+        durationMs,
+      }],
+      entities: [MOCK_OA_JANE_DOE_CLOCKED_IN],
+    };
+  }
+
+  private async stepClockOutOperator(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    // Live mode: use the real ID captured from clock-in (iot-simulator generates a
+    // unique suffix per call, unlike every other service's deterministic IDs).
+    const assignmentId = (this.mode === 'live' && this.lastAssignmentId)
+      ? this.lastAssignmentId
+      : MOCK_OA_JANE_DOE_CLOCKED_IN.id;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const iotUrl = orionUrl.replace(':1026', ':8089').replace('orion-ld', 'iot-simulator');
+        const res = await fetch(`${iotUrl}/commands/clock-out`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assignment_id: assignmentId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany([MOCK_OA_JANE_DOE_CLOCKED_OUT as Record<string, unknown>]);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `Jane Doe clocked out — actualDuration: 8.0 hours`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ assignment_id: "${assignmentId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", timer_status: "clocked_out", actual_duration_hours: 8.0 }`,
+        durationMs,
+      }],
+      entities: [MOCK_OA_JANE_DOE_CLOCKED_OUT],
     };
   }
 

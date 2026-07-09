@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dataModel.MRP/OperatorAssignment/schema.json",
+  "title": "OperatorAssignment",
+  "description": "A record of an Operator clocking in and out at a WorkCenter. actualDuration is computed and set only at clock-out.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:ngsi-ld:OperatorAssignment:.+$",
+          "description": "NGSI-LD entity URN"
+        },
+        "type": {
+          "type": "string",
+          "const": "OperatorAssignment"
+        },
+        "timerStatus": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "enum": ["clocked_in", "clocked_out"] }
+          },
+          "required": ["type", "value"]
+        },
+        "actualStart": {
+          "type": "object",
+          "description": "Clock-in timestamp",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "actualEnd": {
+          "type": "object",
+          "description": "Clock-out timestamp; absent until clocked out",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "actualDuration": {
+          "type": "object",
+          "description": "Hours worked, computed at clock-out as (actualEnd - actualStart)",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "number", "minimum": 0 }
+          },
+          "required": ["type", "value"]
+        },
+        "operator": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:Operator:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "workCenter": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:WorkCenter:.+$" }
+          },
+          "required": ["type", "object"]
+        }
+      },
+      "required": ["id", "type", "timerStatus", "actualStart", "operator", "workCenter"]
+    }
+  ],
+  "examples": [
+    {
+      "id": "urn:ngsi-ld:OperatorAssignment:OA-JaneDoe-WC-Assembly-A1B2",
+      "type": "OperatorAssignment",
+      "timerStatus":    { "type": "Property", "value": "clocked_out" },
+      "actualStart":    { "type": "Property", "value": "2024-07-01T08:00:00Z" },
+      "actualEnd":      { "type": "Property", "value": "2024-07-01T16:00:00Z" },
+      "actualDuration": { "type": "Property", "value": 8.0 },
+      "operator":   { "type": "Relationship", "object": "urn:ngsi-ld:Operator:OP-JaneDoe" },
+      "workCenter": { "type": "Relationship", "object": "urn:ngsi-ld:WorkCenter:WC-Assembly" }
+    }
+  ]
+}

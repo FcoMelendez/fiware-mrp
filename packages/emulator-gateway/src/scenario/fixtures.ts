@@ -1803,3 +1803,170 @@ export const TUTORIAL_10_STEPS: GuidedStep[] = [
     actionLabel: 'Confirm MPS line',
   },
 ];
+
+// ── Tutorial 11 mock entities ──────────────────────────────────────────────────
+
+export const MOCK_OPERATOR_JANE_DOE = {
+  id: 'urn:ngsi-ld:Operator:OP-JaneDoe',
+  type: 'Operator',
+  name:  { type: 'Property', value: 'Jane Doe' },
+  state: { type: 'Property', value: 'active' },
+};
+
+export const MOCK_MS_WC_ASSEMBLY_FAULT = {
+  id: 'urn:ngsi-ld:MachineSignal:MS-WC-Assembly-MOCK',
+  type: 'MachineSignal',
+  signalType:  { type: 'Property', value: 'temperature' },
+  actualValue: { type: 'Property', value: 92, unitCode: 'CEL', observedAt: '2024-07-01T09:15:00Z' },
+  quality:     { type: 'Property', value: 'bad' },
+  workCenter:  { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+};
+
+export const MOCK_MST_WC_ASSEMBLY_FAULT = {
+  id: 'urn:ngsi-ld:MachineState:MST-WC-Assembly',
+  type: 'MachineState',
+  state:      { type: 'Property', value: 'fault' },
+  detectedAt: { type: 'Property', value: '2024-07-01T09:15:00Z' },
+  workCenter: { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+  lastSignal: { type: 'Relationship', object: 'urn:ngsi-ld:MachineSignal:MS-WC-Assembly-MOCK' },
+};
+
+export const MOCK_OA_JANE_DOE_CLOCKED_IN = {
+  id: 'urn:ngsi-ld:OperatorAssignment:OA-JaneDoe-WC-Assembly-MOCK',
+  type: 'OperatorAssignment',
+  timerStatus: { type: 'Property', value: 'clocked_in' },
+  actualStart: { type: 'Property', value: '2024-07-01T08:00:00Z' },
+  operator:    { type: 'Relationship', object: 'urn:ngsi-ld:Operator:OP-JaneDoe' },
+  workCenter:  { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+};
+
+export const MOCK_OA_JANE_DOE_CLOCKED_OUT = {
+  ...MOCK_OA_JANE_DOE_CLOCKED_IN,
+  timerStatus:    { type: 'Property', value: 'clocked_out' },
+  actualEnd:      { type: 'Property', value: '2024-07-01T16:00:00Z' },
+  actualDuration: { type: 'Property', value: 8.0 },
+};
+
+export const TUTORIAL_11_ENTITIES = [MOCK_OPERATOR_JANE_DOE];
+
+// ── Tutorial 11 step definitions ───────────────────────────────────────────────
+
+export const TUTORIAL_11_STEPS: GuidedStep[] = [
+  {
+    id: 'check-iot-simulator',
+    title: 'Verify IoT simulator',
+    shortDesc: 'Health-check the iot-simulator (v0.11)',
+    desc: 'Tutorial 11 introduces the iot-simulator, which emits MachineSignal telemetry, derives a MachineState per WorkCenter, and tracks operator clock-in/out. This step confirms the new service is running and reachable.',
+    hood: { method: 'GET', url: 'http://iot-simulator:8089/health', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /health → iot-simulator:8089',
+      'iot-simulator verifies its own startup',
+      'Returns { status: ok, service: iot-simulator, version: 0.11.0 }',
+    ],
+    actionLabel: 'Check health',
+  },
+  {
+    id: 'seed-t11-data',
+    title: 'Load T11 seed data',
+    shortDesc: 'Seed 34 entities: T10 context + an Operator',
+    desc: 'Seeds Orion-LD with the full context for Tutorial 11: all T10 entities plus an Operator (Jane Doe) who will clock in and out later in this tutorial. MachineSignal, MachineState, and OperatorAssignment are all created live by commands — none are pre-seeded.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
+      body: '34 entities  •  application/ld+json',
+      expectedStatus: 201,
+    },
+    workflow: [
+      'Gateway attaches @context URL to all 34 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD (idempotent)',
+      'T10 state: 33 entities + 1 Operator (Jane Doe, active)',
+    ],
+    actionLabel: 'Seed entities',
+  },
+  {
+    id: 'register-subscription',
+    title: 'Register a live subscription',
+    shortDesc: 'POST /ngsi-ld/v1/subscriptions — watch MachineState for changes',
+    desc: 'Every previous tutorial pushed updates to the canvas by explicitly broadcasting after each command. This step instead registers a real NGSI-LD subscription: Orion-LD will POST to the emulator-gateway’s /notify endpoint on its own, the moment any MachineState entity changes — no polling, no manual broadcast.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/subscriptions',
+      body: JSON.stringify({
+        type: 'Subscription',
+        entities: [{ type: 'MachineState' }],
+        notification: { endpoint: { uri: 'http://emulator-gateway:8090/notify', accept: 'application/json' } },
+      }, null, 2),
+      expectedStatus: 201,
+    },
+    workflow: [
+      'Emulator → POST /ngsi-ld/v1/subscriptions → Orion-LD',
+      'Subscription filters on type=MachineState',
+      'Orion-LD will POST any matching entity change to notification.endpoint.uri from now on',
+      'No further explicit broadcast — the next step’s canvas update comes from the subscription firing',
+    ],
+    actionLabel: 'Register subscription',
+  },
+  {
+    id: 'emit-signal',
+    title: 'Emit a machine signal',
+    shortDesc: 'POST /commands/emit-signal — Assembly overheats: 92°C, quality=bad',
+    desc: 'emit-signal records an immutable MachineSignal, then derives a MachineState for the WorkCenter: quality=bad or a temperature over 80°C both mean state=fault. Because of the subscription just registered, Orion-LD pushes this MachineState change to the emulator on its own — watch the WorkCenter update without any explicit query.',
+    hood: {
+      method: 'POST',
+      url: 'http://iot-simulator:8089/commands/emit-signal',
+      body: JSON.stringify({
+        work_center_id: 'urn:ngsi-ld:WorkCenter:WC-Assembly',
+        signal_type: 'temperature',
+        actual_value: 92,
+        unit_code: 'CEL',
+        quality: 'bad',
+      }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/emit-signal → iot-simulator',
+      'iot-simulator → POST /ngsi-ld/v1/entityOperations/upsert → MachineSignal (immutable reading)',
+      'quality=bad → state=fault; create-or-update → MachineState (POST first time, PATCH thereafter)',
+      'Orion-LD detects the MachineState change → POST /notify → emulator-gateway → broadcast to canvas',
+    ],
+    actionLabel: 'Emit signal',
+  },
+  {
+    id: 'clock-in-operator',
+    title: 'Clock in the operator',
+    shortDesc: 'POST /commands/clock-in — Jane Doe starts her shift at WC-Assembly',
+    desc: 'clock-in creates an OperatorAssignment with timerStatus=clocked_in and actualStart set to now.',
+    hood: {
+      method: 'POST',
+      url: 'http://iot-simulator:8089/commands/clock-in',
+      body: JSON.stringify({
+        operator_id: 'urn:ngsi-ld:Operator:OP-JaneDoe',
+        work_center_id: 'urn:ngsi-ld:WorkCenter:WC-Assembly',
+      }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/clock-in { operator_id, work_center_id } → iot-simulator',
+      'POST /ngsi-ld/v1/entityOperations/upsert → OperatorAssignment (timerStatus: clocked_in, actualStart: <now>)',
+    ],
+    actionLabel: 'Clock in',
+  },
+  {
+    id: 'clock-out-operator',
+    title: 'Clock out the operator',
+    shortDesc: 'POST /commands/clock-out — actualDuration computed from actualStart/actualEnd',
+    desc: 'clock-out sets timerStatus=clocked_out and computes actualDuration in hours. actualEnd and actualDuration do not exist on the OperatorAssignment yet, so this uses POST /attrs (append-or-overwrite) rather than PATCH — the same lesson from Tutorial 08’s completedAt bug, applied from the start this time.',
+    hood: {
+      method: 'POST',
+      url: 'http://iot-simulator:8089/commands/clock-out',
+      body: JSON.stringify({ assignment_id: 'urn:ngsi-ld:OperatorAssignment:OA-JaneDoe-WC-Assembly-XXXX' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/clock-out { assignment_id } → iot-simulator',
+      'iot-simulator fetches the assignment → validates timerStatus=clocked_in',
+      'POST /ngsi-ld/v1/entities/{id}/attrs → timerStatus: clocked_out, actualEnd: <now>, actualDuration: <hours>',
+    ],
+    actionLabel: 'Clock out',
+  },
+];

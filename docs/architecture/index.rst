@@ -98,10 +98,10 @@ Component reference
      - 8088
      - T10
      - MPS-lite demand planning
-   * - **iot-simulator** *(planned)*
+   * - **iot-simulator**
      - 8089
      - T11
-     - IoT/MES signal simulation, subscriptions, temporal data
+     - IoT/MES signal simulation and NGSI-LD subscriptions
    * - **emulator-gateway**
      - 8090
      - emulator
@@ -134,12 +134,17 @@ Data flow
      ├─ shopfloor-service ──►│                                  │
      ├─ finished-goods-service►│                                │
      ├─ quality-service ─────►│                                │
-     └─ mps-service ─────────►│                                │
+     ├─ mps-service ─────────►│                                │
+     └─ iot-simulator ───────►│                                │
                              └──────────────┬───────────────────┘
                                             │
                                    ┌────────▼────────┐
                                    │  MongoDB 5.0    │
                                    └─────────────────┘
+
+   Since Tutorial 11, Orion-LD also calls emulator-gateway directly:
+
+     Orion-LD (:1026) ── POST /notify (NGSI-LD subscription) ──► emulator-gateway (:8090)
 
                              ┌─────────────────────────────┐
                              │  context-server (:3000)     │
@@ -226,6 +231,15 @@ NGSI-LD entity types
    * - MasterProductionScheduleLine
      - T10
      - Computed projected inventory and suggested production quantity
+   * - MachineSignal
+     - T11
+     - Immutable telemetry reading for a WorkCenter
+   * - MachineState
+     - T11
+     - Derived running/idle/fault state, watched by a live NGSI-LD subscription
+   * - OperatorAssignment
+     - T11
+     - An Operator's clock-in/clock-out record at a WorkCenter
 
 .. note::
 
@@ -310,5 +324,12 @@ shown for context.
 
 .. image:: ../_static/architecture/arch-t10.png
    :alt: T10 architecture
+   :align: center
+   :width: 80%
+
+**Tutorial 11** — IoT/MES signals and subscriptions
+
+.. image:: ../_static/architecture/arch-t11.png
+   :alt: T11 architecture
    :align: center
    :width: 80%

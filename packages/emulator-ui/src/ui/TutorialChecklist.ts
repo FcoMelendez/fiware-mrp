@@ -49,6 +49,7 @@ const TUTORIAL_SUBTITLES: Record<string, string> = {
   'tutorial-08': 'Tutorial 08 – Finished goods receipt',
   'tutorial-09': 'Tutorial 09 – Quality, scrap and rework',
   'tutorial-10': 'Tutorial 10 – MPS-lite demand planning',
+  'tutorial-11': 'Tutorial 11 – IoT/MES signals and subscriptions',
 };
 
 const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
@@ -91,6 +92,10 @@ const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
   'tutorial-10': {
     title: 'Welcome to Tutorial 10',
     body: 'This tutorial adds the <em>mps-service</em>. You will turn a DemandForecast and a ReorderingRule into a suggested production quantity, then confirm it — MPS-lite planning that stays advisory, leaving ManufacturingOrder creation to manufacturing-service.',
+  },
+  'tutorial-11': {
+    title: 'Welcome to Tutorial 11',
+    body: 'This tutorial adds the <em>iot-simulator</em>. You will register a real NGSI-LD subscription, then emit a machine signal and watch the canvas update on its own — pushed by Orion-LD, not polled by the emulator — before clocking an operator in and out.',
   },
 };
 

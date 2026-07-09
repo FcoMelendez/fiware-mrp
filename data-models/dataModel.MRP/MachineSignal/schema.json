@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dataModel.MRP/MachineSignal/schema.json",
+  "title": "MachineSignal",
+  "description": "Immutable telemetry reading emitted for a WorkCenter, e.g. a temperature or vibration measurement. The observedAt metadata on actualValue is the NGSI-LD-native way to timestamp when the physical reading occurred, independent of when the entity was written to the broker.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:ngsi-ld:MachineSignal:.+$",
+          "description": "NGSI-LD entity URN"
+        },
+        "type": {
+          "type": "string",
+          "const": "MachineSignal"
+        },
+        "signalType": {
+          "type": "object",
+          "description": "Kind of telemetry, e.g. temperature, vibration, cycle_count",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "actualValue": {
+          "type": "object",
+          "description": "The measured reading, with observedAt recording when it was physically taken",
+          "properties": {
+            "type":       { "type": "string", "const": "Property" },
+            "value":      { "type": "number" },
+            "unitCode":   { "type": "string" },
+            "observedAt": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value", "observedAt"]
+        },
+        "quality": {
+          "type": "object",
+          "description": "Signal quality, following OPC-UA-style semantics",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "enum": ["good", "uncertain", "bad"] }
+          },
+          "required": ["type", "value"]
+        },
+        "workCenter": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:WorkCenter:.+$" }
+          },
+          "required": ["type", "object"]
+        }
+      },
+      "required": ["id", "type", "signalType", "actualValue", "quality", "workCenter"]
+    }
+  ],
+  "examples": [
+    {
+      "id": "urn:ngsi-ld:MachineSignal:MS-WC-Assembly-20240701T091500",
+      "type": "MachineSignal",
+      "signalType":  { "type": "Property", "value": "temperature" },
+      "actualValue": { "type": "Property", "value": 92.0, "unitCode": "CEL", "observedAt": "2024-07-01T09:15:00Z" },
+      "quality":     { "type": "Property", "value": "bad" },
+      "workCenter": { "type": "Relationship", "object": "urn:ngsi-ld:WorkCenter:WC-Assembly" }
+    }
+  ]
+}
