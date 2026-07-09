@@ -48,6 +48,7 @@ export class GatewayClient {
       contextStore.applyEntityChange(
         event.entityId,
         (event.payload as Record<string, unknown>) ?? {},
+        event.entityType,
       );
       return;
     }

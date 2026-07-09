@@ -534,6 +534,45 @@ def t11():
     print("  ✓ arch-t11.png")
 
 
+def t12():
+    path = os.path.join(OUT, "arch-t12")
+    with Diagram(
+        "Tutorial 12 — End-to-end Demo (v1.0)",
+        filename=path, outformat="png", show=False,
+        graph_attr={**GRAPH_ATTR, "ranksep": "0.6"}, direction="TB",
+    ):
+        with Cluster("Emulator"):
+            gw = Python("emulator-gateway\n:8090", **NODE_EMUL)
+
+        # No new service — every service from T01-T11 is driven once, in sequence.
+        with Cluster("MRP Services — all driven this tutorial"):
+            api   = Python("mrp-api\n:8080", **PREV)
+            inv   = Python("inventory-service\n:8081", **PREV)
+            bom   = Python("bom-service\n:8082", **PREV)
+            mfg   = Python("manufacturing-service\n:8083", **PREV)
+            sched = Python("scheduler-service\n:8084", **PREV)
+            sf    = Python("shopfloor-service\n:8085", **PREV)
+            fg    = Python("finished-goods-service\n:8086", **PREV)
+            qual  = Python("quality-service\n:8087", **PREV)
+            mps   = Python("mps-service\n:8088", **PREV)
+            iot   = Python("iot-simulator\n:8089", **PREV)
+
+        with Cluster("NGSI-LD"):
+            orion = Server("Orion-LD\n:1026", **NODE_INFRA)
+            ctx   = Nginx("context-server\n:3000", **NODE_INFRA)
+
+        with Cluster("Data"):
+            mongo = MongoDB("MongoDB 5.0", **NODE_INFRA)
+
+        gw >> Edge(**EDGE_LIVE) >> [api, inv, bom, mfg, sched, sf, fg, qual, mps, iot]
+        for n in [api, inv, bom, mfg, sched, sf, fg, qual, mps, iot]:
+            n >> Edge(**EDGE_DATA) >> orion
+        orion >> Edge(color="#94a3b8", style="dotted") >> ctx
+        orion >> Edge(**EDGE_DATA) >> mongo
+        orion >> Edge(color="#f59e0b", style="dashed", label="notify") >> gw
+    print("  ✓ arch-t12.png")
+
+
 if __name__ == "__main__":
     print("Generating architecture diagrams...")
     full_architecture()
@@ -548,4 +587,5 @@ if __name__ == "__main__":
     t09()
     t10()
     t11()
+    t12()
     print("Done — PNGs written to docs/_static/architecture/")

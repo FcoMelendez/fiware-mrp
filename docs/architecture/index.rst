@@ -1,9 +1,9 @@
 System Architecture
 ===================
 
-This page describes the complete FIWARE MRP reference architecture as it
-will look when all twelve tutorials are finished.  The system is built
-around the `NGSI-LD <https://www.etsi.org/deliver/etsi_gs/CIM/001_099/009/01.06.01_60/gs_CIM009v010601p.pdf>`_
+This page describes the complete FIWARE MRP reference architecture —
+v1.0, all twelve tutorials shipped. The system is built around the
+`NGSI-LD <https://www.etsi.org/deliver/etsi_gs/CIM/001_099/009/01.06.01_60/gs_CIM009v010601p.pdf>`_
 standard and the `Orion-LD <https://github.com/FIWARE/context.Orion-LD>`_
 context broker.
 
@@ -248,6 +248,13 @@ NGSI-LD entity types
    at the finished-goods location, plus a new ``completedAt`` attribute on
    **ManufacturingOrder**.
 
+.. note::
+
+   T12 introduces no new component and no new entity type. It is the
+   release tutorial: every service and entity type above is driven once,
+   in sequence, against a single fresh ManufacturingOrder, proving the
+   full forecast-to-traceability graph is coherent end to end.
+
 ----
 
 Architecture evolution by tutorial
@@ -331,5 +338,13 @@ shown for context.
 
 .. image:: ../_static/architecture/arch-t11.png
    :alt: T11 architecture
+   :align: center
+   :width: 80%
+
+**Tutorial 12** — End-to-end demo (v1.0) — no new service; every component
+from Tutorials 01-11 driven once, in sequence
+
+.. image:: ../_static/architecture/arch-t12.png
+   :alt: T12 architecture
    :align: center
    :width: 80%

@@ -30,6 +30,34 @@ import {
   TUTORIAL_10_STEPS,
   TUTORIAL_11_ENTITIES,
   TUTORIAL_11_STEPS,
+  TUTORIAL_12_ENTITIES,
+  TUTORIAL_12_STEPS,
+  MOCK_DF_HP_P100_2024_09,
+  MOCK_IB2_PUMP_CASING,
+  MOCK_IB2_IMPELLER,
+  MOCK_IB2_ELECTRIC_MOTOR,
+  MOCK_IB2_SEAL_KIT,
+  MOCK_IB2_HP_FINISHED_RECEIVED,
+  MOCK_MO2_DRAFT,
+  MOCK_MO2_CONFIRMED,
+  MOCK_MO2_COMPLETED,
+  MOCK_MPSL2_SUGGESTED,
+  MOCK_MPSL2_CONFIRMED,
+  MOCK_IR2_PUMP_CASING,
+  MOCK_IR2_IMPELLER,
+  MOCK_IR2_ELECTRIC_MOTOR,
+  MOCK_IR2_SEAL_KIT,
+  MOCK_WO2_ASSEMBLY,
+  MOCK_WO2_LEAK_TEST,
+  MOCK_WO2_PACKAGING,
+  MOCK_WO2_ASSEMBLY_COMPLETED,
+  MOCK_WO2_LEAK_TEST_COMPLETED,
+  MOCK_WO2_PACKAGING_COMPLETED,
+  MOCK_MST2_WC_ASSEMBLY_RUNNING,
+  MOCK_OA2_JANE_DOE_CLOCKED_IN,
+  MOCK_OA2_JANE_DOE_CLOCKED_OUT,
+  MOCK_QC2_LEAKTEST_PASS,
+  MOCK_SM2_RECEIPT,
   MOCK_WO_ASSEMBLY,
   MOCK_WO_LEAK_TEST,
   MOCK_WO_PACKAGING,
@@ -152,6 +180,11 @@ export class ScenarioEngine {
         title: 'Tutorial 11 – IoT/MES signals and subscriptions',
         stepsCount: TUTORIAL_11_STEPS.length,
       },
+      {
+        id: 'tutorial-12',
+        title: 'Tutorial 12 – End-to-end demo (v1.0)',
+        stepsCount: TUTORIAL_12_STEPS.length,
+      },
     ];
   }
 
@@ -167,6 +200,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-09') return TUTORIAL_09_STEPS;
     if (tutorialId === 'tutorial-10') return TUTORIAL_10_STEPS;
     if (tutorialId === 'tutorial-11') return TUTORIAL_11_STEPS;
+    if (tutorialId === 'tutorial-12') return TUTORIAL_12_STEPS;
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -182,6 +216,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-09') return this.executeTutorial09Step(stepId);
     if (tutorialId === 'tutorial-10') return this.executeTutorial10Step(stepId);
     if (tutorialId === 'tutorial-11') return this.executeTutorial11Step(stepId);
+    if (tutorialId === 'tutorial-12') return this.executeTutorial12Step(stepId);
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -2019,6 +2054,892 @@ export class ScenarioEngine {
         durationMs,
       }],
       entities: [MOCK_MO_CONFIRMED],
+    };
+  }
+
+  // ── Tutorial 12 step handlers — the end-to-end demo ────────────────────────
+
+  private async executeTutorial12Step(stepId: string): Promise<StepResult> {
+    const step = TUTORIAL_12_STEPS.find((s) => s.id === stepId);
+    if (!step) throw new Error(`Unknown step: ${stepId} in tutorial-12`);
+    switch (stepId) {
+      case 'check-stack-health':          return this.stepCheckFullStackHealth(step);
+      case 'seed-t12-data':               return this.stepSeedT12Data(step);
+      case 'explode-bom':                 return this.stepExplodeBomT12(step);
+      case 'receive-material':            return this.stepReceiveMaterialT12(step);
+      case 'generate-mps':                return this.stepGenerateMpsT12(step);
+      case 'confirm-mps-line':            return this.stepConfirmMpsLineT12(step);
+      case 'confirm-manufacturing-order':  return this.stepConfirmOrderT12(step);
+      case 'reserve-components':          return this.stepReserveComponentsT12(step);
+      case 'create-work-orders':          return this.stepCreateWorkOrdersT12(step);
+      case 'execute-assembly':            return this.stepExecuteAssemblyT12(step);
+      case 'execute-leak-test':           return this.stepExecuteLeakTestT12(step);
+      case 'execute-packaging':           return this.stepExecutePackagingT12(step);
+      case 'receive-finished-goods':      return this.stepReceiveFinishedGoodsT12(step);
+      case 'verify-traceability':         return this.stepVerifyTraceabilityT12(step);
+      default: throw new Error(`No executor for step: ${stepId}`);
+    }
+  }
+
+  private async stepCheckFullStackHealth(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    const services: Array<[string, string]> = [
+      ['bom-service', '8082'], ['inventory-service', '8081'], ['manufacturing-service', '8083'],
+      ['scheduler-service', '8084'], ['shopfloor-service', '8085'], ['finished-goods-service', '8086'],
+      ['quality-service', '8087'], ['mps-service', '8088'], ['iot-simulator', '8089'],
+    ];
+    let healthy = services.length;
+
+    if (this.mode === 'live') {
+      const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+      healthy = 0;
+      for (const [name, port] of services) {
+        try {
+          const url = orionUrl.replace(':1026', `:${port}`).replace('orion-ld', name);
+          const res = await fetch(`${url}/health`, { signal: AbortSignal.timeout(5_000) });
+          if (res.ok) healthy += 1;
+        } catch { /* service unreachable — counted as unhealthy */ }
+      }
+    }
+
+    const durationMs = Date.now() - t0;
+    const allHealthy = healthy === services.length;
+
+    return {
+      stepId: step.id,
+      status: allHealthy ? 'completed' : 'failed',
+      result: this.mode === 'mock'
+        ? `Mock mode — all ${services.length} services considered healthy`
+        : `${healthy}/${services.length} services healthy`,
+      apiTrace: services.map(([name, port]) => ({
+        method: 'GET',
+        url: `http://${name}:${port}/health`,
+        responseStatus: this.mode === 'mock' ? 200 : (allHealthy ? 200 : 503),
+        responseSummary: '{ "status": "ok" }',
+        durationMs: Math.round(durationMs / services.length),
+      })),
+    };
+  }
+
+  private async stepSeedT12Data(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 201;
+    let responseSummary = `${TUTORIAL_12_ENTITIES.length} entities upserted`;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl, contextUrl } = this.ngsi as unknown as { orionUrl: string; contextUrl: string };
+        const withContext = TUTORIAL_12_ENTITIES.map((e) => ({ ...e, '@context': contextUrl }));
+        const res = await fetch(
+          `${orionUrl}/ngsi-ld/v1/entityOperations/upsert`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/ld+json' },
+            body: JSON.stringify(withContext),
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        responseStatus = res.status;
+        responseSummary = res.ok
+          ? `${TUTORIAL_12_ENTITIES.length} entities upserted`
+          : `Error: ${res.status}`;
+      } catch (err) {
+        responseStatus = 503;
+        responseSummary = err instanceof Error ? err.message : 'Broker unreachable';
+      }
+    }
+
+    const durationMs = Date.now() - t0;
+    const snapshot = { ...MOCK_SCENE, entities: TUTORIAL_12_ENTITIES };
+    this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.seedFrom([]);
+      this.mockStore.upsertMany(TUTORIAL_12_ENTITIES as Array<Record<string, unknown>>);
+    }
+    this.lastAssignmentId = null;
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `${responseSummary} — a fresh draft ManufacturingOrder (MO-2024-002), unreserved component stock, and a September demand forecast`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `${TUTORIAL_12_ENTITIES.length} entities  •  application/ld+json`,
+        responseStatus,
+        responseSummary,
+        durationMs,
+      }],
+      entities: TUTORIAL_12_ENTITIES,
+    };
+  }
+
+  private async stepExplodeBomT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    let result = { ...MOCK_EXPLODE_RESULT, quantity: 5 };
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const bomUrl = orionUrl.replace(':1026', ':8082').replace('orion-ld', 'bom-service');
+        const res = await fetch(`${bomUrl}/commands/explode-bom`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: 'urn:ngsi-ld:Product:HydraulicPump-P100', quantity: 5 }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+        if (res.ok) result = await res.json() as typeof result;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `Exploded BOM-HP-P100-v1 for 5 units → ${result.components.length} components required`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: '{ product_id: "urn:ngsi-ld:Product:HydraulicPump-P100", quantity: 5 }',
+        responseStatus,
+        responseSummary: `${result.components.length} components`,
+        durationMs,
+      }],
+      entities: [result],
+    };
+  }
+
+  private async stepReceiveMaterialT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    let newQty = 60;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const invUrl = orionUrl.replace(':1026', ':8081').replace('orion-ld', 'inventory-service');
+        const res = await fetch(`${invUrl}/commands/receive-material`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product_id: 'urn:ngsi-ld:Product:PumpCasing',
+            location_id: 'urn:ngsi-ld:StockLocation:WH-STOCK',
+            quantity: 10,
+          }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+        if (res.ok) {
+          const data = await res.json() as { quantity_on_hand?: number };
+          newQty = data.quantity_on_hand ?? newQty;
+        }
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+    const updatedBalance = { ...MOCK_IB2_PUMP_CASING, quantityOnHand: { type: 'Property', value: newQty, unitCode: 'EA' } };
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: updatedBalance.id,
+      entityType: 'InventoryBalance',
+      payload: { quantityOnHand: { type: 'Property', value: newQty, unitCode: 'EA' } },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(MOCK_IB2_PUMP_CASING.id, {
+        quantityOnHand: { type: 'Property', value: newQty, unitCode: 'EA' },
+        availableQuantity: { type: 'Property', value: newQty, unitCode: 'EA' },
+      });
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `PumpCasing at WH-STOCK: 50 → ${newQty} EA`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: '{ product_id: "PumpCasing", location_id: "WH-STOCK", quantity: 10 }',
+        responseStatus,
+        responseSummary: `{ status: "done", quantity_on_hand: ${newQty} }`,
+        durationMs,
+      }],
+      entities: [updatedBalance],
+    };
+  }
+
+  private async stepGenerateMpsT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const dfId = MOCK_DF_HP_P100_2024_09.id;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const mpsUrl = orionUrl.replace(':1026', ':8088').replace('orion-ld', 'mps-service');
+        const res = await fetch(`${mpsUrl}/commands/generate-mps`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ demand_forecast_id: dfId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: MOCK_MPSL2_SUGGESTED.id,
+      entityType: 'MasterProductionScheduleLine',
+      payload: {
+        state: { type: 'Property', value: 'suggested' },
+        projectedInventory: { type: 'Property', value: -2, unitCode: 'EA' },
+        suggestedProductionQuantity: { type: 'Property', value: 5, unitCode: 'EA' },
+      },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany([MOCK_MPSL2_SUGGESTED as Record<string, unknown>]);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `MPS line generated — projectedInventory: -2 EA, suggestedProductionQuantity: 5 EA`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ demand_forecast_id: "${dfId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", projected_inventory: -2, suggested_production_quantity: 5 }`,
+        durationMs,
+      }],
+      entities: [MOCK_MPSL2_SUGGESTED],
+    };
+  }
+
+  private async stepConfirmMpsLineT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const mpslId = MOCK_MPSL2_SUGGESTED.id;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const mpsUrl = orionUrl.replace(':1026', ':8088').replace('orion-ld', 'mps-service');
+        const res = await fetch(`${mpsUrl}/commands/confirm-mps-line`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mps_line_id: mpslId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: mpslId,
+      entityType: 'MasterProductionScheduleLine',
+      payload: {
+        state: { type: 'Property', value: 'confirmed' },
+        confirmedProductionQuantity: { type: 'Property', value: 5, unitCode: 'EA' },
+      },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(mpslId, {
+        state: { type: 'Property', value: 'confirmed' },
+        confirmedProductionQuantity: { type: 'Property', value: 5, unitCode: 'EA' },
+      });
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `MPS line confirmed — state: suggested → confirmed, confirmedProductionQuantity: 5 EA`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ mps_line_id: "${mpslId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", state: "confirmed", confirmed_production_quantity: 5 }`,
+        durationMs,
+      }],
+      entities: [MOCK_MPSL2_CONFIRMED],
+    };
+  }
+
+  private async stepConfirmOrderT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const orderId = MOCK_MO2_DRAFT.id;
+    let confirmedAt = '2024-09-02T07:45:00Z';
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const mfgUrl = orionUrl.replace(':1026', ':8083').replace('orion-ld', 'manufacturing-service');
+        const res = await fetch(`${mfgUrl}/commands/confirm-manufacturing-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: orderId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+        if (res.ok) {
+          const data = await res.json() as { confirmed_at?: string };
+          confirmedAt = data.confirmed_at ?? confirmedAt;
+        }
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: orderId,
+      entityType: 'ManufacturingOrder',
+      payload: {
+        state: { type: 'Property', value: 'confirmed' },
+        confirmedAt: { type: 'Property', value: confirmedAt },
+      },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(orderId, {
+        state: { type: 'Property', value: 'confirmed' },
+        confirmedAt: { type: 'Property', value: confirmedAt },
+      });
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `ManufacturingOrder MO-2024-002 confirmed — state: draft → confirmed, confirmedAt: ${confirmedAt}`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ order_id: "${orderId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "confirmed", confirmed_at: "${confirmedAt}" }`,
+        durationMs,
+      }],
+      entities: [MOCK_MO2_CONFIRMED],
+    };
+  }
+
+  private async stepReserveComponentsT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const orderId = MOCK_MO2_CONFIRMED.id;
+
+    if (this.mode === 'live') {
+      try {
+        const invUrl = (this.ngsi as unknown as { orionUrl: string }).orionUrl
+          .replace(':1026', ':8081').replace('orion-ld', 'inventory-service');
+        const res = await fetch(`${invUrl}/commands/reserve-components`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: orderId }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+    const reservations = [MOCK_IR2_PUMP_CASING, MOCK_IR2_IMPELLER, MOCK_IR2_ELECTRIC_MOTOR, MOCK_IR2_SEAL_KIT];
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: 'urn:ngsi-ld:StockLocation:WH-STOCK',
+      entityType: 'StockLocation',
+      payload: { message: '4 reservations created — all reserved in full' },
+    });
+    for (const ir of reservations) {
+      this.hub.broadcast({
+        eventType: 'entityChanged',
+        entityId: ir.id,
+        entityType: 'InventoryReservation',
+        payload: { state: ir['state'], reservedQuantity: ir['reservedQuantity'] },
+      });
+    }
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(reservations as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `4 InventoryReservation entities created — PumpCasing, Impeller, ElectricMotor, SealKit: all reserved`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ order_id: "${orderId}" }`,
+        responseStatus,
+        responseSummary: `{ reservations_created: 4, summary: { reserved: 4, partial: 0, shortage: 0 } }`,
+        durationMs,
+      }],
+      entities: reservations,
+    };
+  }
+
+  private async stepCreateWorkOrdersT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const orderId = MOCK_MO2_CONFIRMED.id;
+
+    if (this.mode === 'live') {
+      try {
+        const schedUrl = (this.ngsi as unknown as { orionUrl: string }).orionUrl
+          .replace(':1026', ':8084').replace('orion-ld', 'scheduler-service');
+        const res = await fetch(`${schedUrl}/commands/create-work-orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: orderId }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+    const workOrders = [MOCK_WO2_ASSEMBLY, MOCK_WO2_LEAK_TEST, MOCK_WO2_PACKAGING];
+
+    for (const wo of workOrders) {
+      this.hub.broadcast({
+        eventType: 'entityChanged',
+        entityId: wo.id,
+        entityType: 'WorkOrder',
+        payload: {
+          state: { type: 'Property', value: 'planned' },
+          workCenter: wo['workCenter'],
+        },
+      });
+    }
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(workOrders as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `3 WorkOrder entities created — Assembly (5.0h), LeakTest (2.5h), Packaging (1.25h), all planned`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ order_id: "${orderId}" }`,
+        responseStatus,
+        responseSummary: `{ work_orders_created: 3 }`,
+        durationMs,
+      }],
+      entities: workOrders,
+    };
+  }
+
+  private async stepExecuteAssemblyT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    const apiTrace: ApiTrace[] = [];
+    let allOk = true;
+    let assignmentId = MOCK_OA2_JANE_DOE_CLOCKED_IN.id;
+
+    if (this.mode === 'live') {
+      const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+      const iotUrl = orionUrl.replace(':1026', ':8089').replace('orion-ld', 'iot-simulator');
+      const shopUrl = orionUrl.replace(':1026', ':8085').replace('orion-ld', 'shopfloor-service');
+      const woId = MOCK_WO2_ASSEMBLY.id;
+
+      try {
+        const t1 = Date.now();
+        const clockInRes = await fetch(`${iotUrl}/commands/clock-in`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operator_id: 'urn:ngsi-ld:Operator:OP-JaneDoe', work_center_id: 'urn:ngsi-ld:WorkCenter:WC-Assembly' }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        allOk &&= clockInRes.ok;
+        if (clockInRes.ok) {
+          const data = await clockInRes.json() as { assignment_id?: string };
+          assignmentId = data.assignment_id ?? assignmentId;
+          this.hub.broadcast({
+            eventType: 'entityChanged',
+            entityId: assignmentId,
+            entityType: 'OperatorAssignment',
+            payload: {
+              timerStatus: { type: 'Property', value: 'clocked_in' },
+              operator: { type: 'Relationship', object: 'urn:ngsi-ld:Operator:OP-JaneDoe' },
+              workCenter: { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+            },
+          });
+        }
+        apiTrace.push({ method: 'POST', url: `${iotUrl}/commands/clock-in`, responseStatus: clockInRes.status, responseSummary: '{ status: "done", timer_status: "clocked_in" }', durationMs: Date.now() - t1 });
+
+        const t2 = Date.now();
+        const startRes = await fetch(`${shopUrl}/commands/start-work-order`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ work_order_id: woId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        allOk &&= startRes.ok;
+        if (startRes.ok) {
+          this.hub.broadcast({
+            eventType: 'entityChanged',
+            entityId: woId,
+            entityType: 'WorkOrder',
+            payload: { state: { type: 'Property', value: 'in_progress' }, workCenter: MOCK_WO2_ASSEMBLY['workCenter'] },
+          });
+        }
+        apiTrace.push({ method: 'POST', url: `${shopUrl}/commands/start-work-order`, responseStatus: startRes.status, responseSummary: '{ status: "done", state: "in_progress" }', durationMs: Date.now() - t2 });
+
+        const t3 = Date.now();
+        const emitRes = await fetch(`${iotUrl}/commands/emit-signal`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ work_center_id: 'urn:ngsi-ld:WorkCenter:WC-Assembly', signal_type: 'temperature', actual_value: 65, unit_code: 'CEL', quality: 'good' }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        allOk &&= emitRes.ok;
+        if (emitRes.ok) {
+          this.hub.broadcast({
+            eventType: 'entityChanged',
+            entityId: 'urn:ngsi-ld:MachineState:MST-WC-Assembly',
+            entityType: 'MachineState',
+            payload: {
+              state: { type: 'Property', value: 'running' },
+              workCenter: { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+            },
+          });
+        }
+        apiTrace.push({ method: 'POST', url: `${iotUrl}/commands/emit-signal`, responseStatus: emitRes.status, responseSummary: '{ status: "done", state: "running" }', durationMs: Date.now() - t3 });
+
+        const t4 = Date.now();
+        const completeRes = await fetch(`${shopUrl}/commands/complete-work-order`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ work_order_id: woId, quantity_produced: 5 }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        allOk &&= completeRes.ok;
+        if (completeRes.ok) {
+          this.hub.broadcast({
+            eventType: 'entityChanged',
+            entityId: woId,
+            entityType: 'WorkOrder',
+            payload: { state: { type: 'Property', value: 'completed' }, workCenter: MOCK_WO2_ASSEMBLY['workCenter'] },
+          });
+        }
+        apiTrace.push({ method: 'POST', url: `${shopUrl}/commands/complete-work-order`, responseStatus: completeRes.status, responseSummary: '{ status: "done", state: "completed" }', durationMs: Date.now() - t4 });
+
+        const t5 = Date.now();
+        const clockOutRes = await fetch(`${iotUrl}/commands/clock-out`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assignment_id: assignmentId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        allOk &&= clockOutRes.ok;
+        if (clockOutRes.ok) {
+          this.hub.broadcast({
+            eventType: 'entityChanged',
+            entityId: assignmentId,
+            entityType: 'OperatorAssignment',
+            payload: {
+              timerStatus: { type: 'Property', value: 'clocked_out' },
+              operator: { type: 'Relationship', object: 'urn:ngsi-ld:Operator:OP-JaneDoe' },
+              workCenter: { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+            },
+          });
+        }
+        apiTrace.push({ method: 'POST', url: `${iotUrl}/commands/clock-out`, responseStatus: clockOutRes.status, responseSummary: '{ status: "done", timer_status: "clocked_out" }', durationMs: Date.now() - t5 });
+      } catch {
+        allOk = false;
+        apiTrace.push({ method: 'POST', url: step.hood.url, responseStatus: 503, responseSummary: 'Service unreachable', durationMs: Date.now() - t0 });
+      }
+    } else {
+      apiTrace.push(
+        { method: 'POST', url: 'http://iot-simulator:8089/commands/clock-in', responseStatus: 200, responseSummary: '{ status: "done" }', durationMs: 20 },
+        { method: 'POST', url: 'http://shopfloor-service:8085/commands/start-work-order', responseStatus: 200, responseSummary: '{ status: "done" }', durationMs: 20 },
+        { method: 'POST', url: 'http://iot-simulator:8089/commands/emit-signal', responseStatus: 200, responseSummary: '{ status: "done" }', durationMs: 20 },
+        { method: 'POST', url: 'http://shopfloor-service:8085/commands/complete-work-order', responseStatus: 200, responseSummary: '{ status: "done" }', durationMs: 20 },
+        { method: 'POST', url: 'http://iot-simulator:8089/commands/clock-out', responseStatus: 200, responseSummary: '{ status: "done" }', durationMs: 20 },
+      );
+    }
+
+    this.lastAssignmentId = assignmentId;
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany([MOCK_WO2_ASSEMBLY_COMPLETED, MOCK_MST2_WC_ASSEMBLY_RUNNING, MOCK_OA2_JANE_DOE_CLOCKED_OUT] as Array<Record<string, unknown>>);
+      // Mock mode skips the live per-call broadcasts above entirely — push the final
+      // states once so the canvas still reacts the same way a live run would.
+      this.hub.broadcast({ eventType: 'entityChanged', entityId: MOCK_WO2_ASSEMBLY.id, entityType: 'WorkOrder', payload: { state: { type: 'Property', value: 'completed' }, workCenter: MOCK_WO2_ASSEMBLY['workCenter'] } });
+      this.hub.broadcast({ eventType: 'entityChanged', entityId: MOCK_MST2_WC_ASSEMBLY_RUNNING.id, entityType: 'MachineState', payload: { state: { type: 'Property', value: 'running' } } });
+      this.hub.broadcast({ eventType: 'entityChanged', entityId: assignmentId, entityType: 'OperatorAssignment', payload: { timerStatus: { type: 'Property', value: 'clocked_out' } } });
+    }
+
+    return {
+      stepId: step.id,
+      status: allOk ? 'completed' : 'failed',
+      result: `Assembly executed — WC-Assembly reports running (65°C, good), WO-Assembly completed, operator clocked out`,
+      apiTrace,
+      entities: [MOCK_WO2_ASSEMBLY_COMPLETED, MOCK_MST2_WC_ASSEMBLY_RUNNING, MOCK_OA2_JANE_DOE_CLOCKED_OUT],
+    };
+  }
+
+  private async stepExecuteLeakTestT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    const apiTrace: ApiTrace[] = [];
+    let allOk = true;
+    const woId = MOCK_WO2_LEAK_TEST.id;
+
+    if (this.mode === 'live') {
+      const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+      const shopUrl = orionUrl.replace(':1026', ':8085').replace('orion-ld', 'shopfloor-service');
+      const qualUrl = orionUrl.replace(':1026', ':8087').replace('orion-ld', 'quality-service');
+
+      try {
+        const t1 = Date.now();
+        const startRes = await fetch(`${shopUrl}/commands/start-work-order`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ work_order_id: woId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        allOk &&= startRes.ok;
+        apiTrace.push({ method: 'POST', url: `${shopUrl}/commands/start-work-order`, responseStatus: startRes.status, responseSummary: '{ status: "done", state: "in_progress" }', durationMs: Date.now() - t1 });
+
+        const t2 = Date.now();
+        const completeRes = await fetch(`${shopUrl}/commands/complete-work-order`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ work_order_id: woId, quantity_produced: 5 }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        allOk &&= completeRes.ok;
+        apiTrace.push({ method: 'POST', url: `${shopUrl}/commands/complete-work-order`, responseStatus: completeRes.status, responseSummary: '{ status: "done", state: "completed" }', durationMs: Date.now() - t2 });
+
+        const t3 = Date.now();
+        const inspectRes = await fetch(`${qualUrl}/commands/inspect-work-order`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ work_order_id: woId, check_type: 'leak_test', expected_value: 0, actual_value: 0, tolerance: 0.1, quantity_inspected: 5 }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        allOk &&= inspectRes.ok;
+        apiTrace.push({ method: 'POST', url: `${qualUrl}/commands/inspect-work-order`, responseStatus: inspectRes.status, responseSummary: '{ status: "done", result: "pass" }', durationMs: Date.now() - t3 });
+      } catch {
+        allOk = false;
+        apiTrace.push({ method: 'POST', url: step.hood.url, responseStatus: 503, responseSummary: 'Service unreachable', durationMs: Date.now() - t0 });
+      }
+    } else {
+      apiTrace.push(
+        { method: 'POST', url: 'http://shopfloor-service:8085/commands/start-work-order', responseStatus: 200, responseSummary: '{ status: "done" }', durationMs: 20 },
+        { method: 'POST', url: 'http://shopfloor-service:8085/commands/complete-work-order', responseStatus: 200, responseSummary: '{ status: "done" }', durationMs: 20 },
+        { method: 'POST', url: 'http://quality-service:8087/commands/inspect-work-order', responseStatus: 200, responseSummary: '{ status: "done", result: "pass" }', durationMs: 20 },
+      );
+    }
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany([MOCK_WO2_LEAK_TEST_COMPLETED, MOCK_QC2_LEAKTEST_PASS] as Array<Record<string, unknown>>);
+    }
+
+    // Broadcast the final states unconditionally (both modes) — the canvas's WorkCenter
+    // coloring and the Quality/Inspection pass-fail counter both react to these.
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: woId,
+      entityType: 'WorkOrder',
+      payload: { state: { type: 'Property', value: 'completed' }, workCenter: MOCK_WO2_LEAK_TEST['workCenter'] },
+    });
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: MOCK_QC2_LEAKTEST_PASS.id,
+      entityType: 'QualityCheck',
+      payload: { result: { type: 'Property', value: 'pass' } },
+    });
+
+    return {
+      stepId: step.id,
+      status: allOk ? 'completed' : 'failed',
+      result: `WO-LeakTest completed — QualityCheck result: pass (actual 0 vs. expected 0, tolerance 0.1)`,
+      apiTrace,
+      entities: [MOCK_WO2_LEAK_TEST_COMPLETED, MOCK_QC2_LEAKTEST_PASS],
+    };
+  }
+
+  private async stepExecutePackagingT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    const apiTrace: ApiTrace[] = [];
+    let allOk = true;
+    const woId = MOCK_WO2_PACKAGING.id;
+
+    if (this.mode === 'live') {
+      const shopUrl = (this.ngsi as unknown as { orionUrl: string }).orionUrl
+        .replace(':1026', ':8085').replace('orion-ld', 'shopfloor-service');
+      try {
+        const t1 = Date.now();
+        const startRes = await fetch(`${shopUrl}/commands/start-work-order`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ work_order_id: woId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        allOk &&= startRes.ok;
+        apiTrace.push({ method: 'POST', url: `${shopUrl}/commands/start-work-order`, responseStatus: startRes.status, responseSummary: '{ status: "done", state: "in_progress" }', durationMs: Date.now() - t1 });
+
+        const t2 = Date.now();
+        const completeRes = await fetch(`${shopUrl}/commands/complete-work-order`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ work_order_id: woId, quantity_produced: 5 }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        allOk &&= completeRes.ok;
+        apiTrace.push({ method: 'POST', url: `${shopUrl}/commands/complete-work-order`, responseStatus: completeRes.status, responseSummary: '{ status: "done", state: "completed" }', durationMs: Date.now() - t2 });
+      } catch {
+        allOk = false;
+        apiTrace.push({ method: 'POST', url: step.hood.url, responseStatus: 503, responseSummary: 'Service unreachable', durationMs: Date.now() - t0 });
+      }
+    } else {
+      apiTrace.push(
+        { method: 'POST', url: 'http://shopfloor-service:8085/commands/start-work-order', responseStatus: 200, responseSummary: '{ status: "done" }', durationMs: 20 },
+        { method: 'POST', url: 'http://shopfloor-service:8085/commands/complete-work-order', responseStatus: 200, responseSummary: '{ status: "done" }', durationMs: 20 },
+      );
+    }
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany([MOCK_WO2_PACKAGING_COMPLETED] as Array<Record<string, unknown>>);
+    }
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: woId,
+      entityType: 'WorkOrder',
+      payload: { state: { type: 'Property', value: 'completed' }, workCenter: MOCK_WO2_PACKAGING['workCenter'] },
+    });
+
+    return {
+      stepId: step.id,
+      status: allOk ? 'completed' : 'failed',
+      result: `WO-Packaging completed — all 3 WorkOrders for MO-2024-002 are now done`,
+      apiTrace,
+      entities: [MOCK_WO2_PACKAGING_COMPLETED],
+    };
+  }
+
+  private async stepReceiveFinishedGoodsT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    let newQty = 5;
+
+    if (this.mode === 'live') {
+      try {
+        const fgUrl = (this.ngsi as unknown as { orionUrl: string }).orionUrl
+          .replace(':1026', ':8086').replace('orion-ld', 'finished-goods-service');
+        const res = await fetch(`${fgUrl}/commands/receive-finished-goods`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ manufacturing_order_id: MOCK_MO2_CONFIRMED.id }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+        if (res.ok) {
+          const data = await res.json() as { quantity_on_hand?: number };
+          newQty = data.quantity_on_hand ?? newQty;
+        }
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: MOCK_MO2_CONFIRMED.id,
+      entityType: 'ManufacturingOrder',
+      payload: {
+        state: { type: 'Property', value: 'completed' },
+        completedAt: { type: 'Property', value: '2024-09-02T16:50:00Z' },
+      },
+    });
+    // StockMove drives the Packaging → Finished Goods flow-dot animation; InventoryBalance
+    // is what actually carries the quantity the Finished Goods zone's counter displays.
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: MOCK_SM2_RECEIPT.id,
+      entityType: 'StockMove',
+      payload: {
+        state: { type: 'Property', value: 'done' },
+        moveType: { type: 'Property', value: 'receipt' },
+        toLocation: MOCK_SM2_RECEIPT['toLocation'],
+      },
+    });
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: MOCK_IB2_HP_FINISHED_RECEIVED.id,
+      entityType: 'InventoryBalance',
+      payload: {
+        quantityOnHand: { type: 'Property', value: newQty, unitCode: 'EA' },
+        location: MOCK_IB2_HP_FINISHED_RECEIVED['location'],
+        product: MOCK_IB2_HP_FINISHED_RECEIVED['product'],
+      },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(MOCK_MO2_CONFIRMED.id, {
+        state: { type: 'Property', value: 'completed' },
+        completedAt: { type: 'Property', value: '2024-09-02T16:50:00Z' },
+      });
+      this.mockStore.upsertMany([MOCK_SM2_RECEIPT, MOCK_IB2_HP_FINISHED_RECEIVED] as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `MO-2024-002 completed — WH-FINISHED HydraulicPump-P100 balance: 0 → ${newQty} EA`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ manufacturing_order_id: "${MOCK_MO2_CONFIRMED.id}" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", quantity_on_hand: ${newQty} }`,
+        durationMs,
+      }],
+      entities: [MOCK_MO2_COMPLETED, MOCK_SM2_RECEIPT, MOCK_IB2_HP_FINISHED_RECEIVED],
+    };
+  }
+
+  private async stepVerifyTraceabilityT12(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let mo: Record<string, unknown> = MOCK_MO2_COMPLETED as Record<string, unknown>;
+    let responseStatus = 200;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const res = await fetch(`${orionUrl}/ngsi-ld/v1/entities/${MOCK_MO2_CONFIRMED.id}`, {
+          headers: { Accept: 'application/ld+json' },
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+        if (res.ok) mo = await res.json() as Record<string, unknown>;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `MO-2024-002: state=completed — forecast to shelf stock, in one continuous run`,
+      apiTrace: [{
+        method: 'GET',
+        url: step.hood.url,
+        responseStatus,
+        responseSummary: JSON.stringify({ id: mo['id'], state: 'completed' }),
+        durationMs,
+      }],
+      entities: [mo],
     };
   }
 

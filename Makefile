@@ -10,6 +10,7 @@
         test-09 \
         test-10 \
         test-11 \
+        test-12 \
         test-all \
         start-emulator start-mock stop-emulator \
         install-emulator \
@@ -128,6 +129,11 @@ test-11:
 	@echo "=== Running Tutorial 11 tests ==="
 	@bash tutorials/11-iot-mes/tests/test-11.sh
 
+test-12:
+	@echo "=== Running Tutorial 12 tests ==="
+	TUTORIAL=12 $(COMPOSE) run --rm --build -e TUTORIAL=12 seed
+	@bash tutorials/12-end-to-end/tests/test-12.sh
+
 test-all:
 	@echo "=== Clean reset for full test suite ==="
 	$(COMPOSE) down -v --remove-orphans
@@ -144,6 +150,7 @@ test-all:
 	@echo "=== Tutorial 09 ===" && TUTORIAL=09 $(COMPOSE) run --rm --build -e TUTORIAL=09 seed && bash tutorials/09-quality/tests/test-09.sh
 	@echo "=== Tutorial 10 ===" && TUTORIAL=10 $(COMPOSE) run --rm --build -e TUTORIAL=10 seed && bash tutorials/10-mps/tests/test-10.sh
 	@echo "=== Tutorial 11 ===" && TUTORIAL=11 $(COMPOSE) run --rm --build -e TUTORIAL=11 seed && bash tutorials/11-iot-mes/tests/test-11.sh
+	@echo "=== Tutorial 12 ===" && TUTORIAL=12 $(COMPOSE) run --rm --build -e TUTORIAL=12 seed && bash tutorials/12-end-to-end/tests/test-12.sh
 	@echo ""
 	@echo "=== All tests passed ==="
 
@@ -200,6 +207,7 @@ help:
 	@echo "  make test-09      Run Tutorial 09 automated assertions"
 	@echo "  make test-10      Run Tutorial 10 automated assertions"
 	@echo "  make test-11      Run Tutorial 11 automated assertions"
+	@echo "  make test-12      Run Tutorial 12 automated assertions (full end-to-end demo)"
 	@echo "  make test-all     Run all tutorial tests"
 	@echo "  make start-emulator  Start full stack + Phaser emulator (http://localhost:5173)"
 	@echo "  make start-mock      Start emulator in mock mode (no MRP backend needed)"

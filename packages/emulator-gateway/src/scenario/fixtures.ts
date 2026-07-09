@@ -1970,3 +1970,551 @@ export const TUTORIAL_11_STEPS: GuidedStep[] = [
     actionLabel: 'Clock out',
   },
 ];
+
+// ── Tutorial 12 fixtures — the end-to-end demo ─────────────────────────────────
+// No new entity types. MO-2024-002 walks the full forecast-to-traceability
+// lifecycle once, fresh, so every fixture below is its own new object rather
+// than a state variant of an existing MO-2024-001 fixture.
+
+export const MOCK_DF_HP_P100_2024_09 = {
+  id: 'urn:ngsi-ld:DemandForecast:DF-HydraulicPump-P100-2024-09',
+  type: 'DemandForecast',
+  bucketStart:      { type: 'Property', value: '2024-09-01T00:00:00Z' },
+  bucketEnd:        { type: 'Property', value: '2024-09-30T23:59:59Z' },
+  forecastQuantity: { type: 'Property', value: 2, unitCode: 'EA' },
+  confidence:       { type: 'Property', value: 0.85 },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+};
+
+export const MOCK_IB2_PUMP_CASING = {
+  id: 'urn:ngsi-ld:InventoryBalance:IB-PumpCasing-WH-STOCK',
+  type: 'InventoryBalance',
+  quantityOnHand:    { type: 'Property', value: 50, unitCode: 'EA' },
+  reservedQuantity:  { type: 'Property', value: 0, unitCode: 'EA' },
+  availableQuantity: { type: 'Property', value: 50, unitCode: 'EA' },
+  inventoryDate: { type: 'Property', value: '2024-09-01T08:00:00Z' },
+  state:         { type: 'Property', value: 'active' },
+  product:  { type: 'Relationship', object: 'urn:ngsi-ld:Product:PumpCasing' },
+  location: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+};
+
+export const MOCK_IB2_IMPELLER = {
+  id: 'urn:ngsi-ld:InventoryBalance:IB-Impeller-WH-STOCK-LOT-240001',
+  type: 'InventoryBalance',
+  quantityOnHand:    { type: 'Property', value: 30, unitCode: 'EA' },
+  reservedQuantity:  { type: 'Property', value: 0, unitCode: 'EA' },
+  availableQuantity: { type: 'Property', value: 30, unitCode: 'EA' },
+  inventoryDate: { type: 'Property', value: '2024-09-01T08:00:00Z' },
+  state:         { type: 'Property', value: 'active' },
+  product:  { type: 'Relationship', object: 'urn:ngsi-ld:Product:Impeller' },
+  location: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+  lot:      { type: 'Relationship', object: 'urn:ngsi-ld:Lot:LOT-240001' },
+};
+
+export const MOCK_IB2_ELECTRIC_MOTOR = {
+  id: 'urn:ngsi-ld:InventoryBalance:IB-ElectricMotor-WH-STOCK',
+  type: 'InventoryBalance',
+  quantityOnHand:    { type: 'Property', value: 20, unitCode: 'EA' },
+  reservedQuantity:  { type: 'Property', value: 0, unitCode: 'EA' },
+  availableQuantity: { type: 'Property', value: 20, unitCode: 'EA' },
+  inventoryDate: { type: 'Property', value: '2024-09-01T08:00:00Z' },
+  state:         { type: 'Property', value: 'active' },
+  product:  { type: 'Relationship', object: 'urn:ngsi-ld:Product:ElectricMotor' },
+  location: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+};
+
+export const MOCK_IB2_SEAL_KIT = {
+  id: 'urn:ngsi-ld:InventoryBalance:IB-SealKit-WH-STOCK',
+  type: 'InventoryBalance',
+  quantityOnHand:    { type: 'Property', value: 20, unitCode: 'EA' },
+  reservedQuantity:  { type: 'Property', value: 0, unitCode: 'EA' },
+  availableQuantity: { type: 'Property', value: 20, unitCode: 'EA' },
+  inventoryDate: { type: 'Property', value: '2024-09-01T08:00:00Z' },
+  state:         { type: 'Property', value: 'active' },
+  product:  { type: 'Relationship', object: 'urn:ngsi-ld:Product:SealKit' },
+  location: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+};
+
+export const MOCK_IB2_HP_FINISHED = {
+  id: 'urn:ngsi-ld:InventoryBalance:IB-HydraulicPump-P100-WH-FINISHED',
+  type: 'InventoryBalance',
+  quantityOnHand:    { type: 'Property', value: 0, unitCode: 'EA' },
+  reservedQuantity:  { type: 'Property', value: 0, unitCode: 'EA' },
+  availableQuantity: { type: 'Property', value: 0, unitCode: 'EA' },
+  inventoryDate: { type: 'Property', value: '2024-09-01T08:00:00Z' },
+  state:         { type: 'Property', value: 'active' },
+  product:  { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  location: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-FINISHED' },
+};
+
+export const MOCK_MO2_DRAFT = {
+  id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-002',
+  type: 'ManufacturingOrder',
+  orderCode: { type: 'Property', value: 'MO-2024-002' },
+  product:   { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  bom:       { type: 'Relationship', object: 'urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1' },
+  quantity:  { type: 'Property', value: 5, unitCode: 'EA' },
+  state:     { type: 'Property', value: 'draft' },
+  plannedStart: { type: 'Property', value: '2024-09-02T08:00:00Z' },
+  plannedEnd:   { type: 'Property', value: '2024-09-04T17:00:00Z' },
+  priority:     { type: 'Property', value: 'normal' },
+};
+
+export const MOCK_MO2_CONFIRMED = {
+  ...MOCK_MO2_DRAFT,
+  state:       { type: 'Property', value: 'confirmed' },
+  confirmedAt: { type: 'Property', value: '2024-09-02T07:45:00Z' },
+};
+
+export const MOCK_MO2_COMPLETED = {
+  ...MOCK_MO2_CONFIRMED,
+  state:       { type: 'Property', value: 'completed' },
+  completedAt: { type: 'Property', value: '2024-09-02T16:50:00Z' },
+};
+
+export const MOCK_MPSL2_SUGGESTED = {
+  id: 'urn:ngsi-ld:MasterProductionScheduleLine:MPSL-HydraulicPump-P100-2024-09',
+  type: 'MasterProductionScheduleLine',
+  projectedInventory:          { type: 'Property', value: -2, unitCode: 'EA' },
+  suggestedProductionQuantity: { type: 'Property', value: 5, unitCode: 'EA' },
+  state: { type: 'Property', value: 'suggested' },
+  product:        { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  demandForecast: { type: 'Relationship', object: 'urn:ngsi-ld:DemandForecast:DF-HydraulicPump-P100-2024-09' },
+  reorderingRule: { type: 'Relationship', object: 'urn:ngsi-ld:ReorderingRule:RR-HydraulicPump-P100' },
+  bucketStart: { type: 'Property', value: '2024-09-01T00:00:00Z' },
+  bucketEnd:   { type: 'Property', value: '2024-09-30T23:59:59Z' },
+};
+
+export const MOCK_MPSL2_CONFIRMED = {
+  ...MOCK_MPSL2_SUGGESTED,
+  state: { type: 'Property', value: 'confirmed' },
+  confirmedProductionQuantity: { type: 'Property', value: 5, unitCode: 'EA' },
+};
+
+export const MOCK_IR2_PUMP_CASING = {
+  id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-002-PumpCasing',
+  type: 'InventoryReservation',
+  reservationCode:  { type: 'Property', value: 'IR-MO-2024-002-PumpCasing' },
+  requiredQuantity: { type: 'Property', value: 5, unitCode: 'EA' },
+  reservedQuantity: { type: 'Property', value: 5, unitCode: 'EA' },
+  shortageQuantity: { type: 'Property', value: 0, unitCode: 'EA' },
+  state: { type: 'Property', value: 'reserved' },
+  reservedAt: { type: 'Property', value: '2024-09-02T07:50:00Z' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-002' },
+  product:            { type: 'Relationship', object: 'urn:ngsi-ld:Product:PumpCasing' },
+  stockLocation:      { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+};
+
+export const MOCK_IR2_IMPELLER = {
+  ...MOCK_IR2_PUMP_CASING,
+  id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-002-Impeller',
+  reservationCode: { type: 'Property', value: 'IR-MO-2024-002-Impeller' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:Impeller' },
+};
+
+export const MOCK_IR2_ELECTRIC_MOTOR = {
+  ...MOCK_IR2_PUMP_CASING,
+  id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-002-ElectricMotor',
+  reservationCode: { type: 'Property', value: 'IR-MO-2024-002-ElectricMotor' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:ElectricMotor' },
+};
+
+export const MOCK_IR2_SEAL_KIT = {
+  ...MOCK_IR2_PUMP_CASING,
+  id: 'urn:ngsi-ld:InventoryReservation:IR-MO-2024-002-SealKit',
+  reservationCode:  { type: 'Property', value: 'IR-MO-2024-002-SealKit' },
+  requiredQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  reservedQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:SealKit' },
+};
+
+export const MOCK_WO2_ASSEMBLY = {
+  id: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-002-Assembly',
+  type: 'WorkOrder',
+  workOrderCode: { type: 'Property', value: 'WO-MO-2024-002-Assembly' },
+  operationName: { type: 'Property', value: 'Assembly' },
+  sequence:      { type: 'Property', value: 1 },
+  plannedStart:  { type: 'Property', value: '2024-09-02T08:00:00Z' },
+  plannedEnd:    { type: 'Property', value: '2024-09-02T13:00:00Z' },
+  durationHours: { type: 'Property', value: 5.0 },
+  state:         { type: 'Property', value: 'planned' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-002' },
+  workCenter:         { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+  product:            { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+};
+
+export const MOCK_WO2_LEAK_TEST = {
+  ...MOCK_WO2_ASSEMBLY,
+  id: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-002-LeakTest',
+  workOrderCode: { type: 'Property', value: 'WO-MO-2024-002-LeakTest' },
+  operationName: { type: 'Property', value: 'LeakTest' },
+  sequence:      { type: 'Property', value: 2 },
+  plannedStart:  { type: 'Property', value: '2024-09-02T13:00:00Z' },
+  plannedEnd:    { type: 'Property', value: '2024-09-02T15:30:00Z' },
+  durationHours: { type: 'Property', value: 2.5 },
+  workCenter: { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-LeakTest' },
+};
+
+export const MOCK_WO2_PACKAGING = {
+  ...MOCK_WO2_ASSEMBLY,
+  id: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-002-Packaging',
+  workOrderCode: { type: 'Property', value: 'WO-MO-2024-002-Packaging' },
+  operationName: { type: 'Property', value: 'Packaging' },
+  sequence:      { type: 'Property', value: 3 },
+  plannedStart:  { type: 'Property', value: '2024-09-02T15:30:00Z' },
+  plannedEnd:    { type: 'Property', value: '2024-09-02T16:45:00Z' },
+  durationHours: { type: 'Property', value: 1.25 },
+  workCenter: { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Packaging' },
+};
+
+export const MOCK_WO2_ASSEMBLY_COMPLETED = {
+  ...MOCK_WO2_ASSEMBLY,
+  state:       { type: 'Property', value: 'completed' },
+  actualStart: { type: 'Property', value: '2024-09-02T08:02:00Z' },
+  actualEnd:   { type: 'Property', value: '2024-09-02T13:02:00Z' },
+};
+
+export const MOCK_WO2_LEAK_TEST_COMPLETED = {
+  ...MOCK_WO2_LEAK_TEST,
+  state:       { type: 'Property', value: 'completed' },
+  actualStart: { type: 'Property', value: '2024-09-02T13:05:00Z' },
+  actualEnd:   { type: 'Property', value: '2024-09-02T15:35:00Z' },
+};
+
+export const MOCK_WO2_PACKAGING_COMPLETED = {
+  ...MOCK_WO2_PACKAGING,
+  state:       { type: 'Property', value: 'completed' },
+  actualStart: { type: 'Property', value: '2024-09-02T15:38:00Z' },
+  actualEnd:   { type: 'Property', value: '2024-09-02T16:48:00Z' },
+};
+
+export const MOCK_MS2_WC_ASSEMBLY_RUNNING = {
+  id: 'urn:ngsi-ld:MachineSignal:MS-WC-Assembly-MOCK-T12',
+  type: 'MachineSignal',
+  signalType:  { type: 'Property', value: 'temperature' },
+  actualValue: { type: 'Property', value: 65, unitCode: 'CEL', observedAt: '2024-09-02T08:03:00Z' },
+  quality:     { type: 'Property', value: 'good' },
+  workCenter:  { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+};
+
+export const MOCK_MST2_WC_ASSEMBLY_RUNNING = {
+  id: 'urn:ngsi-ld:MachineState:MST-WC-Assembly',
+  type: 'MachineState',
+  state:      { type: 'Property', value: 'running' },
+  detectedAt: { type: 'Property', value: '2024-09-02T08:03:00Z' },
+  workCenter: { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+  lastSignal: { type: 'Relationship', object: 'urn:ngsi-ld:MachineSignal:MS-WC-Assembly-MOCK-T12' },
+};
+
+export const MOCK_OA2_JANE_DOE_CLOCKED_IN = {
+  id: 'urn:ngsi-ld:OperatorAssignment:OA-JaneDoe-WC-Assembly-MOCK-T12',
+  type: 'OperatorAssignment',
+  timerStatus: { type: 'Property', value: 'clocked_in' },
+  actualStart: { type: 'Property', value: '2024-09-02T08:00:00Z' },
+  operator:    { type: 'Relationship', object: 'urn:ngsi-ld:Operator:OP-JaneDoe' },
+  workCenter:  { type: 'Relationship', object: 'urn:ngsi-ld:WorkCenter:WC-Assembly' },
+};
+
+export const MOCK_OA2_JANE_DOE_CLOCKED_OUT = {
+  ...MOCK_OA2_JANE_DOE_CLOCKED_IN,
+  timerStatus:    { type: 'Property', value: 'clocked_out' },
+  actualEnd:      { type: 'Property', value: '2024-09-02T13:05:00Z' },
+  actualDuration: { type: 'Property', value: 5.08 },
+};
+
+export const MOCK_QC2_LEAKTEST_PASS = {
+  id: 'urn:ngsi-ld:QualityCheck:QC-WO-MO-2024-002-LeakTest',
+  type: 'QualityCheck',
+  checkType:         { type: 'Property', value: 'leak_test' },
+  result:            { type: 'Property', value: 'pass' },
+  expectedValue:     { type: 'Property', value: 0 },
+  actualValue:       { type: 'Property', value: 0 },
+  tolerance:         { type: 'Property', value: 0.1 },
+  required:          { type: 'Property', value: true },
+  quantityInspected: { type: 'Property', value: 5, unitCode: 'EA' },
+  quantityFailed:    { type: 'Property', value: 0, unitCode: 'EA' },
+  eventTime: { type: 'Property', value: '2024-09-02T15:40:00Z' },
+  workOrder:          { type: 'Relationship', object: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-002-LeakTest' },
+  manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-002' },
+  product:            { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+};
+
+export const MOCK_SM2_RECEIPT = {
+  id: 'urn:ngsi-ld:StockMove:SM-MO-2024-002-receipt',
+  type: 'StockMove',
+  moveType:   { type: 'Property', value: 'receipt' },
+  quantity:   { type: 'Property', value: 5, unitCode: 'EA' },
+  state:      { type: 'Property', value: 'done' },
+  actualDate: { type: 'Property', value: '2024-09-02T16:50:00Z' },
+  origin:     { type: 'Property', value: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-002' },
+  product:    { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  toLocation: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-FINISHED' },
+};
+
+export const MOCK_IB2_HP_FINISHED_RECEIVED = {
+  ...MOCK_IB2_HP_FINISHED,
+  quantityOnHand:    { type: 'Property', value: 5, unitCode: 'EA' },
+  availableQuantity: { type: 'Property', value: 5, unitCode: 'EA' },
+};
+
+export const TUTORIAL_12_ENTITIES = [
+  ...TUTORIAL_01_ENTITIES,
+  ...TUTORIAL_03_ENTITIES,
+  MOCK_LOT_240001,
+  MOCK_IB2_PUMP_CASING,
+  MOCK_IB2_IMPELLER,
+  MOCK_IB2_ELECTRIC_MOTOR,
+  MOCK_IB2_SEAL_KIT,
+  MOCK_IB2_HP_FINISHED,
+  MOCK_DF_HP_P100_2024_09,
+  MOCK_RR_HP_P100,
+  MOCK_MO2_DRAFT,
+  MOCK_OPERATOR_JANE_DOE,
+];
+
+// ── Tutorial 12 step definitions ───────────────────────────────────────────────
+
+export const TUTORIAL_12_STEPS: GuidedStep[] = [
+  {
+    id: 'check-stack-health',
+    title: 'Verify the full stack',
+    shortDesc: 'Health-check all nine services introduced across T02-T11',
+    desc: 'Tutorial 12 introduces no new service — it drives every command from Tutorials 02 through 11 once, in sequence, against a single continuously-running stack. This step confirms every one of those services is up before the walkthrough begins.',
+    hood: { method: 'GET', url: 'http://*/health', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /health → bom-service, inventory-service, manufacturing-service, scheduler-service, shopfloor-service, finished-goods-service, quality-service, mps-service, iot-simulator',
+      'All nine respond { status: ok }',
+    ],
+    actionLabel: 'Check health',
+  },
+  {
+    id: 'seed-t12-data',
+    title: 'Load T12 seed data',
+    shortDesc: 'Seed 27 entities: T01 + T03 BoM + a fresh draft MO',
+    desc: 'Seeds a clean slate for the finale: T01 master data, the T03 BoM, unreserved component InventoryBalance entities, a DemandForecast + ReorderingRule for the MPS step, a fresh draft ManufacturingOrder (MO-2024-002), and the Operator from T11. Unlike every earlier tutorial, nothing here has already been executed.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
+      body: '27 entities  •  application/ld+json',
+      expectedStatus: 201,
+    },
+    workflow: [
+      'Gateway attaches @context URL to all 27 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD (idempotent)',
+      'MO-2024-002 seeded in draft state — every command below runs for the first time',
+    ],
+    actionLabel: 'Seed entities',
+  },
+  {
+    id: 'explode-bom',
+    title: 'Explode the BoM (Tutorial 03)',
+    shortDesc: 'POST /commands/explode-bom — preview requirements for 5 pumps',
+    desc: 'Before committing to a production run, explode-bom previews the four component quantities a batch of 5 HydraulicPump-P100 units requires.',
+    hood: {
+      method: 'POST',
+      url: 'http://bom-service:8082/commands/explode-bom',
+      body: JSON.stringify({ product_id: 'urn:ngsi-ld:Product:HydraulicPump-P100', quantity: 5 }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/explode-bom → bom-service',
+      'Fetches the active BoM and its 4 lines, multiplies quantity × 5',
+      'Returns component requirements — no entities written',
+    ],
+    actionLabel: 'Explode BoM',
+  },
+  {
+    id: 'receive-material',
+    title: 'Receive more material (Tutorial 02)',
+    shortDesc: 'POST /commands/receive-material — top up PumpCasing stock by 10',
+    desc: 'Inventory keeps moving even mid-plan: this tops up PumpCasing at WH-STOCK from 50 to 60 EA, demonstrating that receive-material and the MRP planning commands below operate on the same live balances.',
+    hood: {
+      method: 'POST',
+      url: 'http://inventory-service:8081/commands/receive-material',
+      body: JSON.stringify({ product_id: 'urn:ngsi-ld:Product:PumpCasing', location_id: 'urn:ngsi-ld:StockLocation:WH-STOCK', quantity: 10 }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/receive-material → inventory-service',
+      'Creates a StockMove (receipt) and upserts the InventoryBalance',
+      'PumpCasing on-hand: 50 → 60 EA',
+    ],
+    actionLabel: 'Receive material',
+  },
+  {
+    id: 'generate-mps',
+    title: 'Generate the MPS suggestion (Tutorial 10)',
+    shortDesc: 'POST /commands/generate-mps — 0 on hand, forecast 2 → suggest 5 EA',
+    desc: 'With 0 EA of HydraulicPump-P100 on hand at WH-FINISHED, a forecast of 2 EA for September, and a safety stock of 3 EA, mps-service computes a projected shortfall of 5 EA — which already lands exactly on the 5 EA lot size, so no rounding is needed.',
+    hood: {
+      method: 'POST',
+      url: 'http://mps-service:8088/commands/generate-mps',
+      body: JSON.stringify({ demand_forecast_id: 'urn:ngsi-ld:DemandForecast:DF-HydraulicPump-P100-2024-09' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/generate-mps → mps-service',
+      'projectedInventory = 0 on hand − 2 forecast = −2 EA',
+      'shortfall = 3 safety stock − (−2) = 5 EA → suggestedProductionQuantity = 5 EA',
+    ],
+    actionLabel: 'Generate MPS',
+  },
+  {
+    id: 'confirm-mps-line',
+    title: 'Confirm the MPS line (Tutorial 10)',
+    shortDesc: 'POST /commands/confirm-mps-line — lock in 5 EA',
+    desc: 'Confirms the suggestion — advisory only, since mps-service never creates a ManufacturingOrder itself. The draft MO-2024-002 already seeded for this quantity is confirmed in the next step.',
+    hood: {
+      method: 'POST',
+      url: 'http://mps-service:8088/commands/confirm-mps-line',
+      body: JSON.stringify({ mps_line_id: 'urn:ngsi-ld:MasterProductionScheduleLine:MPSL-HydraulicPump-P100-2024-09' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/confirm-mps-line → mps-service',
+      'state: suggested → confirmed, confirmedProductionQuantity: 5 EA',
+    ],
+    actionLabel: 'Confirm MPS line',
+  },
+  {
+    id: 'confirm-manufacturing-order',
+    title: 'Confirm the ManufacturingOrder (Tutorial 04)',
+    shortDesc: 'POST /commands/confirm-manufacturing-order — MO-2024-002: draft → confirmed',
+    desc: 'The forecast is now a committed order: MO-2024-002 moves from draft to confirmed, locking it for scheduling and component reservation.',
+    hood: {
+      method: 'POST',
+      url: 'http://manufacturing-service:8083/commands/confirm-manufacturing-order',
+      body: JSON.stringify({ order_id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-002' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/confirm-manufacturing-order → manufacturing-service',
+      'POST /attrs → state: confirmed, confirmedAt: <now>',
+    ],
+    actionLabel: 'Confirm order',
+  },
+  {
+    id: 'reserve-components',
+    title: 'Reserve components (Tutorial 05)',
+    shortDesc: 'POST /commands/reserve-components — all 4 components reserve in full',
+    desc: 'Unlike MO-2024-001 in Tutorial 05, this seed’s inventory is deliberately generous — all 4 components (PumpCasing, Impeller, ElectricMotor, SealKit) reserve in full with zero shortage. Shortages are Tutorial 05’s story to tell, not this one’s.',
+    hood: {
+      method: 'POST',
+      url: 'http://inventory-service:8081/commands/reserve-components',
+      body: JSON.stringify({ order_id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-002' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/reserve-components → inventory-service',
+      'Fetches the BoM lines and current balances for all 4 components',
+      '4 InventoryReservation entities created, all state=reserved',
+    ],
+    actionLabel: 'Reserve components',
+  },
+  {
+    id: 'create-work-orders',
+    title: 'Schedule work orders (Tutorial 06)',
+    shortDesc: 'POST /commands/create-work-orders — Assembly → LeakTest → Packaging',
+    desc: 'Generates the hardcoded routing for MO-2024-002: three sequential WorkOrders, all state=planned.',
+    hood: {
+      method: 'POST',
+      url: 'http://scheduler-service:8084/commands/create-work-orders',
+      body: JSON.stringify({ order_id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-002' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/create-work-orders → scheduler-service',
+      '3 WorkOrder entities created: Assembly (5.0h), LeakTest (2.5h), Packaging (1.25h)',
+    ],
+    actionLabel: 'Create work orders',
+  },
+  {
+    id: 'execute-assembly',
+    title: 'Execute Assembly, with a live IoT signal (Tutorials 07 + 11)',
+    shortDesc: 'Clock in → start → emit-signal (65°C, good) → complete → clock out',
+    desc: 'The operator clocks in, the Assembly WorkOrder starts, a healthy 65°C temperature signal derives MachineState=running for WC-Assembly, the WorkOrder completes, and the operator clocks out — five commands, one narrative.',
+    hood: {
+      method: 'POST',
+      url: 'http://iot-simulator:8089/commands/clock-in',
+      body: JSON.stringify({ operator_id: 'urn:ngsi-ld:Operator:OP-JaneDoe', work_center_id: 'urn:ngsi-ld:WorkCenter:WC-Assembly' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'iot-simulator → POST /commands/clock-in → OperatorAssignment (clocked_in)',
+      'shopfloor-service → POST /commands/start-work-order → WO-Assembly: planned → in_progress',
+      'iot-simulator → POST /commands/emit-signal (65°C, good) → MachineState: WC-Assembly → running',
+      'shopfloor-service → POST /commands/complete-work-order → WO-Assembly: in_progress → completed',
+      'iot-simulator → POST /commands/clock-out → OperatorAssignment (clocked_out)',
+    ],
+    actionLabel: 'Execute Assembly',
+  },
+  {
+    id: 'execute-leak-test',
+    title: 'Execute LeakTest, then inspect it (Tutorials 07 + 09)',
+    shortDesc: 'Start → complete → inspect-work-order → result: pass',
+    desc: 'The LeakTest WorkOrder runs and completes, then quality-service inspects it: actual 0 vs. expected 0 within a 0.1 tolerance — a clean pass, no scrap or rework needed.',
+    hood: {
+      method: 'POST',
+      url: 'http://quality-service:8087/commands/inspect-work-order',
+      body: JSON.stringify({ work_order_id: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-002-LeakTest', check_type: 'leak_test', expected_value: 0, actual_value: 0, tolerance: 0.1, quantity_inspected: 5 }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'shopfloor-service → start-work-order → complete-work-order → WO-LeakTest: completed',
+      'quality-service → POST /commands/inspect-work-order → QualityCheck (result: pass)',
+    ],
+    actionLabel: 'Execute & inspect LeakTest',
+  },
+  {
+    id: 'execute-packaging',
+    title: 'Execute Packaging (Tutorial 07)',
+    shortDesc: 'Start → complete — the last operation before receipt',
+    desc: 'The final operation in the routing. Once this completes, all 3 WorkOrders for MO-2024-002 are done and the order is ready to be received into finished goods.',
+    hood: {
+      method: 'POST',
+      url: 'http://shopfloor-service:8085/commands/complete-work-order',
+      body: JSON.stringify({ work_order_id: 'urn:ngsi-ld:WorkOrder:WO-MO-2024-002-Packaging', quantity_produced: 5 }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'shopfloor-service → start-work-order → complete-work-order → WO-Packaging: completed',
+      'All 3 WorkOrders for MO-2024-002 are now completed',
+    ],
+    actionLabel: 'Execute Packaging',
+  },
+  {
+    id: 'receive-finished-goods',
+    title: 'Receive finished goods (Tutorial 08)',
+    shortDesc: 'POST /commands/receive-finished-goods — MO-2024-002: confirmed → completed',
+    desc: 'Validates all 3 WorkOrders are completed, closes MO-2024-002, creates the receipt StockMove, and moves WH-FINISHED’s HydraulicPump-P100 balance from 0 to 5 EA — the forecast is now shelf stock.',
+    hood: {
+      method: 'POST',
+      url: 'http://finished-goods-service:8086/commands/receive-finished-goods',
+      body: JSON.stringify({ manufacturing_order_id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-002' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/receive-finished-goods → finished-goods-service',
+      'POST /attrs → MO-2024-002: state=completed, completedAt: <now>',
+      'StockMove (receipt) created; IB-HydraulicPump-P100-WH-FINISHED: 0 → 5 EA',
+    ],
+    actionLabel: 'Receive finished goods',
+  },
+  {
+    id: 'verify-traceability',
+    title: 'Verify the full graph',
+    shortDesc: 'GET the completed ManufacturingOrder — forecast to shelf, in one query',
+    desc: 'The whole story is now one connected graph: a DemandForecast led to an MPS suggestion, which became a confirmed ManufacturingOrder, reserved against real components, scheduled and executed across 3 WorkOrders with a live machine signal and operator time, quality-checked, and received into stock — twelve tutorials, one continuous run.',
+    hood: {
+      method: 'GET',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entities/urn:ngsi-ld:ManufacturingOrder:MO-2024-002',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /entities/{id} → Orion-LD',
+      'MO-2024-002: state=completed, confirmedAt and completedAt both set',
+      'Every entity this walkthrough touched is still queryable in the Broker Explorer tab',
+    ],
+    actionLabel: 'Verify final state',
+  },
+];

@@ -47,7 +47,7 @@ self-contained: reset, seed, execute, assert and stop.
      - :doc:`11-iot-mes`
      - IoT/MES signals and NGSI-LD subscriptions
    * - v0.12
-     - Tutorial 12 *(coming soon)*
+     - :doc:`12-end-to-end`
      - End-to-end demo and v1.0 release
 
 .. toctree::
@@ -64,3 +64,4 @@ self-contained: reset, seed, execute, assert and stop.
    09-quality
    10-mps
    11-iot-mes
+   12-end-to-end

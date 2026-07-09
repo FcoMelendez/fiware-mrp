@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { SceneSnapshot, ZoneLayout } from '../../domain/emulator.ts';
 import type { NgsiLdEntity } from '../../domain/ngsi-ld.ts';
-import { propValue } from '../../domain/ngsi-ld.ts';
+import { propValue, relObject } from '../../domain/ngsi-ld.ts';
 import { bus, BUS } from '../../services/EventBus.ts';
 import type { CanvasEntityClick } from '../../services/EventBus.ts';
 import { contextStore } from '../../services/ContextStore.ts';
@@ -113,6 +113,8 @@ interface MachineObj {
 interface ZoneObj {
   zone: ZoneLayout;
   bg: Phaser.GameObjects.Rectangle;
+  quantityLabel?: Phaser.GameObjects.Text;
+  counterLabel?: Phaser.GameObjects.Text;
 }
 
 interface ConveyorDot {
@@ -131,6 +133,13 @@ export class FactorySceneEnhanced extends Phaser.Scene {
   // Cart animation
   private cartContainer: Phaser.GameObjects.Container | null = null;
   private cartLabel: Phaser.GameObjects.Text | null = null;
+  // Live counters for zones with no single bound entity (Production Buffer, Quality) and
+  // for stock zones, whose bound StockLocation entity never changes — the real quantity
+  // lives on InventoryBalance entities tracked here by location.
+  private stockBalances = new Map<string, Map<string, number>>();
+  private wipWorkOrders = new Set<string>();
+  private qualityStats = { pass: 0, fail: 0 };
+  private seenQualityChecks = new Set<string>();
 
   constructor() {
     super({ key: 'FactoryEnhanced' });
@@ -238,7 +247,8 @@ export class FactorySceneEnhanced extends Phaser.Scene {
         this.tweens.add({ targets: bg, scaleX: 1, scaleY: 1, duration: 120, ease: 'Sine.easeIn' });
       });
     }
-    this.zoneObjs.set(zone.id, { zone, bg });
+    const zoneObj: ZoneObj = { zone, bg };
+    this.zoneObjs.set(zone.id, zoneObj);
 
     // Zone label
     this.add.text(x + 10, y + 8, zone.label, {
@@ -246,17 +256,33 @@ export class FactorySceneEnhanced extends Phaser.Scene {
       color: bound ? '#1e293b' : '#9ca3af',
     }).setDepth(2);
 
-    if (!bound) {
+    // Production Buffer (WIP) and Quality (pass/fail) have no single bound entity — they
+    // used to render a static "—" that could never change even as WorkOrders/QualityChecks
+    // streamed in constantly during a tutorial run. Give them a live counter instead.
+    if (zone.id === 'production-buffer') {
+      zoneObj.counterLabel = this.add.text(x + w / 2, y + h / 2, 'No work in progress', {
+        fontSize: '12px', fontFamily: 'monospace', color: '#92400e', align: 'center',
+      }).setOrigin(0.5).setDepth(2);
+    } else if (zone.id === 'quality-area') {
+      zoneObj.counterLabel = this.add.text(x + w / 2, y + h / 2 - 4, '0 passed · 0 failed', {
+        fontSize: '11px', fontFamily: 'monospace', color: '#991b1b', align: 'center',
+      }).setOrigin(0.5).setDepth(2);
+    } else if (!bound) {
       this.add.text(x + w / 2, y + h / 2, '—', {
         fontSize: '20px', fontFamily: 'monospace', color: '#d1d5db',
       }).setOrigin(0.5).setDepth(2);
-      return;
     }
 
-    // Pallet stacks decoration (for stock zones)
-    if (zone.kind === 'warehouse' || zone.kind === 'finishedGoods') {
+    // Pallet stacks decoration (for stock zones) — only meaningful when bound
+    if (bound && (zone.kind === 'warehouse' || zone.kind === 'finishedGoods')) {
       this.drawPalletRack(x + 12, y + 32, w - 24, h - 44);
+      // Live on-hand quantity — the bound StockLocation entity itself never changes;
+      // the real number lives on InventoryBalance entities tracked in `stockBalances`.
+      zoneObj.quantityLabel = this.add.text(x + w / 2, y + h - 14, '', {
+        fontSize: '10px', fontFamily: 'monospace', fontStyle: 'bold', color: '#166534',
+      }).setOrigin(0.5).setDepth(2);
     } else if (zone.kind === 'quality') {
+      // Unbound (no entityId) but still gets the inspection-table decoration + counter above
       this.drawInspectionTable(x + w / 2, y + h / 2 + 8, w * 0.6, h * 0.4);
     }
   }
@@ -648,9 +674,51 @@ export class FactorySceneEnhanced extends Phaser.Scene {
   // ── Entity state reactions ────────────────────────────────────────────────
 
   private onEntityChanged(entity: NgsiLdEntity): void {
-    if (entity.type === 'WorkCenter') this.updateWorkCenter(entity);
-    if (entity.type === 'WorkOrder')  this.updateWorkOrder(entity);
-    if (entity.type === 'StockMove')  this.updateStockMove(entity);
+    if (entity.type === 'WorkCenter')      this.updateWorkCenter(entity);
+    if (entity.type === 'WorkOrder')       this.updateWorkOrder(entity);
+    if (entity.type === 'StockMove')       this.updateStockMove(entity);
+    if (entity.type === 'InventoryBalance') this.updateStockBalance(entity);
+    if (entity.type === 'QualityCheck')    this.updateQualityStats(entity);
+  }
+
+  // InventoryBalance carries the actual quantity; the zone is bound to the StockLocation,
+  // which never changes its own attributes — without this, Warehouse/Finished Goods could
+  // show a static name but never a number, no matter how much stock moved.
+  private updateStockBalance(entity: NgsiLdEntity): void {
+    const locId = relObject(entity, 'location');
+    const prodId = relObject(entity, 'product');
+    if (!locId || !prodId) return;
+
+    if (!this.stockBalances.has(locId)) this.stockBalances.set(locId, new Map());
+    const qty = propValue<number>(entity, 'quantityOnHand') ?? 0;
+    this.stockBalances.get(locId)!.set(prodId, qty);
+
+    const zoneObj = [...this.zoneObjs.values()].find((z) => z.zone.entityId === locId);
+    if (!zoneObj?.quantityLabel) return;
+    const balances = this.stockBalances.get(locId)!;
+    const total = [...balances.values()].reduce((a, b) => a + b, 0);
+    zoneObj.quantityLabel.setText(`${total} EA · ${balances.size} SKU${balances.size === 1 ? '' : 's'}`);
+  }
+
+  // QualityCheck entities are immutable and accumulate — count each one exactly once
+  // (SNAPSHOT_LOADED replays the same entities every reconnect) rather than re-counting.
+  private updateQualityStats(entity: NgsiLdEntity): void {
+    if (this.seenQualityChecks.has(entity.id)) return;
+    this.seenQualityChecks.add(entity.id);
+
+    const result = propValue<string>(entity, 'result');
+    if (result === 'pass') this.qualityStats.pass += 1;
+    else if (result === 'fail') this.qualityStats.fail += 1;
+
+    const zoneObj = this.zoneObjs.get('quality-area');
+    zoneObj?.counterLabel?.setText(`${this.qualityStats.pass} passed · ${this.qualityStats.fail} failed`);
+  }
+
+  private updateBufferCounter(): void {
+    const zoneObj = this.zoneObjs.get('production-buffer');
+    if (!zoneObj?.counterLabel) return;
+    const n = this.wipWorkOrders.size;
+    zoneObj.counterLabel.setText(n === 0 ? 'No work in progress' : `${n} work order${n === 1 ? '' : 's'} in progress`);
   }
 
   private updateWorkCenter(entity: NgsiLdEntity): void {
@@ -708,6 +776,11 @@ export class FactorySceneEnhanced extends Phaser.Scene {
   }
 
   private updateWorkOrder(entity: NgsiLdEntity): void {
+    const state0 = propValue<string>(entity, 'state') ?? '';
+    if (state0 === 'in_progress') this.wipWorkOrders.add(entity.id);
+    else this.wipWorkOrders.delete(entity.id);
+    this.updateBufferCounter();
+
     const wcRel = (entity['workCenter'] as { type: string; object: string } | undefined)?.object;
     const obj   = wcRel ? this.findMachineForEntity(wcRel) : undefined;
     if (!obj) return;
@@ -755,12 +828,37 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     obj.lightGlow.setFillStyle(lightColor, 0.3);
   }
 
+  // Every StockMove this stack actually creates goes straight to state=done — no service
+  // ever emits an "inTransit" phase, so gating on that (as this used to) meant the cart
+  // animation could never fire. React to the real receipt instead: the Packaging →
+  // Finished Goods handoff gets the moving cart; a Warehouse receipt (no natural
+  // "from" zone — goods arrive from an external supplier) gets a flash instead.
   private updateStockMove(entity: NgsiLdEntity): void {
     const state = propValue<string>(entity, 'state') ?? '';
-    if (state !== 'inTransit') return;
-    const product = (entity['product'] as { object?: string } | undefined)?.object?.split(':').pop() ?? 'parts';
+    const moveType = propValue<string>(entity, 'moveType') ?? '';
+    if (state !== 'done' || moveType !== 'receipt') return;
+
+    const toLoc = relObject(entity, 'toLocation');
+    const product = relObject(entity, 'product')?.split(':').pop() ?? 'parts';
     const { width, height } = this.scale;
-    this.spawnCart('warehouse', 'assembly', product, width, height);
+
+    if (toLoc === 'urn:ngsi-ld:StockLocation:WH-FINISHED') {
+      this.spawnCart('packaging', 'finished-goods', product, width, height);
+      this.flashZoneById('finished-goods');
+    } else if (toLoc === 'urn:ngsi-ld:StockLocation:WH-STOCK') {
+      this.flashZoneById('warehouse');
+    }
+  }
+
+  private flashZoneById(zoneId: string): void {
+    const zoneObj = this.zoneObjs.get(zoneId);
+    if (!zoneObj) return;
+    this.tweens.add({
+      targets: zoneObj.bg,
+      alpha: { from: 0.5, to: 1 },
+      duration: 300, yoyo: true, repeat: 3, ease: 'Sine.easeInOut',
+      onComplete: () => zoneObj.bg.setAlpha(0.92),
+    });
   }
 
   // ── Highlight / selection ─────────────────────────────────────────────────
@@ -806,6 +904,16 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     this.lightTweens.forEach((t) => t.stop());
     this.lightTweens.clear();
     if (this.operatorLabel) this.operatorLabel.setText('OP-001 assigned');
+
+    this.stockBalances.clear();
+    this.wipWorkOrders.clear();
+    this.qualityStats = { pass: 0, fail: 0 };
+    this.seenQualityChecks.clear();
+    for (const [, zoneObj] of this.zoneObjs) {
+      zoneObj.quantityLabel?.setText('');
+    }
+    this.zoneObjs.get('production-buffer')?.counterLabel?.setText('No work in progress');
+    this.zoneObjs.get('quality-area')?.counterLabel?.setText('0 passed · 0 failed');
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

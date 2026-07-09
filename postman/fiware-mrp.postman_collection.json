@@ -1,0 +1,508 @@
+{
+  "info": {
+    "name": "FIWARE MRP Reference Implementation (v1.0)",
+    "description": "Every business command and query endpoint across all 12 tutorials, plus direct NGSI-LD entity queries against Orion-LD. Import the accompanying fiware-mrp.postman_environment.json (or edit the collection variables below) to point at a local `make start-emulator` stack.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "orion", "value": "http://localhost:1026" },
+    { "key": "context_server", "value": "http://localhost:3000" },
+    { "key": "mrp_api", "value": "http://localhost:8080" },
+    { "key": "inventory", "value": "http://localhost:8081" },
+    { "key": "bom", "value": "http://localhost:8082" },
+    { "key": "manufacturing", "value": "http://localhost:8083" },
+    { "key": "scheduler", "value": "http://localhost:8084" },
+    { "key": "shopfloor", "value": "http://localhost:8085" },
+    { "key": "finished_goods", "value": "http://localhost:8086" },
+    { "key": "quality", "value": "http://localhost:8087" },
+    { "key": "mps", "value": "http://localhost:8088" },
+    { "key": "iot", "value": "http://localhost:8089" },
+    { "key": "gateway", "value": "http://localhost:8090" },
+    { "key": "mrp_ns", "value": "https://fiware-mrp.io/ontology/mrp%23" }
+  ],
+  "item": [
+    {
+      "name": "T01 - Context & master data (Orion-LD direct)",
+      "item": [
+        {
+          "name": "Orion-LD version",
+          "request": { "method": "GET", "url": "{{orion}}/ngsi-ld/ex/v1/version" }
+        },
+        {
+          "name": "Context server - available contexts",
+          "request": { "method": "GET", "url": "{{context_server}}/" }
+        },
+        {
+          "name": "mrp-api health",
+          "request": { "method": "GET", "url": "{{mrp_api}}/health" }
+        },
+        {
+          "name": "Query Plant (key-values)",
+          "request": { "method": "GET", "url": "{{orion}}/ngsi-ld/v1/entities?type={{mrp_ns}}Plant&options=keyValues" }
+        },
+        {
+          "name": "Query WorkCenters (key-values)",
+          "request": { "method": "GET", "url": "{{orion}}/ngsi-ld/v1/entities?type={{mrp_ns}}WorkCenter&options=keyValues" }
+        },
+        {
+          "name": "Query Products (key-values)",
+          "request": { "method": "GET", "url": "{{orion}}/ngsi-ld/v1/entities?type={{mrp_ns}}Product&options=keyValues" }
+        },
+        {
+          "name": "Query StockLocations (key-values)",
+          "request": { "method": "GET", "url": "{{orion}}/ngsi-ld/v1/entities?type={{mrp_ns}}StockLocation&options=keyValues" }
+        }
+      ]
+    },
+    {
+      "name": "T02 + T05 - inventory-service (:8081)",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{inventory}}/health" } },
+        {
+          "name": "receive-material",
+          "request": {
+            "method": "POST",
+            "url": "{{inventory}}/commands/receive-material",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"urn:ngsi-ld:Product:PumpCasing\",\n  \"location_id\": \"urn:ngsi-ld:StockLocation:WH-STOCK\",\n  \"quantity\": 50,\n  \"unit\": \"EA\",\n  \"reference\": \"PO-2024-001\"\n}"
+            }
+          }
+        },
+        {
+          "name": "reserve-components",
+          "request": {
+            "method": "POST",
+            "url": "{{inventory}}/commands/reserve-components",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"urn:ngsi-ld:ManufacturingOrder:MO-2024-001\",\n  \"location_id\": \"urn:ngsi-ld:StockLocation:WH-STOCK\"\n}"
+            }
+          }
+        },
+        { "name": "Query inventory-reservations", "request": { "method": "GET", "url": "{{inventory}}/inventory-reservations" } },
+        { "name": "Query inventory balances", "request": { "method": "GET", "url": "{{inventory}}/inventory" } }
+      ]
+    },
+    {
+      "name": "T03 - bom-service (:8082)",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{bom}}/health" } },
+        { "name": "Query BoMs", "request": { "method": "GET", "url": "{{bom}}/boms" } },
+        {
+          "name": "Query BoM lines",
+          "request": { "method": "GET", "url": "{{bom}}/boms/urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1/lines" }
+        },
+        {
+          "name": "explode-bom",
+          "request": {
+            "method": "POST",
+            "url": "{{bom}}/commands/explode-bom",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"urn:ngsi-ld:Product:HydraulicPump-P100\",\n  \"quantity\": 5\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "T04 - manufacturing-service (:8083)",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{manufacturing}}/health" } },
+        { "name": "Query ManufacturingOrders", "request": { "method": "GET", "url": "{{manufacturing}}/manufacturing-orders" } },
+        {
+          "name": "Query one ManufacturingOrder",
+          "request": { "method": "GET", "url": "{{manufacturing}}/manufacturing-orders/urn:ngsi-ld:ManufacturingOrder:MO-2024-001" }
+        },
+        {
+          "name": "confirm-manufacturing-order",
+          "request": {
+            "method": "POST",
+            "url": "{{manufacturing}}/commands/confirm-manufacturing-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"urn:ngsi-ld:ManufacturingOrder:MO-2024-001\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "T06 - scheduler-service (:8084)",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{scheduler}}/health" } },
+        { "name": "Query WorkOrders", "request": { "method": "GET", "url": "{{scheduler}}/work-orders" } },
+        {
+          "name": "create-work-orders",
+          "request": {
+            "method": "POST",
+            "url": "{{scheduler}}/commands/create-work-orders",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"urn:ngsi-ld:ManufacturingOrder:MO-2024-001\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "T07 - shopfloor-service (:8085)",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{shopfloor}}/health" } },
+        { "name": "Query ProductionEvents", "request": { "method": "GET", "url": "{{shopfloor}}/production-events" } },
+        {
+          "name": "start-work-order",
+          "request": {
+            "method": "POST",
+            "url": "{{shopfloor}}/commands/start-work-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"work_order_id\": \"urn:ngsi-ld:WorkOrder:WO-MO-2024-001-Assembly\"\n}"
+            }
+          }
+        },
+        {
+          "name": "complete-work-order",
+          "request": {
+            "method": "POST",
+            "url": "{{shopfloor}}/commands/complete-work-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"work_order_id\": \"urn:ngsi-ld:WorkOrder:WO-MO-2024-001-Assembly\",\n  \"quantity_produced\": 10\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "T08 - finished-goods-service (:8086)",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{finished_goods}}/health" } },
+        { "name": "Query production receipts", "request": { "method": "GET", "url": "{{finished_goods}}/production-receipts" } },
+        {
+          "name": "receive-finished-goods",
+          "request": {
+            "method": "POST",
+            "url": "{{finished_goods}}/commands/receive-finished-goods",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"manufacturing_order_id\": \"urn:ngsi-ld:ManufacturingOrder:MO-2024-001\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "T09 - quality-service (:8087)",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{quality}}/health" } },
+        { "name": "Query QualityChecks", "request": { "method": "GET", "url": "{{quality}}/quality-checks" } },
+        { "name": "Query ScrapEvents", "request": { "method": "GET", "url": "{{quality}}/scrap-events" } },
+        { "name": "Query ReworkOrders", "request": { "method": "GET", "url": "{{quality}}/rework-orders" } },
+        { "name": "Query QualityAlerts", "request": { "method": "GET", "url": "{{quality}}/quality-alerts" } },
+        {
+          "name": "inspect-work-order (pass)",
+          "request": {
+            "method": "POST",
+            "url": "{{quality}}/commands/inspect-work-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"work_order_id\": \"urn:ngsi-ld:WorkOrder:WO-MO-2024-001-LeakTest\",\n  \"check_type\": \"leak_test\",\n  \"expected_value\": 0,\n  \"actual_value\": 0,\n  \"tolerance\": 0.1,\n  \"quantity_inspected\": 10\n}"
+            }
+          }
+        },
+        {
+          "name": "inspect-work-order (fail, with disposition)",
+          "request": {
+            "method": "POST",
+            "url": "{{quality}}/commands/inspect-work-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"work_order_id\": \"urn:ngsi-ld:WorkOrder:WO-MO-2024-001-LeakTest\",\n  \"check_type\": \"leak_test\",\n  \"expected_value\": 0,\n  \"actual_value\": 0.2,\n  \"tolerance\": 0.1,\n  \"quantity_inspected\": 10,\n  \"quantity_failed\": 2,\n  \"disposition\": \"rework\",\n  \"reason_code\": \"seal-leak\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "T10 - mps-service (:8088)",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{mps}}/health" } },
+        { "name": "Query DemandForecasts", "request": { "method": "GET", "url": "{{mps}}/demand-forecasts" } },
+        { "name": "Query ReorderingRules", "request": { "method": "GET", "url": "{{mps}}/reordering-rules" } },
+        { "name": "Query MPS lines", "request": { "method": "GET", "url": "{{mps}}/mps-lines" } },
+        {
+          "name": "generate-mps",
+          "request": {
+            "method": "POST",
+            "url": "{{mps}}/commands/generate-mps",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"demand_forecast_id\": \"urn:ngsi-ld:DemandForecast:DF-HydraulicPump-P100-2024-08\"\n}"
+            }
+          }
+        },
+        {
+          "name": "confirm-mps-line",
+          "request": {
+            "method": "POST",
+            "url": "{{mps}}/commands/confirm-mps-line",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mps_line_id\": \"urn:ngsi-ld:MasterProductionScheduleLine:MPSL-HydraulicPump-P100-2024-08\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "T11 - iot-simulator (:8089)",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{iot}}/health" } },
+        { "name": "Query MachineSignals", "request": { "method": "GET", "url": "{{iot}}/machine-signals" } },
+        { "name": "Query MachineStates", "request": { "method": "GET", "url": "{{iot}}/machine-states" } },
+        { "name": "Query OperatorAssignments", "request": { "method": "GET", "url": "{{iot}}/operator-assignments" } },
+        {
+          "name": "emit-signal",
+          "request": {
+            "method": "POST",
+            "url": "{{iot}}/commands/emit-signal",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"work_center_id\": \"urn:ngsi-ld:WorkCenter:WC-Assembly\",\n  \"signal_type\": \"temperature\",\n  \"actual_value\": 92,\n  \"unit_code\": \"CEL\",\n  \"quality\": \"bad\"\n}"
+            }
+          }
+        },
+        {
+          "name": "clock-in",
+          "request": {
+            "method": "POST",
+            "url": "{{iot}}/commands/clock-in",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operator_id\": \"urn:ngsi-ld:Operator:OP-JaneDoe\",\n  \"work_center_id\": \"urn:ngsi-ld:WorkCenter:WC-Assembly\"\n}"
+            }
+          }
+        },
+        {
+          "name": "clock-out",
+          "request": {
+            "method": "POST",
+            "url": "{{iot}}/commands/clock-out",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignment_id\": \"<assignment_id from clock-in response>\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "T12 - end-to-end (chain the above once, in sequence)",
+      "item": [
+        {
+          "name": "1. explode-bom",
+          "request": {
+            "method": "POST",
+            "url": "{{bom}}/commands/explode-bom",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"product_id\": \"urn:ngsi-ld:Product:HydraulicPump-P100\",\n  \"quantity\": 5\n}" }
+          }
+        },
+        {
+          "name": "2. receive-material",
+          "request": {
+            "method": "POST",
+            "url": "{{inventory}}/commands/receive-material",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"product_id\": \"urn:ngsi-ld:Product:PumpCasing\",\n  \"location_id\": \"urn:ngsi-ld:StockLocation:WH-STOCK\",\n  \"quantity\": 10\n}" }
+          }
+        },
+        {
+          "name": "3. generate-mps",
+          "request": {
+            "method": "POST",
+            "url": "{{mps}}/commands/generate-mps",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"demand_forecast_id\": \"urn:ngsi-ld:DemandForecast:DF-HydraulicPump-P100-2024-09\"\n}" }
+          }
+        },
+        {
+          "name": "4. confirm-mps-line",
+          "request": {
+            "method": "POST",
+            "url": "{{mps}}/commands/confirm-mps-line",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"mps_line_id\": \"urn:ngsi-ld:MasterProductionScheduleLine:MPSL-HydraulicPump-P100-2024-09\"\n}" }
+          }
+        },
+        {
+          "name": "5. confirm-manufacturing-order",
+          "request": {
+            "method": "POST",
+            "url": "{{manufacturing}}/commands/confirm-manufacturing-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"order_id\": \"urn:ngsi-ld:ManufacturingOrder:MO-2024-002\"\n}" }
+          }
+        },
+        {
+          "name": "6. reserve-components",
+          "request": {
+            "method": "POST",
+            "url": "{{inventory}}/commands/reserve-components",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"order_id\": \"urn:ngsi-ld:ManufacturingOrder:MO-2024-002\"\n}" }
+          }
+        },
+        {
+          "name": "7. create-work-orders",
+          "request": {
+            "method": "POST",
+            "url": "{{scheduler}}/commands/create-work-orders",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"order_id\": \"urn:ngsi-ld:ManufacturingOrder:MO-2024-002\"\n}" }
+          }
+        },
+        {
+          "name": "8. clock-in (Assembly)",
+          "request": {
+            "method": "POST",
+            "url": "{{iot}}/commands/clock-in",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"operator_id\": \"urn:ngsi-ld:Operator:OP-JaneDoe\",\n  \"work_center_id\": \"urn:ngsi-ld:WorkCenter:WC-Assembly\"\n}" }
+          }
+        },
+        {
+          "name": "9. start-work-order (Assembly)",
+          "request": {
+            "method": "POST",
+            "url": "{{shopfloor}}/commands/start-work-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"work_order_id\": \"urn:ngsi-ld:WorkOrder:WO-MO-2024-002-Assembly\"\n}" }
+          }
+        },
+        {
+          "name": "10. emit-signal (65C, good)",
+          "request": {
+            "method": "POST",
+            "url": "{{iot}}/commands/emit-signal",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"work_center_id\": \"urn:ngsi-ld:WorkCenter:WC-Assembly\",\n  \"signal_type\": \"temperature\",\n  \"actual_value\": 65,\n  \"unit_code\": \"CEL\",\n  \"quality\": \"good\"\n}" }
+          }
+        },
+        {
+          "name": "11. complete-work-order (Assembly)",
+          "request": {
+            "method": "POST",
+            "url": "{{shopfloor}}/commands/complete-work-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"work_order_id\": \"urn:ngsi-ld:WorkOrder:WO-MO-2024-002-Assembly\",\n  \"quantity_produced\": 5\n}" }
+          }
+        },
+        {
+          "name": "12. clock-out",
+          "request": {
+            "method": "POST",
+            "url": "{{iot}}/commands/clock-out",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"assignment_id\": \"<assignment_id from step 8>\"\n}" }
+          }
+        },
+        {
+          "name": "13. start-work-order (LeakTest)",
+          "request": {
+            "method": "POST",
+            "url": "{{shopfloor}}/commands/start-work-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"work_order_id\": \"urn:ngsi-ld:WorkOrder:WO-MO-2024-002-LeakTest\"\n}" }
+          }
+        },
+        {
+          "name": "14. complete-work-order (LeakTest)",
+          "request": {
+            "method": "POST",
+            "url": "{{shopfloor}}/commands/complete-work-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"work_order_id\": \"urn:ngsi-ld:WorkOrder:WO-MO-2024-002-LeakTest\",\n  \"quantity_produced\": 5\n}" }
+          }
+        },
+        {
+          "name": "15. inspect-work-order (LeakTest, pass)",
+          "request": {
+            "method": "POST",
+            "url": "{{quality}}/commands/inspect-work-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"work_order_id\": \"urn:ngsi-ld:WorkOrder:WO-MO-2024-002-LeakTest\",\n  \"check_type\": \"leak_test\",\n  \"expected_value\": 0,\n  \"actual_value\": 0,\n  \"tolerance\": 0.1,\n  \"quantity_inspected\": 5\n}" }
+          }
+        },
+        {
+          "name": "16. start-work-order (Packaging)",
+          "request": {
+            "method": "POST",
+            "url": "{{shopfloor}}/commands/start-work-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"work_order_id\": \"urn:ngsi-ld:WorkOrder:WO-MO-2024-002-Packaging\"\n}" }
+          }
+        },
+        {
+          "name": "17. complete-work-order (Packaging)",
+          "request": {
+            "method": "POST",
+            "url": "{{shopfloor}}/commands/complete-work-order",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"work_order_id\": \"urn:ngsi-ld:WorkOrder:WO-MO-2024-002-Packaging\",\n  \"quantity_produced\": 5\n}" }
+          }
+        },
+        {
+          "name": "18. receive-finished-goods",
+          "request": {
+            "method": "POST",
+            "url": "{{finished_goods}}/commands/receive-finished-goods",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"manufacturing_order_id\": \"urn:ngsi-ld:ManufacturingOrder:MO-2024-002\"\n}" }
+          }
+        },
+        {
+          "name": "19. verify - GET completed ManufacturingOrder",
+          "request": {
+            "method": "GET",
+            "url": "{{orion}}/ngsi-ld/v1/entities/urn:ngsi-ld:ManufacturingOrder:MO-2024-002",
+            "header": [{ "key": "Accept", "value": "application/ld+json" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Emulator gateway (:8090)",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{gateway}}/api/health" } },
+        { "name": "List scenarios", "request": { "method": "GET", "url": "{{gateway}}/api/scenarios/" } },
+        { "name": "List Tutorial 12 steps", "request": { "method": "GET", "url": "{{gateway}}/api/scenarios/tutorial-12/steps" } },
+        {
+          "name": "Execute a Tutorial 12 step",
+          "request": { "method": "POST", "url": "{{gateway}}/api/scenarios/tutorial-12/steps/seed-t12-data/execute" }
+        },
+        {
+          "name": "Reset Tutorial 12",
+          "request": { "method": "POST", "url": "{{gateway}}/api/scenarios/tutorial-12/reset" }
+        }
+      ]
+    }
+  ]
+}

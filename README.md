@@ -127,7 +127,7 @@ fiware-mrp/
   tutorials/01-…12-/        Self-contained tutorial README + tests
   scripts/                  wait-for-orion.sh and helpers
   docs/                     Sphinx RST documentation (published on ReadTheDocs)
-  postman/                  Postman collection (complete in Week 12)
+  postman/                  Postman collection — every command/query endpoint, all 12 tutorials
 ```
 
 ---

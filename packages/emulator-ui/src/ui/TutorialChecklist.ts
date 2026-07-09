@@ -50,6 +50,7 @@ const TUTORIAL_SUBTITLES: Record<string, string> = {
   'tutorial-09': 'Tutorial 09 – Quality, scrap and rework',
   'tutorial-10': 'Tutorial 10 – MPS-lite demand planning',
   'tutorial-11': 'Tutorial 11 – IoT/MES signals and subscriptions',
+  'tutorial-12': 'Tutorial 12 – End-to-end demo (v1.0)',
 };
 
 const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
@@ -96,6 +97,10 @@ const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
   'tutorial-11': {
     title: 'Welcome to Tutorial 11',
     body: 'This tutorial adds the <em>iot-simulator</em>. You will register a real NGSI-LD subscription, then emit a machine signal and watch the canvas update on its own — pushed by Orion-LD, not polled by the emulator — before clocking an operator in and out.',
+  },
+  'tutorial-12': {
+    title: 'Welcome to Tutorial 12 — the finale',
+    body: 'No new service this time. You will drive every command from Tutorials 02 through 11 once, in sequence, against a fresh ManufacturingOrder — forecast, confirm, reserve, schedule, execute with a live IoT signal and operator clock-in/out, inspect for quality, and receive into finished-goods stock. One continuous run, the full v1.0 reference architecture.',
   },
 };
 
