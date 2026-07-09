@@ -21,3 +21,7 @@ build/
 Thumbs.db
 
 .sessions/
+
+# Local-only project planning artifacts — not shared via the public repo
+/MINUTES.md
+/WORKPLAN.md

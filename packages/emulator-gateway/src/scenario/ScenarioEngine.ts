@@ -1234,11 +1234,38 @@ export class ScenarioEngine {
 
     const durationMs = Date.now() - t0;
 
+    // Broadcast the real entities — not a fake StockLocation "message" — so the canvas's
+    // Packaging -> Finished Goods flow-carrier animation and the Finished Goods on-hand
+    // counter both react, instead of only the sidebar/timeline showing anything happened.
     this.hub.broadcast({
       eventType: 'entityChanged',
-      entityId: 'urn:ngsi-ld:StockLocation:WH-FINISHED',
-      entityType: 'StockLocation',
-      payload: { message: 'MO-2024-001 received — 10 EA HydraulicPump-P100 into WH-FINISHED' },
+      entityId: moId,
+      entityType: 'ManufacturingOrder',
+      payload: {
+        state:       { type: 'Property', value: 'completed' },
+        completedAt: { type: 'Property', value: mockCompletedAt },
+      },
+    });
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: MOCK_SM_RECEIPT.id,
+      entityType: 'StockMove',
+      payload: {
+        state:      MOCK_SM_RECEIPT['state'],
+        moveType:   MOCK_SM_RECEIPT['moveType'],
+        quantity:   MOCK_SM_RECEIPT['quantity'],
+        toLocation: MOCK_SM_RECEIPT['toLocation'],
+      },
+    });
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: MOCK_IB_FINISHED.id,
+      entityType: 'InventoryBalance',
+      payload: {
+        quantityOnHand: MOCK_IB_FINISHED['quantityOnHand'],
+        location:       MOCK_IB_FINISHED['location'],
+        product:        MOCK_IB_FINISHED['product'],
+      },
     });
 
     if (this.mode === 'mock' && this.mockStore) {
@@ -1382,11 +1409,14 @@ export class ScenarioEngine {
 
     const durationMs = Date.now() - t0;
 
+    // Broadcast the real QualityCheck — not a fake WorkCenter "message" — so the canvas's
+    // Quality/Inspection pass-fail counter actually reacts. This is the tutorial's one
+    // "fail" example; T12's own QualityCheck is the "pass" counterpart.
     this.hub.broadcast({
       eventType: 'entityChanged',
-      entityId: 'urn:ngsi-ld:WorkCenter:WC-LeakTest',
-      entityType: 'WorkCenter',
-      payload: { message: 'LeakTest inspection: 2 of 10 units failed — routed to rework' },
+      entityId: MOCK_QC_LEAKTEST_FAIL.id,
+      entityType: 'QualityCheck',
+      payload: { result: MOCK_QC_LEAKTEST_FAIL['result'] },
     });
 
     if (this.mode === 'mock' && this.mockStore) {
@@ -1969,13 +1999,15 @@ export class ScenarioEngine {
 
     const durationMs = Date.now() - t0;
 
-    // Highlight all three work center zones
-    for (const wc of ['WC-Assembly', 'WC-LeakTest', 'WC-Packaging']) {
+    // Broadcast the real WorkOrders (not a fake WorkCenter "message") so the canvas's
+    // status-light/badge logic — which reads WorkOrder.state — actually shows them
+    // arriving as planned/amber instead of staying dark until Tutorial 07 starts one.
+    for (const wo of TUTORIAL_06_ENTITIES) {
       this.hub.broadcast({
         eventType: 'entityChanged',
-        entityId: `urn:ngsi-ld:WorkCenter:${wc}`,
-        entityType: 'WorkCenter',
-        payload: { message: 'WorkOrder scheduled — state: planned' },
+        entityId: wo.id,
+        entityType: 'WorkOrder',
+        payload: { state: { type: 'Property', value: 'planned' }, workCenter: wo['workCenter'] },
       });
     }
 
