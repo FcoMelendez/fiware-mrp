@@ -3,6 +3,30 @@ import type { NgsiLdEntity } from '../domain/ngsi-ld.ts';
 import { contextStore } from '../services/ContextStore.ts';
 import { sendCommand } from '../services/CommandClient.ts';
 
+// Builds the attribute-table HTML for one entity — shared by EntityInspector's sidebar
+// view and EntityPopup's canvas-anchored popup, so both stay in sync automatically.
+export function renderEntityAttributesHtml(entity: NgsiLdEntity, typeColor: string): string {
+  const rows: string[] = [];
+  for (const [k, v] of Object.entries(entity)) {
+    if (k === 'id' || k === 'type' || k === '@context') continue;
+    const val = v as { type?: string; value?: unknown; object?: string };
+    let valueHtml: string;
+    if (val?.type === 'Property') {
+      valueHtml = `<span class="attr-value-prop">${JSON.stringify(val.value)}</span>`;
+    } else if (val?.type === 'Relationship') {
+      const obj = String(val.object ?? '');
+      const target = obj.split(':').pop() ?? obj;
+      valueHtml = `<button class="attr-rel-link" data-rel-id="${obj}">→ ${target}</button>`;
+    } else {
+      valueHtml = `<span class="attr-value-other">${JSON.stringify(v)}</span>`;
+    }
+    rows.push(`<div class="attr-row">
+      <span class="attr-name" style="color:${typeColor}">${k}</span>${valueHtml}
+    </div>`);
+  }
+  return `<div class="attr-table">${rows.join('')}</div>`;
+}
+
 export class EntityInspector {
   private el: HTMLElement;
   private selectedId: string | null = null;
@@ -129,25 +153,7 @@ export class EntityInspector {
   }
 
   private renderFormatted(entity: NgsiLdEntity, typeColor: string): string {
-    const rows: string[] = [];
-    for (const [k, v] of Object.entries(entity)) {
-      if (k === 'id' || k === 'type' || k === '@context') continue;
-      const val = v as { type?: string; value?: unknown; object?: string };
-      let valueHtml: string;
-      if (val?.type === 'Property') {
-        valueHtml = `<span class="attr-value-prop">${JSON.stringify(val.value)}</span>`;
-      } else if (val?.type === 'Relationship') {
-        const obj = String(val.object ?? '');
-        const target = obj.split(':').pop() ?? obj;
-        valueHtml = `<button class="attr-rel-link" data-rel-id="${obj}">→ ${target}</button>`;
-      } else {
-        valueHtml = `<span class="attr-value-other">${JSON.stringify(v)}</span>`;
-      }
-      rows.push(`<div class="attr-row">
-        <span class="attr-name" style="color:${typeColor}">${k}</span>${valueHtml}
-      </div>`);
-    }
-    return `<div class="attr-table">${rows.join('')}</div>`;
+    return renderEntityAttributesHtml(entity, typeColor);
   }
 
   private renderRaw(entity: NgsiLdEntity): string {

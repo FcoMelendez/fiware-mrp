@@ -955,11 +955,17 @@ export class ScenarioEngine {
 
     const durationMs = Date.now() - t0;
 
+    // Broadcast the real WorkOrder's new state — not a fake WorkCenter "message" — so the
+    // canvas's badge/status-light logic (which reads WorkOrder.state) actually reacts to it,
+    // in both live and mock mode.
     this.hub.broadcast({
       eventType: 'entityChanged',
-      entityId: 'urn:ngsi-ld:WorkCenter:WC-Assembly',
-      entityType: 'WorkCenter',
-      payload: { message: 'Assembly work order started — state: in_progress' },
+      entityId: woId,
+      entityType: 'WorkOrder',
+      payload: {
+        state:       { type: 'Property', value: 'in_progress' },
+        actualStart: { type: 'Property', value: mockActualStart },
+      },
     });
 
     if (this.mode === 'mock' && this.mockStore) {
@@ -1030,11 +1036,16 @@ export class ScenarioEngine {
 
     const durationMs = Date.now() - t0;
 
+    // Same as start-work-order: broadcast the real WorkOrder's new state, not a fake
+    // WorkCenter "message", so the canvas actually reflects the completion.
     this.hub.broadcast({
       eventType: 'entityChanged',
-      entityId: 'urn:ngsi-ld:WorkCenter:WC-Assembly',
-      entityType: 'WorkCenter',
-      payload: { message: 'Assembly work order completed — ProductionEvent created' },
+      entityId: woId,
+      entityType: 'WorkOrder',
+      payload: {
+        state:     { type: 'Property', value: 'completed' },
+        actualEnd: { type: 'Property', value: mockActualEnd },
+      },
     });
 
     if (this.mode === 'mock' && this.mockStore) {

@@ -10,7 +10,16 @@ class TypedEventBus {
   }
 
   emit<T>(event: string, payload: T): void {
-    this.listeners.get(event)?.forEach((l) => l(payload));
+    // Isolate each listener so one throwing (e.g. a dangling subscription touching a
+    // destroyed GameObject after its owning scene shut down) can't silently prevent
+    // every other listener for the same event from running.
+    this.listeners.get(event)?.forEach((l) => {
+      try {
+        l(payload);
+      } catch (err) {
+        console.error(`[EventBus] listener for "${event}" threw:`, err);
+      }
+    });
   }
 }
 
@@ -18,15 +27,24 @@ export const bus = new TypedEventBus();
 
 // Typed event helpers
 export const BUS = {
-  ENTITY_SELECTED:    'entity:selected',
-  ENTITIES_LISTED:    'entities:listed',
-  ENTITY_CHANGED:     'entity:changed',
-  SNAPSHOT_LOADED:    'snapshot:loaded',
-  ZONES_HIGHLIGHTED:  'zones:highlighted',
-  CONNECTION_CHANGED: 'connection:changed',
-  COMMAND_SENT:       'command:sent',
-  TUTORIAL_UPDATED:   'tutorial:updated',
-  TIMELINE_EVENT:     'timeline:event',
-  SCENARIO_RESET:     'scenario:reset',
-  STEP_COMPLETED:     'step:completed',
+  ENTITY_SELECTED:      'entity:selected',
+  CANVAS_ENTITY_CLICKED:'canvas:entity-clicked',
+  ENTITIES_LISTED:      'entities:listed',
+  ENTITY_CHANGED:       'entity:changed',
+  SNAPSHOT_LOADED:      'snapshot:loaded',
+  ZONES_HIGHLIGHTED:    'zones:highlighted',
+  CONNECTION_CHANGED:   'connection:changed',
+  COMMAND_SENT:         'command:sent',
+  TUTORIAL_UPDATED:     'tutorial:updated',
+  TIMELINE_EVENT:       'timeline:event',
+  SCENARIO_RESET:       'scenario:reset',
+  STEP_COMPLETED:       'step:completed',
 } as const;
+
+// Payload for CANVAS_ENTITY_CLICKED — carries the click position (in #game-container
+// local coordinates) so a popup can be anchored near the clicked shape.
+export interface CanvasEntityClick {
+  entityId: string;
+  x: number;
+  y: number;
+}

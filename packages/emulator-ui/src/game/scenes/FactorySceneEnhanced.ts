@@ -3,7 +3,10 @@ import type { SceneSnapshot, ZoneLayout } from '../../domain/emulator.ts';
 import type { NgsiLdEntity } from '../../domain/ngsi-ld.ts';
 import { propValue } from '../../domain/ngsi-ld.ts';
 import { bus, BUS } from '../../services/EventBus.ts';
+import type { CanvasEntityClick } from '../../services/EventBus.ts';
 import { contextStore } from '../../services/ContextStore.ts';
+
+const HOVER_BORDER = 0x0ea5e9; // bright sky-blue — distinct from selection pulse and zone-kind borders
 
 // ── Colour palette ─────────────────────────────────────────────────────────
 const P = {
@@ -67,6 +70,28 @@ const P = {
   } as Record<string, string>,
 };
 
+// The broker's real state enums (data-models/dataModel.MRP/{WorkCenter,WorkOrder}/schema.json)
+// use different strings than this scene's light/badge vocabulary above — map them explicitly
+// rather than looking them up directly, so an unmapped state falls through to "off" instead of
+// silently defaulting to green every time (which made the lights look stuck no matter what ran).
+const WC_STATE_TO_LIGHT: Record<string, keyof typeof P.light> = {
+  active:      'available',
+  inactive:    'blocked',
+  maintenance: 'maintenance',
+};
+
+const WO_STATE_TO_LIGHT: Record<string, keyof typeof P.light> = {
+  planned:     'waiting',
+  in_progress: 'busy',
+  completed:   'available',
+};
+
+const WO_STATE_TO_BADGE: Record<string, keyof typeof P.badgeColor> = {
+  planned:     'waiting',
+  in_progress: 'inProgress',
+  completed:   'done',
+};
+
 interface MachineObj {
   zoneId: string;
   entityId: string | undefined;
@@ -112,6 +137,12 @@ export class FactorySceneEnhanced extends Phaser.Scene {
   }
 
   create(): void {
+    // Phaser does NOT auto-invoke a method just because it's named `shutdown` — that
+    // only applies to init/preload/create/update. Without this, switching away from
+    // this scene (or a resize-triggered restart) never unsubscribes its bus listeners,
+    // which keep firing against destroyed GameObjects on every future entity update.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+
     this.snapshot = this.registry.get('sceneSnapshot') as SceneSnapshot;
     if (!this.snapshot) {
       this.add.text(10, 10, 'No scene data — run a tutorial step first.', {
@@ -146,6 +177,7 @@ export class FactorySceneEnhanced extends Phaser.Scene {
         document.getElementById('canvas-overlay')?.classList.add('hidden');
       }),
       bus.on<string>(BUS.ENTITY_SELECTED, (id) => this.pulseZone(id)),
+      bus.on<CanvasEntityClick>(BUS.CANVAS_ENTITY_CLICKED, ({ entityId }) => this.pulseZone(entityId)),
       bus.on<string[]>(BUS.ZONES_HIGHLIGHTED, (ids) => ids.forEach((id) => this.pulseZone(id))),
       bus.on<void>(BUS.SCENARIO_RESET, () => this.onReset()),
     );
@@ -194,9 +226,17 @@ export class FactorySceneEnhanced extends Phaser.Scene {
       .setInteractive({ useHandCursor: bound });
 
     if (bound) {
-      bg.on('pointerdown', () => bus.emit(BUS.ENTITY_SELECTED, zone.entityId!));
-      bg.on('pointerover', () => bg.setStrokeStyle(3, border));
-      bg.on('pointerout',  () => bg.setStrokeStyle(2, border));
+      bg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        bus.emit<CanvasEntityClick>(BUS.CANVAS_ENTITY_CLICKED, { entityId: zone.entityId!, x: pointer.x, y: pointer.y });
+      });
+      bg.on('pointerover', () => {
+        bg.setStrokeStyle(4, HOVER_BORDER);
+        this.tweens.add({ targets: bg, scaleX: 1.02, scaleY: 1.02, duration: 120, ease: 'Sine.easeOut' });
+      });
+      bg.on('pointerout', () => {
+        bg.setStrokeStyle(2, border);
+        this.tweens.add({ targets: bg, scaleX: 1, scaleY: 1, duration: 120, ease: 'Sine.easeIn' });
+      });
     }
     this.zoneObjs.set(zone.id, { zone, bg });
 
@@ -391,12 +431,21 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     this.machineObjs.set(zone.id, obj);
 
     if (bound) {
+      // Highlight outline shown only on hover — gfx is raw Graphics, not itself
+      // strokeable via setStrokeStyle, so this is a separate overlay rectangle.
+      const hoverOutline = this.add.rectangle(cx, cy, mw + 8, mh + 8, 0x000000, 0)
+        .setStrokeStyle(3, HOVER_BORDER)
+        .setVisible(false)
+        .setDepth(7);
+
       // Make the main body interactive (use the gfx bounding rect approach via a transparent hit area)
       const hitZone = this.add.rectangle(cx, cy, mw, mh, 0x000000, 0)
         .setInteractive({ useHandCursor: true }).setDepth(6);
-      hitZone.on('pointerdown', () => bus.emit(BUS.ENTITY_SELECTED, zone.entityId!));
-      hitZone.on('pointerover', () => { gfx.alpha = 1.15; });
-      hitZone.on('pointerout',  () => { gfx.alpha = 1; });
+      hitZone.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        bus.emit<CanvasEntityClick>(BUS.CANVAS_ENTITY_CLICKED, { entityId: zone.entityId!, x: pointer.x, y: pointer.y });
+      });
+      hitZone.on('pointerover', () => { gfx.alpha = 1.15; hoverOutline.setVisible(true); });
+      hitZone.on('pointerout',  () => { gfx.alpha = 1; hoverOutline.setVisible(false); });
     }
   }
 
@@ -609,8 +658,9 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     if (!obj) return;
 
     const firstLoad = obj.entityLabel.text === '';
-    const state = propValue<string>(entity, 'state') ?? 'available';
-    const color = P.light[state] ?? P.light.off;
+    const state = propValue<string>(entity, 'state') ?? 'active';
+    const lightKey = WC_STATE_TO_LIGHT[state] ?? 'off';
+    const color = P.light[lightKey];
 
     // Animate the status light turning on for the first time
     if (firstLoad) {
@@ -633,11 +683,11 @@ export class FactorySceneEnhanced extends Phaser.Scene {
 
     // Kill existing tween
     this.lightTweens.get(entity.id)?.stop();
-    if (state === 'busy' || state === 'blocked') {
+    if (lightKey === 'busy' || lightKey === 'blocked') {
       const t = this.tweens.add({
         targets: obj.lightGlow,
         alpha: { from: 0.1, to: 0.55 },
-        duration: state === 'blocked' ? 350 : 800,
+        duration: lightKey === 'blocked' ? 350 : 800,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
@@ -646,7 +696,7 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     }
 
     // Zone border pulse
-    if (state === 'blocked') {
+    if (lightKey === 'blocked') {
       obj.zoneBg.setStrokeStyle(3, 0xef4444);
     } else {
       obj.zoneBg.setStrokeStyle(1.5, 0x94a3b8);
@@ -662,22 +712,23 @@ export class FactorySceneEnhanced extends Phaser.Scene {
     const obj   = wcRel ? this.findMachineForEntity(wcRel) : undefined;
     if (!obj) return;
 
-    const state = propValue<string>(entity, 'state') ?? '';
-    const col   = P.badgeColor[state];
-    const lbl   = P.badgeLabel[state] ?? state.toUpperCase();
+    const state    = propValue<string>(entity, 'state') ?? '';
+    const badgeKey = WO_STATE_TO_BADGE[state];
+    const col      = badgeKey ? P.badgeColor[badgeKey] : undefined;
+    const lbl      = badgeKey ? P.badgeLabel[badgeKey] : state.toUpperCase();
 
     if (col !== undefined) {
       obj.badgeBg.setFillStyle(col, 1).setVisible(true);
       obj.badgeText.setText(lbl).setVisible(true);
-      obj.alertContainer.setVisible(state === 'blocked');
+      obj.alertContainer.setVisible(state === 'cancelled');
     } else {
       obj.badgeBg.setVisible(false);
       obj.badgeText.setVisible(false);
       obj.alertContainer.setVisible(false);
     }
 
-    // Progress bar (inProgress only — fake 60%)
-    const inProg = state === 'inProgress' || state === 'busy';
+    // Progress bar (in_progress only — fake 60%)
+    const inProg = state === 'in_progress';
     obj.progressBg.setVisible(inProg);
     obj.progressFill.setVisible(inProg);
     if (inProg) {
@@ -691,17 +742,17 @@ export class FactorySceneEnhanced extends Phaser.Scene {
       const op = propValue<string>(entity, 'operator');
       const shortOp = op ? op.split(':').pop() : 'OP-001';
       const stateLabel: Record<string, string> = {
-        inProgress: 'working', ready: 'assigned', waiting: 'assigned',
-        blocked: 'alert', done: 'done',
+        planned: 'assigned', in_progress: 'working', completed: 'done', cancelled: 'cancelled',
       };
       this.operatorLabel.setText(`${shortOp} ${stateLabel[state] ?? ''}`);
     }
 
-    // Machine status light mirrors WO state too
-    const lightColor = P.light[state === 'inProgress' ? 'busy' : state] ?? P.light.available;
-    const obj2 = obj;
-    obj2.lightCircle.setFillStyle(lightColor, 1);
-    obj2.lightGlow.setFillStyle(lightColor, 0.3);
+    // Machine status light mirrors WO state too — falls through to "off" (not a
+    // false-green "available") for any state this scene doesn't have a light for.
+    const lightKey = WO_STATE_TO_LIGHT[state];
+    const lightColor = lightKey ? P.light[lightKey] : P.light.off;
+    obj.lightCircle.setFillStyle(lightColor, 1);
+    obj.lightGlow.setFillStyle(lightColor, 0.3);
   }
 
   private updateStockMove(entity: NgsiLdEntity): void {

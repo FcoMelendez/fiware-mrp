@@ -3,7 +3,10 @@ import type { SceneSnapshot, ZoneLayout } from '../../domain/emulator.ts';
 import type { NgsiLdEntity } from '../../domain/ngsi-ld.ts';
 import { propValue } from '../../domain/ngsi-ld.ts';
 import { bus, BUS } from '../../services/EventBus.ts';
+import type { CanvasEntityClick } from '../../services/EventBus.ts';
 import { contextStore } from '../../services/ContextStore.ts';
+
+const HOVER_BORDER = 0x0ea5e9; // bright sky-blue — distinct from selection pulse (amber) and zone-kind borders
 
 const ZONE_COLORS: Record<string, number> = {
   warehouse:     0xdcfce7,
@@ -26,6 +29,10 @@ interface ZoneObject {
   bg: Phaser.GameObjects.Rectangle;
   label: Phaser.GameObjects.Text;
   entityLabel?: Phaser.GameObjects.Text;
+  // Tracks the "resting" (non-hover) stroke so pointerout restores the correct
+  // state-dependent border (e.g. WorkCenter inactive = red) rather than a stale default.
+  defaultStrokeColor: number;
+  defaultStrokeWidth: number;
 }
 
 export class FactoryScene extends Phaser.Scene {
@@ -40,6 +47,12 @@ export class FactoryScene extends Phaser.Scene {
   create(): void {
     this.snapshot = this.registry.get('sceneSnapshot') as SceneSnapshot;
     this.cameras.main.setBackgroundColor('#f1f5f9');
+
+    // Phaser does NOT auto-invoke a method just because it's named `shutdown` — that
+    // only applies to init/preload/create/update. Without this, switching away from
+    // this scene (or a resize-triggered restart) never unsubscribes its bus listeners,
+    // which keep firing against destroyed GameObjects on every future entity update.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
 
     this.renderZones();
     this.drawFlowArrows();
@@ -84,6 +97,10 @@ export class FactoryScene extends Phaser.Scene {
         this.highlightZones([entityId]);
       }),
 
+      bus.on<CanvasEntityClick>(BUS.CANVAS_ENTITY_CLICKED, ({ entityId }) => {
+        this.highlightZones([entityId]);
+      }),
+
       bus.on<void>(BUS.SCENARIO_RESET, () => {
         for (const [, obj] of this.zoneObjects) {
           // Guard against destroyed objects (e.g. during a resize-triggered restart)
@@ -92,6 +109,8 @@ export class FactoryScene extends Phaser.Scene {
             const defaultBorder = ZONE_BORDER[obj.zone.kind] ?? 0x6b7280;
             obj.bg.setStrokeStyle(2, defaultBorder);
             obj.bg.setAlpha(1);
+            obj.defaultStrokeColor = defaultBorder;
+            obj.defaultStrokeWidth = 2;
           }
         }
       }),
@@ -127,9 +146,18 @@ export class FactoryScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: bound });
 
       if (bound) {
-        bg.on('pointerdown', () => bus.emit(BUS.ENTITY_SELECTED, zone.entityId!));
-        bg.on('pointerover', () => bg.setStrokeStyle(3, border));
-        bg.on('pointerout',  () => bg.setStrokeStyle(2, border));
+        bg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+          bus.emit<CanvasEntityClick>(BUS.CANVAS_ENTITY_CLICKED, { entityId: zone.entityId!, x: pointer.x, y: pointer.y });
+        });
+        bg.on('pointerover', () => {
+          bg.setStrokeStyle(4, HOVER_BORDER);
+          this.tweens.add({ targets: bg, scaleX: 1.03, scaleY: 1.03, duration: 120, ease: 'Sine.easeOut' });
+        });
+        bg.on('pointerout', () => {
+          const o = this.zoneObjects.get(zone.id);
+          bg.setStrokeStyle(o?.defaultStrokeWidth ?? 2, o?.defaultStrokeColor ?? border);
+          this.tweens.add({ targets: bg, scaleX: 1, scaleY: 1, duration: 120, ease: 'Sine.easeIn' });
+        });
       }
 
       const labelColor = bound ? '#1e293b' : '#9ca3af';
@@ -154,7 +182,11 @@ export class FactoryScene extends Phaser.Scene {
           }).setDepth(1)
         : undefined;
 
-      this.zoneObjects.set(zone.id, { zone, bg, label, entityLabel });
+      this.zoneObjects.set(zone.id, {
+        zone, bg, label, entityLabel,
+        defaultStrokeColor: border,
+        defaultStrokeWidth: bound ? 2 : 1,
+      });
     }
   }
 
@@ -210,8 +242,9 @@ export class FactoryScene extends Phaser.Scene {
           ease: 'Sine.easeInOut',
           onComplete: () => {
             obj.bg.setAlpha(1);
-            const defaultBorder = ZONE_BORDER[obj.zone.kind] ?? 0x6b7280;
-            obj.bg.setStrokeStyle(2, defaultBorder);
+            // Restore the tracked resting stroke, not a recomputed default — otherwise
+            // a WorkCenter's "inactive" red border would be lost after a pulse.
+            obj.bg.setStrokeStyle(obj.defaultStrokeWidth, obj.defaultStrokeColor);
           },
         });
       }
@@ -237,9 +270,20 @@ export class FactoryScene extends Phaser.Scene {
     const name = propValue<string>(entity, 'name') ?? entity.id.split(':').pop() ?? entity.id;
     obj.entityLabel?.setText(name);
 
+    // WorkCenter state → border color. Update the tracked resting stroke *before* the
+    // flash below is queued, so its onComplete (and any later hover-out) restores this
+    // state-dependent border instead of a stale one.
+    if (entity.type === 'WorkCenter') {
+      const state = propValue<string>(entity, 'state') ?? 'active';
+      // Real enum (data-models/dataModel.MRP/WorkCenter/schema.json) is "inactive", not "unavailable".
+      const border = state === 'inactive' ? 0xef4444 : ZONE_BORDER[zone.kind] ?? 0x6b7280;
+      obj.defaultStrokeColor = border;
+      obj.defaultStrokeWidth = 3;
+      obj.bg.setStrokeStyle(3, border);
+    }
+
     // Brief green flash when an entity first arrives in the zone (suppressed for bulk loads)
     if (wasEmpty && flash) {
-      const defaultBorder = ZONE_BORDER[zone.kind] ?? 0x6b7280;
       obj.bg.setStrokeStyle(3, 0x22c55e);
       this.tweens.add({
         targets: obj.bg,
@@ -250,16 +294,9 @@ export class FactoryScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
         onComplete: () => {
           obj.bg.setAlpha(1);
-          obj.bg.setStrokeStyle(2, defaultBorder);
+          obj.bg.setStrokeStyle(obj.defaultStrokeWidth, obj.defaultStrokeColor);
         },
       });
-    }
-
-    // WorkCenter state → border color
-    if (entity.type === 'WorkCenter') {
-      const state = propValue<string>(entity, 'state') ?? 'active';
-      const border = state === 'unavailable' ? 0xef4444 : ZONE_BORDER[zone.kind] ?? 0x6b7280;
-      obj.bg.setStrokeStyle(3, border);
     }
   }
 }

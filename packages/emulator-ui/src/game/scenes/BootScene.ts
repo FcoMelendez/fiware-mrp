@@ -7,6 +7,7 @@ import { bus, BUS } from '../../services/EventBus.ts';
 
 export class BootScene extends Phaser.Scene {
   private statusText!: Phaser.GameObjects.Text;
+  private unsubConnectionChanged?: () => void;
 
   constructor() {
     super({ key: 'Boot' });
@@ -14,6 +15,13 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
+
+    // Phaser does NOT auto-invoke a method just because it's named `shutdown` — that
+    // only applies to init/preload/create/update. Without this, once this scene hands
+    // off to Factory, its CONNECTION_CHANGED listener keeps firing forever against a
+    // destroyed statusText, crashing with "Cannot read properties of null (drawImage)"
+    // on every later connection-status change.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x1e293b);
 
@@ -29,7 +37,7 @@ export class BootScene extends Phaser.Scene {
       fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    bus.on<ConnectionStatus>(BUS.CONNECTION_CHANGED, (status) => {
+    this.unsubConnectionChanged = bus.on<ConnectionStatus>(BUS.CONNECTION_CHANGED, (status) => {
       this.onConnectionChanged(status);
     });
 
@@ -39,6 +47,11 @@ export class BootScene extends Phaser.Scene {
     // Load initial snapshot after a short delay regardless of SSE status
     // (mock mode may not emit snapshot automatically)
     setTimeout(() => this.loadSnapshot(), 1500);
+  }
+
+  shutdown(): void {
+    this.unsubConnectionChanged?.();
+    this.unsubConnectionChanged = undefined;
   }
 
   private onConnectionChanged(status: ConnectionStatus): void {
