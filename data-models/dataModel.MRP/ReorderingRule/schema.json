@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dataModel.MRP/ReorderingRule/schema.json",
+  "title": "ReorderingRule",
+  "description": "Per-product inventory policy used by mps-service to decide when and how much to suggest producing: safety stock, min/max levels, lot sizing, and lead time.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:ngsi-ld:ReorderingRule:.+$",
+          "description": "NGSI-LD entity URN"
+        },
+        "type": {
+          "type": "string",
+          "const": "ReorderingRule"
+        },
+        "safetyStock": {
+          "type": "object",
+          "description": "Minimum inventory level to protect against demand variability",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "minimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "minimumQuantity": {
+          "type": "object",
+          "description": "Reorder point",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "minimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "maximumQuantity": {
+          "type": "object",
+          "description": "Target stock ceiling",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "minimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "lotSize": {
+          "type": "object",
+          "description": "Suggested production quantities are rounded up to a multiple of this batch size",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "exclusiveMinimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "leadTimeDays": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "number", "minimum": 0 }
+          },
+          "required": ["type", "value"]
+        },
+        "routePolicy": {
+          "type": "object",
+          "description": "Whether shortfalls are covered by production or purchasing",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "enum": ["make", "buy"] }
+          },
+          "required": ["type", "value"]
+        },
+        "product": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:Product:.+$" }
+          },
+          "required": ["type", "object"]
+        }
+      },
+      "required": ["id", "type", "safetyStock", "lotSize", "routePolicy", "product"]
+    }
+  ],
+  "examples": [
+    {
+      "id": "urn:ngsi-ld:ReorderingRule:RR-HydraulicPump-P100",
+      "type": "ReorderingRule",
+      "safetyStock":     { "type": "Property", "value": 3, "unitCode": "EA" },
+      "minimumQuantity": { "type": "Property", "value": 3, "unitCode": "EA" },
+      "maximumQuantity": { "type": "Property", "value": 30, "unitCode": "EA" },
+      "lotSize":         { "type": "Property", "value": 5, "unitCode": "EA" },
+      "leadTimeDays":    { "type": "Property", "value": 3 },
+      "routePolicy":     { "type": "Property", "value": "make" },
+      "product": { "type": "Relationship", "object": "urn:ngsi-ld:Product:HydraulicPump-P100" }
+    }
+  ]
+}

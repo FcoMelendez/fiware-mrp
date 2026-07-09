@@ -26,6 +26,8 @@ import {
   TUTORIAL_08_STEPS,
   TUTORIAL_09_ENTITIES,
   TUTORIAL_09_STEPS,
+  TUTORIAL_10_ENTITIES,
+  TUTORIAL_10_STEPS,
   MOCK_WO_ASSEMBLY,
   MOCK_WO_LEAK_TEST,
   MOCK_WO_PACKAGING,
@@ -41,6 +43,9 @@ import {
   MOCK_QC_LEAKTEST_FAIL,
   MOCK_RW_LEAKTEST,
   MOCK_QA_LEAKTEST,
+  MOCK_DF_HP_P100_2024_08,
+  MOCK_MPSL_HP_P100_SUGGESTED,
+  MOCK_MPSL_HP_P100_CONFIRMED,
   type GuidedStep,
 } from './fixtures.js';
 
@@ -124,6 +129,11 @@ export class ScenarioEngine {
         title: 'Tutorial 09 – Quality, scrap and rework',
         stepsCount: TUTORIAL_09_STEPS.length,
       },
+      {
+        id: 'tutorial-10',
+        title: 'Tutorial 10 – MPS-lite demand planning',
+        stepsCount: TUTORIAL_10_STEPS.length,
+      },
     ];
   }
 
@@ -137,6 +147,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-07') return TUTORIAL_07_STEPS;
     if (tutorialId === 'tutorial-08') return TUTORIAL_08_STEPS;
     if (tutorialId === 'tutorial-09') return TUTORIAL_09_STEPS;
+    if (tutorialId === 'tutorial-10') return TUTORIAL_10_STEPS;
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -150,6 +161,7 @@ export class ScenarioEngine {
     if (tutorialId === 'tutorial-07') return this.executeTutorial07Step(stepId);
     if (tutorialId === 'tutorial-08') return this.executeTutorial08Step(stepId);
     if (tutorialId === 'tutorial-09') return this.executeTutorial09Step(stepId);
+    if (tutorialId === 'tutorial-10') return this.executeTutorial10Step(stepId);
     throw new Error(`Unknown tutorial: ${tutorialId}`);
   }
 
@@ -166,6 +178,7 @@ export class ScenarioEngine {
         'WorkOrder',
         'ProductionEvent',
         'QualityCheck', 'ScrapEvent', 'ReworkOrder', 'QualityAlert',
+        'DemandForecast', 'ReorderingRule', 'MasterProductionScheduleLine',
       ]);
     }
 
@@ -245,6 +258,8 @@ export class ScenarioEngine {
       ? ' (finished-goods-service, orion-ld)'
       : tutorialId === 'tutorial-09'
       ? ' (quality-service, orion-ld)'
+      : tutorialId === 'tutorial-10'
+      ? ' (mps-service, orion-ld)'
       : '';
     const summary = this.mode === 'mock'
       ? `Mock mode — all services considered healthy${serviceNote}`
@@ -334,6 +349,7 @@ export class ScenarioEngine {
         ...TUTORIAL_07_ENTITIES,
         ...TUTORIAL_08_ENTITIES,
         ...TUTORIAL_09_ENTITIES,
+        ...TUTORIAL_10_ENTITIES,
       ];
       entities = singleId
         ? mockPool.filter((e) => (e as { id: string }).id === singleId)
@@ -1324,6 +1340,181 @@ export class ScenarioEngine {
         durationMs,
       }],
       entities: [MOCK_QC_LEAKTEST_FAIL, MOCK_RW_LEAKTEST, MOCK_QA_LEAKTEST],
+    };
+  }
+
+  // ── Tutorial 10 step handlers ──────────────────────────────────────────────
+
+  private async executeTutorial10Step(stepId: string): Promise<StepResult> {
+    const step = TUTORIAL_10_STEPS.find((s) => s.id === stepId);
+    if (!step) throw new Error(`Unknown step: ${stepId} in tutorial-10`);
+    switch (stepId) {
+      case 'check-mps-service': return this.stepStackHealth(step, 'tutorial-10');
+      case 'seed-t10-data':     return this.stepSeedT10Data(step);
+      case 'generate-mps':      return this.stepGenerateMps(step);
+      case 'query-mps-lines':   return this.stepQueryEntities(step, 'MasterProductionScheduleLine');
+      case 'confirm-mps-line':  return this.stepConfirmMpsLine(step);
+      default: throw new Error(`No executor for step: ${stepId}`);
+    }
+  }
+
+  private async stepSeedT10Data(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 201;
+    let responseSummary = '33 entities upserted';
+
+    // T10 seed = T09 seed (30) + IB (5 EA) + DemandForecast (12 EA) + ReorderingRule
+    const t10SeedEntities = [
+      ...TUTORIAL_01_ENTITIES,
+      MOCK_IB_PUMP_CASING,
+      MOCK_IB_IMPELLER,
+      MOCK_LOT_240001,
+      ...TUTORIAL_03_ENTITIES,
+      MOCK_MO_CONFIRMED,
+      ...TUTORIAL_05_ENTITIES,
+      MOCK_WO_ASSEMBLY_COMPLETED,
+      MOCK_WO_LEAK_TEST_COMPLETED,
+      MOCK_WO_PACKAGING_COMPLETED,
+      MOCK_PE_ASSEMBLY_STARTED,
+      MOCK_PE_ASSEMBLY_COMPLETED,
+      ...TUTORIAL_10_ENTITIES,
+    ];
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl, contextUrl } = this.ngsi as unknown as { orionUrl: string; contextUrl: string };
+        const withContext = t10SeedEntities.map((e) => ({ ...e, '@context': contextUrl }));
+        const res = await fetch(
+          `${orionUrl}/ngsi-ld/v1/entityOperations/upsert`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/ld+json' },
+            body: JSON.stringify(withContext),
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        responseStatus = res.status;
+        responseSummary = res.ok
+          ? `${t10SeedEntities.length} entities upserted`
+          : `Error: ${res.status}`;
+      } catch (err) {
+        responseStatus = 503;
+        responseSummary = err instanceof Error ? err.message : 'Broker unreachable';
+      }
+    }
+
+    const durationMs = Date.now() - t0;
+    const snapshot = { ...MOCK_SCENE, entities: t10SeedEntities };
+    this.hub.broadcast({ eventType: 'contextSnapshot', payload: snapshot });
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany(t10SeedEntities as Array<Record<string, unknown>>);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `${responseSummary} — T09 state: 30 entities + InventoryBalance (5 EA) + DemandForecast (12 EA) + ReorderingRule`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `${t10SeedEntities.length} entities  •  application/ld+json`,
+        responseStatus,
+        responseSummary,
+        durationMs,
+      }],
+      entities: t10SeedEntities,
+    };
+  }
+
+  private async stepGenerateMps(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const dfId = MOCK_DF_HP_P100_2024_08.id;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const mpsUrl = orionUrl.replace(':1026', ':8088').replace('orion-ld', 'mps-service');
+        const res = await fetch(`${mpsUrl}/commands/generate-mps`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ demand_forecast_id: dfId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: 'urn:ngsi-ld:StockLocation:WH-FINISHED',
+      entityType: 'StockLocation',
+      payload: { message: 'MPS generated: projected -7 EA vs. safety stock 3 EA → suggest 10 EA' },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany([MOCK_MPSL_HP_P100_SUGGESTED as Record<string, unknown>]);
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `MPS line generated — projectedInventory: -7 EA, suggestedProductionQuantity: 10 EA`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ demand_forecast_id: "${dfId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", projected_inventory: -7, suggested_production_quantity: 10 }`,
+        durationMs,
+      }],
+      entities: [MOCK_MPSL_HP_P100_SUGGESTED],
+    };
+  }
+
+  private async stepConfirmMpsLine(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    const mpslId = MOCK_MPSL_HP_P100_SUGGESTED.id;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const mpsUrl = orionUrl.replace(':1026', ':8088').replace('orion-ld', 'mps-service');
+        const res = await fetch(`${mpsUrl}/commands/confirm-mps-line`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mps_line_id: mpslId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(mpslId, {
+        state: { type: 'Property', value: 'confirmed' },
+        confirmedProductionQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+      });
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `MPS line confirmed — state: suggested → confirmed, confirmedProductionQuantity: 10 EA`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ mps_line_id: "${mpslId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", state: "confirmed", confirmed_production_quantity: 10 }`,
+        durationMs,
+      }],
+      entities: [MOCK_MPSL_HP_P100_CONFIRMED],
     };
   }
 

@@ -41,7 +41,7 @@ self-contained: reset, seed, execute, assert and stop.
      - :doc:`09-quality`
      - Quality inspection, scrap and rework
    * - v0.10
-     - Tutorial 10 *(coming soon)*
+     - :doc:`10-mps`
      - MPS-lite demand planning
    * - v0.11
      - Tutorial 11 *(coming soon)*
@@ -62,3 +62,4 @@ self-contained: reset, seed, execute, assert and stop.
    07-shop-floor
    08-finished-goods
    09-quality
+   10-mps

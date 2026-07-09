@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dataModel.MRP/MasterProductionScheduleLine/schema.json",
+  "title": "MasterProductionScheduleLine",
+  "description": "The result of running mps-service's generate-mps command for a DemandForecast: projected inventory position and a suggested production quantity, which an operator may confirm.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:ngsi-ld:MasterProductionScheduleLine:.+$",
+          "description": "NGSI-LD entity URN"
+        },
+        "type": {
+          "type": "string",
+          "const": "MasterProductionScheduleLine"
+        },
+        "bucketStart": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "bucketEnd": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "projectedInventory": {
+          "type": "object",
+          "description": "Current on-hand quantity minus forecastQuantity for the bucket; may be negative",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number" },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "suggestedProductionQuantity": {
+          "type": "object",
+          "description": "Computed shortfall against safetyStock, rounded up to the ReorderingRule's lotSize; 0 when no shortfall",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "minimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "confirmedProductionQuantity": {
+          "type": "object",
+          "description": "Set by confirm-mps-line; absent until confirmed",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "minimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "state": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "enum": ["suggested", "confirmed"] }
+          },
+          "required": ["type", "value"]
+        },
+        "product": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:Product:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "demandForecast": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:DemandForecast:.+$" }
+          },
+          "required": ["type", "object"]
+        },
+        "reorderingRule": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:ReorderingRule:.+$" }
+          },
+          "required": ["type", "object"]
+        }
+      },
+      "required": ["id", "type", "projectedInventory", "suggestedProductionQuantity", "state", "product", "demandForecast"]
+    }
+  ],
+  "examples": [
+    {
+      "id": "urn:ngsi-ld:MasterProductionScheduleLine:MPSL-HydraulicPump-P100-2024-08",
+      "type": "MasterProductionScheduleLine",
+      "bucketStart":                  { "type": "Property", "value": "2024-08-01T00:00:00Z" },
+      "bucketEnd":                    { "type": "Property", "value": "2024-08-31T23:59:59Z" },
+      "projectedInventory":           { "type": "Property", "value": -7, "unitCode": "EA" },
+      "suggestedProductionQuantity":  { "type": "Property", "value": 10, "unitCode": "EA" },
+      "confirmedProductionQuantity":  { "type": "Property", "value": 10, "unitCode": "EA" },
+      "state": { "type": "Property", "value": "confirmed" },
+      "product":        { "type": "Relationship", "object": "urn:ngsi-ld:Product:HydraulicPump-P100" },
+      "demandForecast":  { "type": "Relationship", "object": "urn:ngsi-ld:DemandForecast:DF-HydraulicPump-P100-2024-08" },
+      "reorderingRule":  { "type": "Relationship", "object": "urn:ngsi-ld:ReorderingRule:RR-HydraulicPump-P100" }
+    }
+  ]
+}

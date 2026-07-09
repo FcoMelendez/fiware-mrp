@@ -48,6 +48,7 @@ const TUTORIAL_SUBTITLES: Record<string, string> = {
   'tutorial-07': 'Tutorial 07 – Shop-floor execution',
   'tutorial-08': 'Tutorial 08 – Finished goods receipt',
   'tutorial-09': 'Tutorial 09 – Quality, scrap and rework',
+  'tutorial-10': 'Tutorial 10 – MPS-lite demand planning',
 };
 
 const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
@@ -86,6 +87,10 @@ const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
   'tutorial-09': {
     title: 'Welcome to Tutorial 09',
     body: 'This tutorial adds the <em>quality-service</em>. You will inspect a completed WorkOrder, route failed units to scrap or rework, and see an automatic QualityAlert when the failure rate crosses 20%.',
+  },
+  'tutorial-10': {
+    title: 'Welcome to Tutorial 10',
+    body: 'This tutorial adds the <em>mps-service</em>. You will turn a DemandForecast and a ReorderingRule into a suggested production quantity, then confirm it — MPS-lite planning that stays advisory, leaving ManufacturingOrder creation to manufacturing-service.',
   },
 };
 

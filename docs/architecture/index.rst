@@ -94,10 +94,10 @@ Component reference
      - 8087
      - T09
      - Quality inspection, scrap, and rework
-   * - **mps-service** *(planned)*
+   * - **mps-service**
      - 8088
      - T10
-     - MPS-lite demand planning and capacity checks
+     - MPS-lite demand planning
    * - **iot-simulator** *(planned)*
      - 8089
      - T11
@@ -133,7 +133,8 @@ Data flow
      ├─ scheduler-service ──►│                                  │
      ├─ shopfloor-service ──►│                                  │
      ├─ finished-goods-service►│                                │
-     └─ quality-service ─────►│                                │
+     ├─ quality-service ─────►│                                │
+     └─ mps-service ─────────►│                                │
                              └──────────────┬───────────────────┘
                                             │
                                    ┌────────▼────────┐
@@ -216,6 +217,15 @@ NGSI-LD entity types
    * - QualityAlert
      - T09
      - Auto-raised when a check's failure rate reaches 20%
+   * - DemandForecast
+     - T10
+     - Forecasted demand for a product over a time bucket
+   * - ReorderingRule
+     - T10
+     - Per-product safety stock, min/max, lot size, and lead time policy
+   * - MasterProductionScheduleLine
+     - T10
+     - Computed projected inventory and suggested production quantity
 
 .. note::
 
@@ -293,5 +303,12 @@ shown for context.
 
 .. image:: ../_static/architecture/arch-t09.png
    :alt: T09 architecture
+   :align: center
+   :width: 80%
+
+**Tutorial 10** — MPS-lite demand planning
+
+.. image:: ../_static/architecture/arch-t10.png
+   :alt: T10 architecture
    :align: center
    :width: 80%

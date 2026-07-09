@@ -151,6 +151,22 @@ Tutorial 09 — Quality, scrap and rework entities
    * - :doc:`QualityAlert <quality-alert>`
      - Auto-raised when a check's failure rate reaches 20%
 
+Tutorial 10 — MPS-lite demand planning entities
+----------------------------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Entity type
+     - Description
+   * - :doc:`DemandForecast <demand-forecast>`
+     - Forecasted demand for a product over a time bucket
+   * - :doc:`ReorderingRule <reordering-rule>`
+     - Per-product safety stock, min/max, lot size, and lead time policy
+   * - :doc:`MasterProductionScheduleLine <master-production-schedule-line>`
+     - Computed projected inventory and suggested production quantity, confirmable by a planner
+
 ----
 
 .. toctree::
@@ -176,3 +192,6 @@ Tutorial 09 — Quality, scrap and rework entities
    scrap-event
    rework-order
    quality-alert
+   demand-forecast
+   reordering-rule
+   master-production-schedule-line

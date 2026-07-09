@@ -146,8 +146,9 @@ attributes reused from terms already reserved in the v0.1 context).
 What's next
 -----------
 
-Tutorial 10 introduces **MPS-lite demand planning**: forecast-driven
-suggested production quantities feeding into confirmed ManufacturingOrders.
+Tutorial 10 introduces **MPS-lite demand planning**: ``mps-service``
+turns a demand forecast and a reordering policy into a suggested
+production quantity, which a planner reviews and confirms.
 
 
 ----

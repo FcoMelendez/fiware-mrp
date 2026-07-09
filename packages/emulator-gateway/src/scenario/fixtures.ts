@@ -1655,3 +1655,151 @@ export const TUTORIAL_09_STEPS: GuidedStep[] = [
     actionLabel: 'Query quality alerts',
   },
 ];
+
+// ── Tutorial 10 mock entities ──────────────────────────────────────────────────
+
+export const MOCK_IB_HP_P100_FINISHED = {
+  id: 'urn:ngsi-ld:InventoryBalance:IB-HydraulicPump-P100-WH-FINISHED',
+  type: 'InventoryBalance',
+  quantityOnHand:    { type: 'Property', value: 5, unitCode: 'EA' },
+  reservedQuantity:  { type: 'Property', value: 0, unitCode: 'EA' },
+  availableQuantity: { type: 'Property', value: 5, unitCode: 'EA' },
+  inventoryDate:     { type: 'Property', value: '2024-07-15T08:00:00Z' },
+  state:             { type: 'Property', value: 'active' },
+  product:  { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  location: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-FINISHED' },
+};
+
+export const MOCK_DF_HP_P100_2024_08 = {
+  id: 'urn:ngsi-ld:DemandForecast:DF-HydraulicPump-P100-2024-08',
+  type: 'DemandForecast',
+  bucketStart:      { type: 'Property', value: '2024-08-01T00:00:00Z' },
+  bucketEnd:        { type: 'Property', value: '2024-08-31T23:59:59Z' },
+  forecastQuantity: { type: 'Property', value: 12, unitCode: 'EA' },
+  confidence:       { type: 'Property', value: 0.8 },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+};
+
+export const MOCK_RR_HP_P100 = {
+  id: 'urn:ngsi-ld:ReorderingRule:RR-HydraulicPump-P100',
+  type: 'ReorderingRule',
+  safetyStock:     { type: 'Property', value: 3, unitCode: 'EA' },
+  minimumQuantity: { type: 'Property', value: 3, unitCode: 'EA' },
+  maximumQuantity: { type: 'Property', value: 30, unitCode: 'EA' },
+  lotSize:         { type: 'Property', value: 5, unitCode: 'EA' },
+  leadTimeDays:    { type: 'Property', value: 3 },
+  routePolicy:     { type: 'Property', value: 'make' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+};
+
+export const MOCK_MPSL_HP_P100_SUGGESTED = {
+  id: 'urn:ngsi-ld:MasterProductionScheduleLine:MPSL-HydraulicPump-P100-2024-08',
+  type: 'MasterProductionScheduleLine',
+  bucketStart:                 { type: 'Property', value: '2024-08-01T00:00:00Z' },
+  bucketEnd:                   { type: 'Property', value: '2024-08-31T23:59:59Z' },
+  projectedInventory:          { type: 'Property', value: -7, unitCode: 'EA' },
+  suggestedProductionQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  state: { type: 'Property', value: 'suggested' },
+  product:        { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  demandForecast: { type: 'Relationship', object: 'urn:ngsi-ld:DemandForecast:DF-HydraulicPump-P100-2024-08' },
+  reorderingRule: { type: 'Relationship', object: 'urn:ngsi-ld:ReorderingRule:RR-HydraulicPump-P100' },
+};
+
+export const MOCK_MPSL_HP_P100_CONFIRMED = {
+  ...MOCK_MPSL_HP_P100_SUGGESTED,
+  state: { type: 'Property', value: 'confirmed' },
+  confirmedProductionQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+};
+
+export const TUTORIAL_10_ENTITIES = [MOCK_IB_HP_P100_FINISHED, MOCK_DF_HP_P100_2024_08, MOCK_RR_HP_P100];
+
+// ── Tutorial 10 step definitions ───────────────────────────────────────────────
+
+export const TUTORIAL_10_STEPS: GuidedStep[] = [
+  {
+    id: 'check-mps-service',
+    title: 'Verify MPS service',
+    shortDesc: 'Health-check the mps-service (v0.10)',
+    desc: 'Tutorial 10 introduces the mps-service, which turns a DemandForecast and a ReorderingRule into a suggested production quantity. This step confirms the new service is running and reachable.',
+    hood: { method: 'GET', url: 'http://mps-service:8088/health', expectedStatus: 200 },
+    workflow: [
+      'Emulator → GET /health → mps-service:8088',
+      'mps-service verifies its own startup',
+      'Returns { status: ok, service: mps-service, version: 0.10.0 }',
+    ],
+    actionLabel: 'Check health',
+  },
+  {
+    id: 'seed-t10-data',
+    title: 'Load T10 seed data',
+    shortDesc: 'Seed 33 entities: T09 context + finished-goods balance, forecast, and reorder rule',
+    desc: 'Seeds Orion-LD with the full context for Tutorial 10: all T09 entities, plus a 5 EA InventoryBalance for HydraulicPump-P100 at WH-FINISHED, a DemandForecast of 12 EA for August, and a ReorderingRule (safetyStock: 3, lotSize: 5) — everything mps-service needs to compute a suggestion.',
+    hood: {
+      method: 'POST',
+      url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
+      body: '33 entities  •  application/ld+json',
+      expectedStatus: 201,
+    },
+    workflow: [
+      'Gateway attaches @context URL to all 33 entity payloads',
+      'POST /ngsi-ld/v1/entityOperations/upsert (application/ld+json) → Orion-LD (idempotent)',
+      'T09 state: 30 entities + InventoryBalance (5 EA) + DemandForecast (12 EA) + ReorderingRule (safetyStock: 3, lotSize: 5)',
+    ],
+    actionLabel: 'Seed entities',
+  },
+  {
+    id: 'generate-mps',
+    title: 'Generate the MPS line',
+    shortDesc: 'POST /commands/generate-mps — 5 EA on hand vs. 12 EA forecast → suggest 10 EA',
+    desc: 'The generate-mps command computes projectedInventory (5 EA on hand − 12 EA forecast = −7 EA), compares it against the safetyStock of 3 EA, and rounds the 10 EA shortfall up to the nearest multiple of the 5 EA lotSize — landing exactly on 10 EA.',
+    hood: {
+      method: 'POST',
+      url: 'http://mps-service:8088/commands/generate-mps',
+      body: JSON.stringify({ demand_forecast_id: 'urn:ngsi-ld:DemandForecast:DF-HydraulicPump-P100-2024-08' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/generate-mps { demand_forecast_id } → mps-service',
+      'mps-service fetches DemandForecast → fetches matching ReorderingRule → sums InventoryBalance.quantityOnHand',
+      'projectedInventory = 5 − 12 = −7 EA  (below safetyStock of 3 EA)',
+      'shortfall = 3 − (−7) = 10 EA → already a multiple of lotSize (5 EA)',
+      'POST /ngsi-ld/v1/entityOperations/upsert → MasterProductionScheduleLine (state: suggested, suggestedProductionQuantity: 10 EA)',
+    ],
+    actionLabel: 'Generate MPS line',
+  },
+  {
+    id: 'query-mps-lines',
+    title: 'Query MPS lines',
+    shortDesc: 'GET /mps-lines — inspect the suggested production quantity',
+    desc: 'After generation, one MasterProductionScheduleLine exists showing the computed projectedInventory and suggestedProductionQuantity, with Relationships back to the DemandForecast and ReorderingRule that drove the calculation.',
+    hood: {
+      method: 'GET',
+      url: 'http://mps-service:8088/mps-lines',
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → GET /mps-lines → mps-service:8088',
+      'mps-service → GET /ngsi-ld/v1/entities?type=MasterProductionScheduleLine → Orion-LD',
+      '1 MasterProductionScheduleLine returned: state=suggested, projectedInventory=-7 EA, suggestedProductionQuantity=10 EA',
+    ],
+    actionLabel: 'Query MPS lines',
+  },
+  {
+    id: 'confirm-mps-line',
+    title: 'Confirm the MPS line',
+    shortDesc: 'POST /commands/confirm-mps-line — planner signs off on 10 EA',
+    desc: 'confirm-mps-line records the planner\'s decision: state moves to confirmed and confirmedProductionQuantity is set (defaulting to the suggested 10 EA). mps-service stops here — creating the actual ManufacturingOrder remains manufacturing-service\'s responsibility, keeping domain ownership clean.',
+    hood: {
+      method: 'POST',
+      url: 'http://mps-service:8088/commands/confirm-mps-line',
+      body: JSON.stringify({ mps_line_id: 'urn:ngsi-ld:MasterProductionScheduleLine:MPSL-HydraulicPump-P100-2024-08' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/confirm-mps-line { mps_line_id } → mps-service',
+      'mps-service fetches MPSL → validates state=suggested',
+      'POST /ngsi-ld/v1/entities/{id}/attrs → state: confirmed, confirmedProductionQuantity: 10 EA',
+    ],
+    actionLabel: 'Confirm MPS line',
+  },
+];

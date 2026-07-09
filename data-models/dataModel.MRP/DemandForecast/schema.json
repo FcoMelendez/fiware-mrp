@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dataModel.MRP/DemandForecast/schema.json",
+  "title": "DemandForecast",
+  "description": "A forecasted demand quantity for a product over a time bucket, used by mps-service to compute a suggested production quantity.",
+  "type": "object",
+  "allOf": [
+    {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:ngsi-ld:DemandForecast:.+$",
+          "description": "NGSI-LD entity URN"
+        },
+        "type": {
+          "type": "string",
+          "const": "DemandForecast"
+        },
+        "bucketStart": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "bucketEnd": {
+          "type": "object",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
+        "forecastQuantity": {
+          "type": "object",
+          "properties": {
+            "type":     { "type": "string", "const": "Property" },
+            "value":    { "type": "number", "minimum": 0 },
+            "unitCode": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        "confidence": {
+          "type": "object",
+          "description": "Forecast confidence, 0.0-1.0",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "required": ["type", "value"]
+        },
+        "product": {
+          "type": "object",
+          "properties": {
+            "type":   { "type": "string", "const": "Relationship" },
+            "object": { "type": "string", "pattern": "^urn:ngsi-ld:Product:.+$" }
+          },
+          "required": ["type", "object"]
+        }
+      },
+      "required": ["id", "type", "bucketStart", "bucketEnd", "forecastQuantity", "product"]
+    }
+  ],
+  "examples": [
+    {
+      "id": "urn:ngsi-ld:DemandForecast:DF-HydraulicPump-P100-2024-08",
+      "type": "DemandForecast",
+      "bucketStart":      { "type": "Property", "value": "2024-08-01T00:00:00Z" },
+      "bucketEnd":        { "type": "Property", "value": "2024-08-31T23:59:59Z" },
+      "forecastQuantity": { "type": "Property", "value": 12, "unitCode": "EA" },
+      "confidence":       { "type": "Property", "value": 0.8 },
+      "product": { "type": "Relationship", "object": "urn:ngsi-ld:Product:HydraulicPump-P100" }
+    }
+  ]
+}

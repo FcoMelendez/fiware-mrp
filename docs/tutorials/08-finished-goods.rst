@@ -110,6 +110,28 @@ refuses to proceed unless all of them report ``state: completed``:
    # In-process filter: manufacturingOrder.object == req.manufacturing_order_id
    # 422 if any matching WorkOrder has state != completed
 
+Setting a brand-new attribute requires POST, not PATCH
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``PATCH /entities/{id}/attrs`` only **updates** attributes that already
+exist on the entity — for a brand-new attribute (like ``completedAt`` on
+a ManufacturingOrder that has never been completed before) it returns
+``207`` with ``notUpdated: [{reason: "attribute doesn't exist"}]``,
+which is easy to miss if your code only checks the status code.
+``POST /entities/{id}/attrs`` is append-or-overwrite and handles both
+cases correctly:
+
+.. code-block:: bash
+
+   POST /ngsi-ld/v1/entities/{id}/attrs
+   Content-Type: application/ld+json
+
+   {
+     "@context": "http://context-server:3000/contexts/mrp/v0.1/context.jsonld",
+     "state":       {"type": "Property", "value": "completed"},
+     "completedAt": {"type": "Property", "value": "2024-07-02T01:25:00Z"}
+   }
+
 Create-or-update on the destination InventoryBalance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
