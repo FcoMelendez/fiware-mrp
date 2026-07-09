@@ -43,6 +43,11 @@ const TUTORIAL_SUBTITLES: Record<string, string> = {
   'tutorial-02': 'Tutorial 02 – Inventory balances and material receipts',
   'tutorial-03': 'Tutorial 03 – Bill of Materials and BoM explosion',
   'tutorial-04': 'Tutorial 04 – Manufacturing order confirmation',
+  'tutorial-05': 'Tutorial 05 – Component reservations and shortages',
+  'tutorial-06': 'Tutorial 06 – Work orders and finite-capacity scheduling',
+  'tutorial-07': 'Tutorial 07 – Shop-floor execution',
+  'tutorial-08': 'Tutorial 08 – Finished goods receipt',
+  'tutorial-09': 'Tutorial 09 – Quality, scrap and rework',
 };
 
 const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
@@ -61,6 +66,26 @@ const TUTORIAL_WELCOME: Record<string, { title: string; body: string }> = {
   'tutorial-04': {
     title: 'Welcome to Tutorial 04',
     body: 'This tutorial adds the <em>manufacturing-service</em>. You will create a ManufacturingOrder in draft state and run the <em>confirm-manufacturing-order</em> command to transition it to confirmed — the production commitment signal.',
+  },
+  'tutorial-05': {
+    title: 'Welcome to Tutorial 05',
+    body: 'This tutorial extends the <em>inventory-service</em> with the <em>reserve-components</em> command. You will reserve components for a confirmed ManufacturingOrder and see which lines are fully reserved versus short.',
+  },
+  'tutorial-06': {
+    title: 'Welcome to Tutorial 06',
+    body: 'This tutorial adds the <em>scheduler-service</em>. You will run the <em>create-work-orders</em> command to generate sequential WorkOrders from a confirmed ManufacturingOrder across its work centers.',
+  },
+  'tutorial-07': {
+    title: 'Welcome to Tutorial 07',
+    body: 'This tutorial adds the <em>shopfloor-service</em>. You will start and complete WorkOrders on the shop floor, creating immutable ProductionEvent records as work progresses.',
+  },
+  'tutorial-08': {
+    title: 'Welcome to Tutorial 08',
+    body: 'This tutorial adds the <em>finished-goods-service</em>. You will close out a ManufacturingOrder once all its WorkOrders are complete, receipting the finished product into stock via the <em>receive-finished-goods</em> command.',
+  },
+  'tutorial-09': {
+    title: 'Welcome to Tutorial 09',
+    body: 'This tutorial adds the <em>quality-service</em>. You will inspect a completed WorkOrder, route failed units to scrap or rework, and see an automatic QualityAlert when the failure rate crosses 20%.',
   },
 };
 
