@@ -109,6 +109,7 @@ export class TutorialChecklist {
   private steps: StepState[] = [];
   private currentIdx = 0;
   private tutorialId = 'tutorial-01';
+  private resetInFlight: Promise<void> = Promise.resolve();
 
   constructor(containerId: string) {
     const el = document.getElementById(containerId);
@@ -123,7 +124,9 @@ export class TutorialChecklist {
 
     document.getElementById('restart-scenario-btn')?.addEventListener('click', () => {
       this.reset();
-      fetch(`/api/scenarios/${this.tutorialId}/reset`, { method: 'POST' }).catch(() => {});
+      this.resetInFlight = fetch(`/api/scenarios/${this.tutorialId}/reset`, { method: 'POST' })
+        .then(() => undefined)
+        .catch(() => undefined);
     });
 
     const selector = document.getElementById('tutorial-selector') as HTMLSelectElement | null;
@@ -140,7 +143,9 @@ export class TutorialChecklist {
     this.steps = [];
     this.render();
 
-    fetch(`/api/scenarios/${tutorialId}/reset`, { method: 'POST' }).catch(() => {});
+    this.resetInFlight = fetch(`/api/scenarios/${tutorialId}/reset`, { method: 'POST' })
+      .then(() => undefined)
+      .catch(() => undefined);
     this.loadSteps().then(() => this.render());
 
     document.getElementById('canvas-overlay')?.classList.remove('hidden');
@@ -335,6 +340,8 @@ export class TutorialChecklist {
   }
 
   private async executeStep(stepId: string): Promise<void> {
+    await this.resetInFlight;
+
     const idx = this.steps.findIndex((s) => s.def.id === stepId);
     if (idx < 0) return;
 
