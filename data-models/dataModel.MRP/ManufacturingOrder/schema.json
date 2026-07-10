@@ -102,6 +102,15 @@
         "value": { "type": "string", "format": "date-time" }
       },
       "required": ["type", "value"]
+    },
+    "cancelledAt": {
+      "type": "object",
+      "description": "Timestamp at which the order was cancelled (ISO 8601)",
+      "properties": {
+        "type": { "type": "string", "enum": ["Property"] },
+        "value": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "value"]
     }
   },
   "required": ["id", "type", "orderCode", "product", "bom", "quantity", "state", "plannedStart", "plannedEnd"]

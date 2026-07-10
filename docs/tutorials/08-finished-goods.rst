@@ -31,6 +31,8 @@ What you will build
 Prerequisites
 -------------
 
+Running into trouble? See the :doc:`/troubleshooting` guide.
+
 Tutorials 01–07 delivered and tested.  ``TUTORIAL=08 make seed`` loads
 30 entities: the full Tutorial 07 context, but with the 3 WorkOrders for
 ``MO-2024-001`` already in ``completed`` state (Assembly, LeakTest,
@@ -168,8 +170,8 @@ finished-goods receipt straight back to the order that produced it:
      "toLocation": {"type": "Relationship", "object": "urn:ngsi-ld:StockLocation:WH-FINISHED"}
    }
 
-Data model changes
--------------------
+Data model introduced
+-----------------------
 
 * No new entity type — see :doc:`../data-models/index` for how
   :doc:`StockMove <../data-models/stock-move>` and

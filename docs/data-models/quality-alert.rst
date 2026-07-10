@@ -7,7 +7,9 @@ QualityAlert
 
 Raised automatically when a :doc:`QualityCheck <quality-check>`'s failure
 rate (``quantityFailed / quantityInspected``) reaches 20%. This is the
-entity a quality-manager dashboard or NGSI-LD subscription would watch.
+entity a quality-manager dashboard or NGSI-LD subscription would watch —
+and, once reviewed, acknowledges via ``acknowledge-quality-alert`` (see
+:doc:`Tutorial 09 </tutorials/09-quality>`).
 
 Attribute reference
 -------------------
@@ -40,6 +42,14 @@ Attribute reference
      - Property
      - string
      - Human-readable summary of what triggered the alert
+   * - ``status``
+     - Property
+     - string enum
+     - ``open`` | ``acknowledged`` — absent until first acknowledged
+   * - ``acknowledgedAt``
+     - Property
+     - ISO-8601 datetime
+     - When the alert was acknowledged — absent until then
    * - ``workOrder``
      - Relationship
      - → WorkOrder

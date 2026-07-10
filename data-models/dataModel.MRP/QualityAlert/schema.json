@@ -24,6 +24,24 @@
           },
           "required": ["type", "value"]
         },
+        "status": {
+          "type": "object",
+          "description": "Whether the alert has been reviewed. Absent until first acknowledged.",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "enum": ["open", "acknowledged"] }
+          },
+          "required": ["type", "value"]
+        },
+        "acknowledgedAt": {
+          "type": "object",
+          "description": "Timestamp at which the alert was acknowledged (ISO 8601)",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
         "detectedAt": {
           "type": "object",
           "properties": {

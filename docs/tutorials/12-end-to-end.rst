@@ -27,7 +27,7 @@ Nothing new. The story this tutorial tells:
    (:doc:`Tutorial 02 <02-inventory>`), then turn a demand forecast into
    an MPS suggestion (:doc:`Tutorial 10 <10-mps>`).
 2. **Execute** — confirm the resulting ManufacturingOrder
-   (:doc:`Tutorial 04 <tutorial_04>`), reserve its components
+   (:doc:`Tutorial 04 <04-manufacturing-orders>`), reserve its components
    (:doc:`Tutorial 05 <05-reservations>`), schedule its work orders
    (:doc:`Tutorial 06 <06-work-orders>`), and run them on the shop floor
    (:doc:`Tutorial 07 <07-shop-floor>`) with a live IoT machine signal and
@@ -53,6 +53,8 @@ walkthrough runs for the first time.
 
 Prerequisites
 -------------
+
+Running into trouble? See the :doc:`/troubleshooting` guide.
 
 Tutorials 01-11 delivered and tested. ``TUTORIAL=12 make seed`` loads 27
 entities: Tutorial 01 master data, the Tutorial 03 BoM, unreserved

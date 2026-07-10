@@ -170,6 +170,9 @@ Prerequisites
 
 ----
 
+Step-by-step
+------------
+
 Step 1 — Start the stack
 ------------------------
 
@@ -217,7 +220,7 @@ Verify each service independently:
 ----
 
 Step 2 — Inspect the JSON-LD context
--------------------------------------
+------------------------------------
 
 Before loading data, explore the context file that gives MRP terms their
 globally unique identity:
@@ -255,7 +258,7 @@ Key points:
 ----
 
 Step 3 — Load seed data
-------------------------
+-----------------------
 
 .. code-block:: bash
 
@@ -284,7 +287,7 @@ entities without creating duplicates (batch upsert).
 ----
 
 Step 4 — Query the factory graph
----------------------------------
+--------------------------------
 
 NGSI-LD queries use the ``/ngsi-ld/v1/entities`` endpoint with a ``type``
 filter.  Because attribute names are stored as expanded IRIs inside Orion-LD,
@@ -367,7 +370,7 @@ Expected result — two entities: WH-STOCK, WH-FINISHED.
 ----
 
 Step 5 — Retrieve a single entity in normalized format
--------------------------------------------------------
+------------------------------------------------------
 
 Key-values format is convenient for exploration but loses NGSI-LD type
 information.  The full **normalized** format shows Properties and Relationships
@@ -427,7 +430,7 @@ Products reference the Company through the ``company`` Relationship:
 ----
 
 Step 6 — Query by attribute value
------------------------------------
+---------------------------------
 
 NGSI-LD supports attribute-value filtering with the ``q`` query parameter.
 
@@ -464,7 +467,7 @@ Expected: all 3 work centres (they are all ``active``).
 ----
 
 Step 7 — Run automated tests
-------------------------------
+----------------------------
 
 The test script queries Orion-LD and asserts exact entity counts for each type:
 
@@ -680,8 +683,8 @@ Stop containers **and** remove all volumes (clean slate for the next run):
 
 ----
 
-What comes next
----------------
+What's next
+-----------
 
 **Tutorial 02 — Inventory balances and material receipts.**
 

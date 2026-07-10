@@ -76,6 +76,55 @@ confirmed_count=$(curl -s "${MFG}/manufacturing-orders?state=confirmed" \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 0)" 2>/dev/null || echo "0")
 check "GET /manufacturing-orders?state=confirmed returns 1" "1" "$confirmed_count"
 
+# ── 7. Seed a second, throwaway draft order for the cancel demo ──────────────
+# (created directly in the broker, not via the static seed file, so it doesn't
+#  perturb assertion #3's "returns 1 draft order" count above)
+CANCEL_ORDER_ID="urn:ngsi-ld:ManufacturingOrder:MO-2024-CANCEL-DEMO"
+seed_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${ORION}/ngsi-ld/v1/entityOperations/upsert" \
+  -H "Content-Type: application/ld+json" \
+  -d "[{
+    \"id\": \"${CANCEL_ORDER_ID}\",
+    \"type\": \"ManufacturingOrder\",
+    \"orderCode\": {\"type\": \"Property\", \"value\": \"MO-2024-CANCEL-DEMO\"},
+    \"product\": {\"type\": \"Relationship\", \"object\": \"urn:ngsi-ld:Product:HydraulicPump-P100\"},
+    \"bom\": {\"type\": \"Relationship\", \"object\": \"urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1\"},
+    \"quantity\": {\"type\": \"Property\", \"value\": 5, \"unitCode\": \"EA\"},
+    \"state\": {\"type\": \"Property\", \"value\": \"draft\"},
+    \"plannedStart\": {\"type\": \"Property\", \"value\": \"2024-08-01T08:00:00Z\"},
+    \"plannedEnd\": {\"type\": \"Property\", \"value\": \"2024-08-02T17:00:00Z\"},
+    \"priority\": {\"type\": \"Property\", \"value\": \"normal\"},
+    \"@context\": \"http://context-server:3000/contexts/mrp/v0.1/context.jsonld\"
+  }]" \
+  -H "Accept: application/json")
+check "Seed second draft order for cancel demo" "1" "$([[ "$seed_status" =~ ^(201|204|207)$ ]] && echo 1 || echo 0)"
+
+# ── 8. Cancel the draft order ─────────────────────────────────────────────────
+cancel_status=$(curl -s -X POST "${MFG}/commands/cancel-manufacturing-order" \
+  -H "Content-Type: application/json" \
+  -d "{\"order_id\": \"${CANCEL_ORDER_ID}\"}" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status',''))" 2>/dev/null || echo "error")
+check "cancel-manufacturing-order returns status=cancelled" "cancelled" "$cancel_status"
+
+# ── 9. State is now cancelled in broker ───────────────────────────────────────
+cancelled_state=$(curl -s "${ORION}/ngsi-ld/v1/entities/${CANCEL_ORDER_ID}" \
+  -H "Accept: application/ld+json" \
+  | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for k, v in d.items():
+    if 'state' in k and isinstance(v, dict):
+        print(v.get('value', ''))
+        sys.exit(0)
+print('')
+" 2>/dev/null || echo "")
+check "ManufacturingOrder state is cancelled after command" "cancelled" "$cancelled_state"
+
+# ── 10. Cancelling an already-cancelled order is rejected (422) ─────────────
+recancel_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${MFG}/commands/cancel-manufacturing-order" \
+  -H "Content-Type: application/json" \
+  -d "{\"order_id\": \"${CANCEL_ORDER_ID}\"}")
+check "Re-cancelling an already-cancelled order is rejected" "422" "$recancel_status"
+
 # ── Results ───────────────────────────────────────────────────────────────────
 echo ""
 echo "Results: $PASS passed, $FAIL failed."

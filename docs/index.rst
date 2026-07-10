@@ -59,3 +59,10 @@ Quick start
    :caption: Adopter Guide
 
    adopters/index
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Reference
+
+   troubleshooting
+   glossary

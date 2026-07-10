@@ -141,11 +141,13 @@ five entities on top of the twelve Tutorial 01 master-data entities:
 
 ----
 
-Running the tutorial
---------------------
+Quick start
+-----------
 
 Prerequisites
 ~~~~~~~~~~~~~
+
+Running into trouble? See the :doc:`/troubleshooting` guide.
 
 * Docker and Docker Compose installed.
 * Docker stack running (``make start``). The Tutorial 03 seed file is self-contained and includes all Tutorial 01 master data — no separate T01 seed step needed.

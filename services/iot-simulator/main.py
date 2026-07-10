@@ -2,6 +2,7 @@
 IoT Simulator — Tutorial 11 addition to the FIWARE MRP stack.
 Implements emit-signal, clock-in, and clock-out (IoT/MES signals) over NGSI-LD.
 """
+import asyncio
 import os
 import random
 import string
@@ -240,11 +241,21 @@ async def clock_out(req: ClockOutRequest) -> dict:
     already exist.
     """
     async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{ORION_URL}/ngsi-ld/v1/entities/{req.assignment_id}",
-            headers=HEADERS_READ,
-            timeout=10,
-        )
+        # clock-in and clock-out are typically fired back-to-back in the same
+        # tutorial script; a fresh OperatorAssignment can occasionally not be
+        # visible yet on this read due to Orion-LD's eventual-consistency
+        # window under load, so retry briefly before giving up.
+        r = None
+        for attempt in range(3):
+            r = await client.get(
+                f"{ORION_URL}/ngsi-ld/v1/entities/{req.assignment_id}",
+                headers=HEADERS_READ,
+                timeout=10,
+            )
+            if r.status_code == 200:
+                break
+            if attempt < 2:
+                await asyncio.sleep(0.15)
         if r.status_code != 200:
             raise HTTPException(status_code=404, detail=f"OperatorAssignment not found: {req.assignment_id}")
         assignment = r.json()

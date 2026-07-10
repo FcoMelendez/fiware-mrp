@@ -9,6 +9,8 @@ import {
   MOCK_EXPLODE_RESULT,
   MOCK_MO_DRAFT,
   MOCK_MO_CONFIRMED,
+  MOCK_MO_CANCEL_DEMO_DRAFT,
+  MOCK_MO_CANCEL_DEMO_CANCELLED,
   TUTORIAL_01_ENTITIES,
   TUTORIAL_01_STEPS,
   TUTORIAL_02_STEPS,
@@ -18,6 +20,8 @@ import {
   TUTORIAL_04_STEPS,
   TUTORIAL_05_ENTITIES,
   TUTORIAL_05_STEPS,
+  MOCK_IR_ELECTRIC_MOTOR_RESOLVED,
+  MOCK_IR_SEAL_KIT_RESOLVED,
   TUTORIAL_06_ENTITIES,
   TUTORIAL_06_STEPS,
   TUTORIAL_07_ENTITIES,
@@ -26,6 +30,8 @@ import {
   TUTORIAL_08_STEPS,
   TUTORIAL_09_ENTITIES,
   TUTORIAL_09_STEPS,
+  MOCK_RW_LEAKTEST_COMPLETED,
+  MOCK_QA_LEAKTEST_ACKNOWLEDGED,
   TUTORIAL_10_ENTITIES,
   TUTORIAL_10_STEPS,
   TUTORIAL_11_ENTITIES,
@@ -659,6 +665,7 @@ export class ScenarioEngine {
       case 'confirm-order':          return this.stepConfirmOrder(step);
       case 'query-orders-confirmed': return this.stepQueryMfgOrders(step, 'confirmed');
       case 'inspect-order':          return this.stepQueryEntities(step, 'ManufacturingOrder', MOCK_MO_CONFIRMED.id);
+      case 'cancel-order':           return this.stepCancelOrder(step);
       default: throw new Error(`No executor for step: ${stepId}`);
     }
   }
@@ -743,6 +750,67 @@ export class ScenarioEngine {
     };
   }
 
+  private async stepCancelOrder(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    const orderId = MOCK_MO_CANCEL_DEMO_DRAFT.id;
+    let responseStatus = 200;
+    let cancelledAt = '2024-08-01T09:00:00Z';
+    let cancelledEntity: Record<string, unknown> = MOCK_MO_CANCEL_DEMO_CANCELLED;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl, contextUrl } = this.ngsi as unknown as { orionUrl: string; contextUrl: string };
+        // Seed the throwaway draft order first — never MO-2024-001, which every later tutorial depends on.
+        await fetch(`${orionUrl}/ngsi-ld/v1/entityOperations/upsert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/ld+json' },
+          body: JSON.stringify([{ ...MOCK_MO_CANCEL_DEMO_DRAFT, '@context': contextUrl }]),
+          signal: AbortSignal.timeout(10_000),
+        });
+
+        const mfgUrl = orionUrl.replace(':1026', ':8083').replace('orion-ld', 'manufacturing-service');
+        const res = await fetch(`${mfgUrl}/commands/cancel-manufacturing-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: orderId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+        if (res.ok) {
+          const data = await res.json() as { cancelled_at?: string };
+          cancelledAt = data.cancelled_at ?? cancelledAt;
+        }
+        const fetchedEntity = await this.ngsi.getEntity(orderId);
+        if (fetchedEntity) cancelledEntity = fetchedEntity as unknown as Record<string, unknown>;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.upsertMany([MOCK_MO_CANCEL_DEMO_DRAFT as Record<string, unknown>]);
+      this.mockStore.patchAttrs(orderId, {
+        state: { type: 'Property', value: 'cancelled' },
+        cancelledAt: { type: 'Property', value: cancelledAt },
+      });
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `ManufacturingOrder MO-2024-CANCEL-DEMO cancelled — state: draft → cancelled, cancelledAt: ${cancelledAt}`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ order_id: "${orderId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "cancelled", cancelled_at: "${cancelledAt}" }`,
+        durationMs,
+      }],
+      entities: [cancelledEntity],
+    };
+  }
+
   // ── Tutorial 05 step handlers ──────────────────────────────────────────────
 
   private async executeTutorial05Step(stepId: string): Promise<StepResult> {
@@ -758,6 +826,7 @@ export class ScenarioEngine {
         step, 'InventoryReservation',
         'urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-ElectricMotor',
       );
+      case 'resolve-shortage':           return this.stepResolveShortage(step);
       default: throw new Error(`No executor for step: ${stepId}`);
     }
   }
@@ -884,6 +953,90 @@ export class ScenarioEngine {
         durationMs,
       }],
       entities: TUTORIAL_05_ENTITIES,
+    };
+  }
+
+  private async stepResolveShortage(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    let responseStatus = 200;
+    let resolvedCount = 2;
+    const orderId = MOCK_MO_CONFIRMED.id;
+    const locationId = 'urn:ngsi-ld:StockLocation:WH-STOCK';
+    let resolvedEntities: Array<Record<string, unknown>> = [MOCK_IR_ELECTRIC_MOTOR_RESOLVED, MOCK_IR_SEAL_KIT_RESOLVED];
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const invUrl = orionUrl.replace(':1026', ':8081').replace('orion-ld', 'inventory-service');
+
+        await fetch(`${invUrl}/commands/receive-material`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: 'urn:ngsi-ld:Product:ElectricMotor', location_id: locationId, quantity: 10, unit: 'EA' }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        await fetch(`${invUrl}/commands/receive-material`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: 'urn:ngsi-ld:Product:SealKit', location_id: locationId, quantity: 20, unit: 'EA' }),
+          signal: AbortSignal.timeout(10_000),
+        });
+
+        const res = await fetch(`${invUrl}/commands/resolve-shortages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: orderId }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        responseStatus = res.status;
+        if (res.ok) {
+          const data = await res.json() as { resolved_count?: number };
+          resolvedCount = data.resolved_count ?? resolvedCount;
+        }
+
+        const fetched = await Promise.all(
+          [MOCK_IR_ELECTRIC_MOTOR_RESOLVED.id, MOCK_IR_SEAL_KIT_RESOLVED.id].map((id) => this.ngsi.getEntity(id)),
+        );
+        const validFetched = fetched.filter((e): e is NonNullable<typeof e> => e !== null) as unknown as Array<Record<string, unknown>>;
+        if (validFetched.length) resolvedEntities = validFetched;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: locationId,
+      entityType: 'StockLocation',
+      payload: { message: `${resolvedCount} shortaged reservations topped up from newly received stock` },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(MOCK_IR_ELECTRIC_MOTOR_RESOLVED.id, {
+        reservedQuantity: MOCK_IR_ELECTRIC_MOTOR_RESOLVED.reservedQuantity,
+        shortageQuantity: MOCK_IR_ELECTRIC_MOTOR_RESOLVED.shortageQuantity,
+        state: MOCK_IR_ELECTRIC_MOTOR_RESOLVED.state,
+      });
+      this.mockStore.patchAttrs(MOCK_IR_SEAL_KIT_RESOLVED.id, {
+        reservedQuantity: MOCK_IR_SEAL_KIT_RESOLVED.reservedQuantity,
+        shortageQuantity: MOCK_IR_SEAL_KIT_RESOLVED.shortageQuantity,
+        state: MOCK_IR_SEAL_KIT_RESOLVED.state,
+      });
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `ElectricMotor and SealKit reservations resolved — shortage → reserved (${resolvedCount} reservations topped up)`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ order_id: "${orderId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", resolved_count: ${resolvedCount} }`,
+        durationMs,
+      }],
+      entities: resolvedEntities,
     };
   }
 
@@ -1307,6 +1460,8 @@ export class ScenarioEngine {
       case 'query-quality-checks':  return this.stepQueryEntities(step, 'QualityCheck');
       case 'query-rework-orders':   return this.stepQueryEntities(step, 'ReworkOrder');
       case 'query-quality-alerts':  return this.stepQueryEntities(step, 'QualityAlert');
+      case 'complete-rework-order': return this.stepCompleteReworkOrder(step);
+      case 'acknowledge-alert':     return this.stepAcknowledgeAlert(step);
       default: throw new Error(`No executor for step: ${stepId}`);
     }
   }
@@ -1440,6 +1595,124 @@ export class ScenarioEngine {
         durationMs,
       }],
       entities: [MOCK_QC_LEAKTEST_FAIL, MOCK_RW_LEAKTEST, MOCK_QA_LEAKTEST],
+    };
+  }
+
+  private async stepCompleteReworkOrder(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    const reworkId = MOCK_RW_LEAKTEST.id;
+    let responseStatus = 200;
+    let completedAt = '2024-07-02T09:00:00Z';
+    let completedEntity: Record<string, unknown> = MOCK_RW_LEAKTEST_COMPLETED;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const qsUrl = orionUrl.replace(':1026', ':8087').replace('orion-ld', 'quality-service');
+        const res = await fetch(`${qsUrl}/commands/complete-rework-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rework_order_id: reworkId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+        if (res.ok) {
+          const data = await res.json() as { completed_at?: string };
+          completedAt = data.completed_at ?? completedAt;
+        }
+        const fetched = await this.ngsi.getEntity(reworkId);
+        if (fetched) completedEntity = fetched as unknown as Record<string, unknown>;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: reworkId,
+      entityType: 'ReworkOrder',
+      payload: { state: 'completed' },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(reworkId, {
+        state: { type: 'Property', value: 'completed' },
+        completedAt: { type: 'Property', value: completedAt },
+      });
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `ReworkOrder RW-WO-MO-2024-001-LeakTest completed — state: planned → completed, completedAt: ${completedAt}`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ rework_order_id: "${reworkId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "completed", completed_at: "${completedAt}" }`,
+        durationMs,
+      }],
+      entities: [completedEntity],
+    };
+  }
+
+  private async stepAcknowledgeAlert(step: GuidedStep): Promise<StepResult> {
+    const t0 = Date.now();
+    const alertId = MOCK_QA_LEAKTEST.id;
+    let responseStatus = 200;
+    let acknowledgedAt = '2024-07-02T09:05:00Z';
+    let acknowledgedEntity: Record<string, unknown> = MOCK_QA_LEAKTEST_ACKNOWLEDGED;
+
+    if (this.mode === 'live') {
+      try {
+        const { orionUrl } = this.ngsi as unknown as { orionUrl: string };
+        const qsUrl = orionUrl.replace(':1026', ':8087').replace('orion-ld', 'quality-service');
+        const res = await fetch(`${qsUrl}/commands/acknowledge-quality-alert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alert_id: alertId }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        responseStatus = res.status;
+        if (res.ok) {
+          const data = await res.json() as { acknowledged_at?: string };
+          acknowledgedAt = data.acknowledged_at ?? acknowledgedAt;
+        }
+        const fetched = await this.ngsi.getEntity(alertId);
+        if (fetched) acknowledgedEntity = fetched as unknown as Record<string, unknown>;
+      } catch { responseStatus = 503; }
+    }
+
+    const durationMs = Date.now() - t0;
+
+    this.hub.broadcast({
+      eventType: 'entityChanged',
+      entityId: alertId,
+      entityType: 'QualityAlert',
+      payload: { status: 'acknowledged' },
+    });
+
+    if (this.mode === 'mock' && this.mockStore) {
+      this.mockStore.patchAttrs(alertId, {
+        status: { type: 'Property', value: 'acknowledged' },
+        acknowledgedAt: { type: 'Property', value: acknowledgedAt },
+      });
+    }
+
+    return {
+      stepId: step.id,
+      status: responseStatus < 300 ? 'completed' : 'failed',
+      result: `QualityAlert QA-WO-MO-2024-001-LeakTest acknowledged — status: open → acknowledged, acknowledgedAt: ${acknowledgedAt}`,
+      apiTrace: [{
+        method: 'POST',
+        url: step.hood.url,
+        requestSummary: `{ alert_id: "${alertId}" }`,
+        responseStatus,
+        responseSummary: `{ status: "done", alert_status: "acknowledged" }`,
+        durationMs,
+      }],
+      entities: [acknowledgedEntity],
     };
   }
 

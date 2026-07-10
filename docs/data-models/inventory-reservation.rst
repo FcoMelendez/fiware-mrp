@@ -6,7 +6,10 @@ InventoryReservation
 An ``InventoryReservation`` records the outcome of a component availability check
 against a confirmed ``ManufacturingOrder``.  One reservation is created per
 ``BillOfMaterialsLine``.  Reservations make stock commitments visible to planners
-and drive purchasing decisions for shortage lines.
+and drive purchasing decisions for shortage lines. Once the missing stock
+arrives, ``resolve-shortages`` tops up a ``shortage``/``partial`` reservation
+from the newly-available quantity — see the "Receive stock and resolve the
+shortage" step in :doc:`Tutorial 05 </tutorials/05-reservations>`.
 
 ----
 

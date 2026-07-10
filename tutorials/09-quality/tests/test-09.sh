@@ -87,6 +87,56 @@ rw_count=$(curl -s "${QS}/rework-orders" \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 0)" 2>/dev/null || echo "0")
 check "GET /rework-orders returns at least 1" "1" "$([ "$rw_count" -ge 1 ] && echo 1 || echo 0)"
 
+# ── 5. Complete the rework order ──────────────────────────────────────────────
+complete_response=$(curl -s -X POST "${QS}/commands/complete-rework-order" \
+  -H "Content-Type: application/json" \
+  -d "{\"rework_order_id\": \"${rework_id}\"}")
+complete_status=$(echo "$complete_response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status',''))" 2>/dev/null || echo "error")
+check "complete-rework-order returns status=completed" "completed" "$complete_status"
+
+rw_state_after=$(curl -s "${ORION}/ngsi-ld/v1/entities/${rework_id}" \
+  -H "Accept: application/ld+json" \
+  | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for k, v in d.items():
+    if 'state' in k and isinstance(v, dict):
+        print(v.get('value', ''))
+        sys.exit(0)
+print('')
+" 2>/dev/null || echo "")
+check "ReworkOrder state=completed after command" "completed" "$rw_state_after"
+
+recomplete_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${QS}/commands/complete-rework-order" \
+  -H "Content-Type: application/json" \
+  -d "{\"rework_order_id\": \"${rework_id}\"}")
+check "Re-completing an already-completed rework order is rejected" "422" "$recomplete_status"
+
+# ── 6. Acknowledge the quality alert ──────────────────────────────────────────
+ack_response=$(curl -s -X POST "${QS}/commands/acknowledge-quality-alert" \
+  -H "Content-Type: application/json" \
+  -d "{\"alert_id\": \"${alert_id}\"}")
+ack_status=$(echo "$ack_response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status',''))" 2>/dev/null || echo "error")
+check "acknowledge-quality-alert returns status=done" "done" "$ack_status"
+
+alert_status_after=$(curl -s "${ORION}/ngsi-ld/v1/entities/${alert_id}" \
+  -H "Accept: application/ld+json" \
+  | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for k, v in d.items():
+    if 'status' in k and isinstance(v, dict):
+        print(v.get('value', ''))
+        sys.exit(0)
+print('')
+" 2>/dev/null || echo "")
+check "QualityAlert status=acknowledged after command" "acknowledged" "$alert_status_after"
+
+reack_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${QS}/commands/acknowledge-quality-alert" \
+  -H "Content-Type: application/json" \
+  -d "{\"alert_id\": \"${alert_id}\"}")
+check "Re-acknowledging an already-acknowledged alert is rejected" "422" "$reack_status"
+
 # ── Results ───────────────────────────────────────────────────────────────────
 echo ""
 echo "Results: $PASS passed, $FAIL failed."

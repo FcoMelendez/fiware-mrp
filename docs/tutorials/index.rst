@@ -23,7 +23,7 @@ self-contained: reset, seed, execute, assert and stop.
      - :doc:`03-bom`
      - Bill of Materials and BoM explosion
    * - v0.4
-     - :doc:`tutorial_04`
+     - :doc:`04-manufacturing-orders`
      - Manufacturing order confirmation
    * - v0.5
      - :doc:`05-reservations`
@@ -56,7 +56,7 @@ self-contained: reset, seed, execute, assert and stop.
    01-getting-started-context
    02-inventory
    03-bom
-   tutorial_04
+   04-manufacturing-orders
    05-reservations
    06-work-orders
    07-shop-floor

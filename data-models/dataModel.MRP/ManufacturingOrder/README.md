@@ -34,6 +34,7 @@ draft → confirmed → in_progress → completed
 | `plannedEnd` | Property (date-time) | Planned production completion |
 | `priority` | Property | `normal` \| `urgent` \| `critical` |
 | `confirmedAt` | Property (date-time) | Timestamp of confirmation (set by service) |
+| `cancelledAt` | Property (date-time) | Timestamp of cancellation (set by service) |
 
 ## Example
 

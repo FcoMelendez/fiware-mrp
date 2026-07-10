@@ -713,6 +713,25 @@ export const MOCK_MO_CONFIRMED = {
   confirmedAt: { type: 'Property', value: '2024-07-01T07:45:00Z' },
 };
 
+export const MOCK_MO_CANCEL_DEMO_DRAFT = {
+  id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-CANCEL-DEMO',
+  type: 'ManufacturingOrder',
+  orderCode: { type: 'Property', value: 'MO-2024-CANCEL-DEMO' },
+  product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:HydraulicPump-P100' },
+  bom: { type: 'Relationship', object: 'urn:ngsi-ld:BillOfMaterials:BOM-HP-P100-v1' },
+  quantity: { type: 'Property', value: 5, unitCode: 'EA' },
+  state: { type: 'Property', value: 'draft' },
+  plannedStart: { type: 'Property', value: '2024-08-01T08:00:00Z' },
+  plannedEnd: { type: 'Property', value: '2024-08-02T17:00:00Z' },
+  priority: { type: 'Property', value: 'normal' },
+};
+
+export const MOCK_MO_CANCEL_DEMO_CANCELLED = {
+  ...MOCK_MO_CANCEL_DEMO_DRAFT,
+  state: { type: 'Property', value: 'cancelled' },
+  cancelledAt: { type: 'Property', value: '2024-08-01T09:00:00Z' },
+};
+
 export const TUTORIAL_04_ENTITIES = [MOCK_MO_CONFIRMED];
 
 // ── Tutorial 04 step definitions ───────────────────────────────────────────────
@@ -722,7 +741,7 @@ export const TUTORIAL_04_STEPS: GuidedStep[] = [
     id: 'check-mfg-service',
     title: 'Verify manufacturing service',
     shortDesc: 'Health-check the manufacturing-service',
-    desc: 'Tutorial 04 adds the manufacturing-service to the stack. This step confirms it is running and can reach Orion-LD.',
+    desc: 'Every tutorial from here on hinges on one entity this service owns: the ManufacturingOrder. This step just confirms manufacturing-service is up and can reach Orion-LD before that story begins.',
     hood: { method: 'GET', url: 'http://manufacturing-service:8083/health', expectedStatus: 200 },
     workflow: [
       'Emulator → GET /health → manufacturing-service:8083',
@@ -735,7 +754,7 @@ export const TUTORIAL_04_STEPS: GuidedStep[] = [
     id: 'seed-mfg-data',
     title: 'Load manufacturing seed data',
     shortDesc: 'Seed 18 entities: T01 master data + T03 BoM + ManufacturingOrder (draft)',
-    desc: 'Seeds Orion-LD with the Tutorial 01 factory graph (12 entities), the Tutorial 03 Bill of Materials (5 entities), and the Tutorial 04 ManufacturingOrder MO-2024-001 in draft state for 10 units of HydraulicPump-P100.',
+    desc: '18 entities land in one upsert: the 12-entity T01 factory graph, the 5-entity T03 BoM, and one new arrival — MO-2024-001, draft, 10 units of HydraulicPump-P100. Everything from Tutorial 05 onward exists to answer one question about this single order: can we build it, and when?',
     hood: {
       method: 'POST',
       url: 'http://orion-ld:1026/ngsi-ld/v1/entityOperations/upsert',
@@ -754,7 +773,7 @@ export const TUTORIAL_04_STEPS: GuidedStep[] = [
     id: 'query-orders-draft',
     title: 'Query draft manufacturing orders',
     shortDesc: 'GET /manufacturing-orders?state=draft — list 1 draft ManufacturingOrder',
-    desc: 'The manufacturing-service exposes a /manufacturing-orders endpoint that proxies an NGSI-LD type query to Orion-LD and filters by state. The MO is still in draft — it has not yet been confirmed.',
+    desc: 'Right now MO-2024-001 is still just a provisional plan — draft means nothing downstream can touch it yet: no reservation, no scheduling, no shop-floor execution. This query is the "before" snapshot; the next step is the one line that changes everything.',
     hood: {
       method: 'GET',
       url: 'http://manufacturing-service:8083/manufacturing-orders?state=draft',
@@ -772,7 +791,7 @@ export const TUTORIAL_04_STEPS: GuidedStep[] = [
     id: 'confirm-order',
     title: 'Confirm the manufacturing order',
     shortDesc: 'POST /commands/confirm-manufacturing-order — draft → confirmed',
-    desc: 'The confirm-manufacturing-order command validates that the order is in draft state, then patches state=confirmed and records a confirmedAt timestamp in Orion-LD. A confirmed order is locked for scheduling and component reservation.',
+    desc: 'One command locks it in: draft → confirmed, with a confirmedAt timestamp that never existed on this entity before. Setting a brand-new attribute like that needs POST, not PATCH — a distinction that looks pedantic here and turns into a real, silently-dropped-data bug by the time Tutorial 08 hits the same pattern under more pressure.',
     hood: {
       method: 'POST',
       url: 'http://manufacturing-service:8083/commands/confirm-manufacturing-order',
@@ -782,7 +801,7 @@ export const TUTORIAL_04_STEPS: GuidedStep[] = [
     workflow: [
       'Emulator → POST /commands/confirm-manufacturing-order { order_id } → manufacturing-service',
       'manufacturing-service → GET /ngsi-ld/v1/entities/{id} → validates state == draft',
-      'PATCH /ngsi-ld/v1/entities/{id}/attrs → state: confirmed, confirmedAt: <timestamp>',
+      'POST /ngsi-ld/v1/entities/{id}/attrs → state: confirmed, confirmedAt: <timestamp> (new attribute, so POST not PATCH)',
       'Returns { status: confirmed, order_id, confirmed_at }',
     ],
     actionLabel: 'Confirm order',
@@ -791,7 +810,7 @@ export const TUTORIAL_04_STEPS: GuidedStep[] = [
     id: 'query-orders-confirmed',
     title: 'Query confirmed manufacturing orders',
     shortDesc: 'GET /manufacturing-orders?state=confirmed — verify state transition',
-    desc: 'After confirmation the order should no longer appear in draft queries. Filtering by state=confirmed shows the order with its confirmedAt timestamp set.',
+    desc: 'Same query as before, one filter value flipped: MO-2024-001 has moved out of draft entirely and into confirmed, confirmedAt now populated. This is the "after" — and the exact state Tutorial 05 expects to find waiting for it.',
     hood: {
       method: 'GET',
       url: 'http://manufacturing-service:8083/manufacturing-orders?state=confirmed',
@@ -809,7 +828,7 @@ export const TUTORIAL_04_STEPS: GuidedStep[] = [
     id: 'inspect-order',
     title: 'Inspect the ManufacturingOrder entity',
     shortDesc: 'Fetch MO-2024-001 directly from the broker',
-    desc: 'Fetch the ManufacturingOrder entity directly from Orion-LD to see all NGSI-LD attributes: the product and bom Relationships, the confirmed state, and the confirmedAt timestamp set by the service.',
+    desc: 'The manufacturing-service response is a convenience — this is the ground truth underneath it. Fetched straight from Orion-LD, the raw entity shows exactly what confirm-manufacturing-order actually wrote: product and bom as real Relationships, not just IDs in a JSON blob, and a confirmedAt that is now a permanent part of this order\'s history.',
     hood: {
       method: 'GET',
       url: 'http://orion-ld:1026/ngsi-ld/v1/entities/urn:ngsi-ld:ManufacturingOrder:MO-2024-001',
@@ -823,6 +842,26 @@ export const TUTORIAL_04_STEPS: GuidedStep[] = [
       'state: confirmed · confirmedAt: <timestamp> · quantity: 10 EA',
     ],
     actionLabel: 'Inspect order',
+  },
+  {
+    id: 'cancel-order',
+    title: 'Cancel a second, throwaway order',
+    shortDesc: 'Seed MO-2024-CANCEL-DEMO (draft) then POST /commands/cancel-manufacturing-order',
+    desc: 'Not every draft order becomes a confirmed one. This step seeds a second, disposable ManufacturingOrder and cancels it — draft → cancelled, no components ever consumed — so MO-2024-001 (which every later tutorial builds on) is never touched.',
+    hood: {
+      method: 'POST',
+      url: 'http://manufacturing-service:8083/commands/cancel-manufacturing-order',
+      body: JSON.stringify({ order_id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-CANCEL-DEMO' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator seeds MO-2024-CANCEL-DEMO (state: draft) directly into Orion-LD',
+      'Emulator → POST /commands/cancel-manufacturing-order { order_id } → manufacturing-service',
+      'manufacturing-service → GET /ngsi-ld/v1/entities/{id} → validates state in (draft, confirmed)',
+      'POST /ngsi-ld/v1/entities/{id}/attrs → state: cancelled, cancelledAt: <timestamp> (new attribute, so POST not PATCH)',
+      'Returns { status: cancelled, order_id, cancelled_at }',
+    ],
+    actionLabel: 'Cancel order',
   },
 ];
 
@@ -886,6 +925,20 @@ export const MOCK_IR_SEAL_KIT = {
   manufacturingOrder: { type: 'Relationship', object: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' },
   product: { type: 'Relationship', object: 'urn:ngsi-ld:Product:SealKit' },
   stockLocation: { type: 'Relationship', object: 'urn:ngsi-ld:StockLocation:WH-STOCK' },
+};
+
+export const MOCK_IR_ELECTRIC_MOTOR_RESOLVED = {
+  ...MOCK_IR_ELECTRIC_MOTOR,
+  reservedQuantity: { type: 'Property', value: 10, unitCode: 'EA' },
+  shortageQuantity: { type: 'Property', value: 0, unitCode: 'EA' },
+  state: { type: 'Property', value: 'reserved' },
+};
+
+export const MOCK_IR_SEAL_KIT_RESOLVED = {
+  ...MOCK_IR_SEAL_KIT,
+  reservedQuantity: { type: 'Property', value: 20, unitCode: 'EA' },
+  shortageQuantity: { type: 'Property', value: 0, unitCode: 'EA' },
+  state: { type: 'Property', value: 'reserved' },
 };
 
 export const TUTORIAL_05_ENTITIES = [
@@ -1007,6 +1060,27 @@ export const TUTORIAL_05_STEPS: GuidedStep[] = [
       'manufacturingOrder → MO-2024-001 · product → ElectricMotor (Relationships)',
     ],
     actionLabel: 'Inspect reservation',
+  },
+  {
+    id: 'resolve-shortage',
+    title: 'Receive stock and resolve the shortage',
+    shortDesc: 'receive-material (ElectricMotor, SealKit) then POST /commands/resolve-shortages',
+    desc: 'A shortage is not a dead end — it is a queue of work for purchasing and receiving. This step receives the missing ElectricMotor (10 EA) and SealKit (20 EA) into WH-STOCK, then calls resolve-shortages, which tops up exactly the two shortaged reservations from the new stock without touching the ones already reserved.',
+    hood: {
+      method: 'POST',
+      url: 'http://inventory-service:8081/commands/resolve-shortages',
+      body: JSON.stringify({ order_id: 'urn:ngsi-ld:ManufacturingOrder:MO-2024-001' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/receive-material { ElectricMotor, 10 EA, WH-STOCK } → inventory-service',
+      'Emulator → POST /commands/receive-material { SealKit, 20 EA, WH-STOCK } → inventory-service',
+      'Emulator → POST /commands/resolve-shortages { order_id } → inventory-service',
+      'inventory-service re-checks each shortage/partial InventoryReservation against current availableQuantity',
+      'PATCH tops up reservedQuantity by the delta and zeroes shortageQuantity (attrs already exist, so PATCH not POST)',
+      'ElectricMotor and SealKit reservations: shortage → reserved',
+    ],
+    actionLabel: 'Resolve shortage',
   },
 ];
 
@@ -1535,6 +1609,18 @@ export const MOCK_QA_LEAKTEST = {
   qualityCheck:       { type: 'Relationship', object: 'urn:ngsi-ld:QualityCheck:QC-WO-MO-2024-001-LeakTest' },
 };
 
+export const MOCK_RW_LEAKTEST_COMPLETED = {
+  ...MOCK_RW_LEAKTEST,
+  state: { type: 'Property', value: 'completed' },
+  completedAt: { type: 'Property', value: '2024-07-02T09:00:00Z' },
+};
+
+export const MOCK_QA_LEAKTEST_ACKNOWLEDGED = {
+  ...MOCK_QA_LEAKTEST,
+  status: { type: 'Property', value: 'acknowledged' },
+  acknowledgedAt: { type: 'Property', value: '2024-07-02T09:05:00Z' },
+};
+
 export const TUTORIAL_09_ENTITIES = [MOCK_QC_LEAKTEST_FAIL, MOCK_RW_LEAKTEST, MOCK_QA_LEAKTEST];
 
 // ── Tutorial 09 step definitions ───────────────────────────────────────────────
@@ -1653,6 +1739,44 @@ export const TUTORIAL_09_STEPS: GuidedStep[] = [
       '1 QualityAlert returned: severity=high, comment="20% failure rate on leak_test inspection (2 of 10 units)"',
     ],
     actionLabel: 'Query quality alerts',
+  },
+  {
+    id: 'complete-rework-order',
+    title: 'Complete the rework order',
+    shortDesc: 'POST /commands/complete-rework-order — planned → completed',
+    desc: 'A ReworkOrder is not the end of the story — the 2 EA it tracks eventually get reworked. This step closes that loop: complete-rework-order transitions the order from planned to completed and records a completedAt timestamp.',
+    hood: {
+      method: 'POST',
+      url: 'http://quality-service:8087/commands/complete-rework-order',
+      body: JSON.stringify({ rework_order_id: 'urn:ngsi-ld:ReworkOrder:RW-WO-MO-2024-001-LeakTest' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/complete-rework-order { rework_order_id } → quality-service',
+      'quality-service → GET /ngsi-ld/v1/entities/{id} → validates state == planned',
+      'POST /ngsi-ld/v1/entities/{id}/attrs → state: completed, completedAt: <timestamp> (new attribute, so POST not PATCH)',
+      'Returns { status: completed, rework_order_id, completed_at }',
+    ],
+    actionLabel: 'Complete rework',
+  },
+  {
+    id: 'acknowledge-alert',
+    title: 'Acknowledge the quality alert',
+    shortDesc: 'POST /commands/acknowledge-quality-alert — open → acknowledged',
+    desc: 'The QualityAlert raised earlier is not just a fire-and-forget notification — a quality manager reviews and acknowledges it. This step sets status=acknowledged and records when, closing the alert lifecycle rather than leaving it permanently open.',
+    hood: {
+      method: 'POST',
+      url: 'http://quality-service:8087/commands/acknowledge-quality-alert',
+      body: JSON.stringify({ alert_id: 'urn:ngsi-ld:QualityAlert:QA-WO-MO-2024-001-LeakTest' }, null, 2),
+      expectedStatus: 200,
+    },
+    workflow: [
+      'Emulator → POST /commands/acknowledge-quality-alert { alert_id } → quality-service',
+      'quality-service → GET /ngsi-ld/v1/entities/{id} → validates status != acknowledged',
+      'POST /ngsi-ld/v1/entities/{id}/attrs → status: acknowledged, acknowledgedAt: <timestamp> (new attributes, so POST not PATCH)',
+      'Returns { status: done, alert_id, alert_status: acknowledged }',
+    ],
+    actionLabel: 'Acknowledge alert',
   },
 ];
 

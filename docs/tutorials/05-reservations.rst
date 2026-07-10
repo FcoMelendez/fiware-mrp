@@ -34,14 +34,25 @@ Scenario
 ManufacturingOrder **MO-2024-001** (10 units of Hydraulic Pump P100, confirmed) is
 waiting for component reservation.  The warehouse holds:
 
-============================  ===========  ==========
-Component                     On hand (EA) Required (EA)
-============================  ===========  ==========
-Pump Casing                   50           10 → **reserved**
-Impeller (lot LOT-240001)     30           10 → **reserved**
-Electric Motor 2.2 kW         0            10 → **shortage**
-Seal Kit P100                 0            20 → **shortage**
-============================  ===========  ==========
+.. list-table::
+   :header-rows: 1
+   :widths: 40 25 35
+
+   * - Component
+     - On hand (EA)
+     - Required (EA)
+   * - Pump Casing
+     - 50
+     - 10 → **reserved**
+   * - Impeller (lot LOT-240001)
+     - 30
+     - 10 → **reserved**
+   * - Electric Motor 2.2 kW
+     - 0
+     - 10 → **shortage**
+   * - Seal Kit P100
+     - 0
+     - 20 → **shortage**
 
 After the command, ``WH-STOCK`` balances for PumpCasing and Impeller are updated
 (``reservedQuantity`` += 10, ``availableQuantity`` -= 10).
@@ -50,6 +61,8 @@ After the command, ``WH-STOCK`` balances for PumpCasing and Impeller are updated
 
 Prerequisites
 -------------
+
+Running into trouble? See the :doc:`/troubleshooting` guide.
 
 * Tutorial 04 complete (or use the self-contained seed file below)
 * Full stack running:
@@ -149,6 +162,46 @@ Step 5 — Inspect a reservation directly from Orion-LD
 The entity shows all NGSI-LD attributes in normalised form, including the
 ``shortageQuantity: 10 EA`` that signals a purchasing action is required.
 
+Step 6 — Receive stock and resolve the shortage
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A shortage is not a dead end — it is a queue of work for purchasing and
+receiving. Once the missing components arrive, ``resolve-shortages`` tops
+up exactly the reservations still in ``shortage``/``partial`` state, moving
+only the newly-available delta so it never double-counts what
+``reserve-components`` already reserved:
+
+.. code-block:: bash
+
+   curl -s -X POST http://localhost:8081/commands/receive-material \
+     -H "Content-Type: application/json" \
+     -d '{"product_id": "urn:ngsi-ld:Product:ElectricMotor", "location_id": "urn:ngsi-ld:StockLocation:WH-STOCK", "quantity": 10, "unit": "EA"}'
+
+   curl -s -X POST http://localhost:8081/commands/receive-material \
+     -H "Content-Type: application/json" \
+     -d '{"product_id": "urn:ngsi-ld:Product:SealKit", "location_id": "urn:ngsi-ld:StockLocation:WH-STOCK", "quantity": 20, "unit": "EA"}'
+
+   curl -s -X POST http://localhost:8081/commands/resolve-shortages \
+     -H "Content-Type: application/json" \
+     -d '{"order_id": "urn:ngsi-ld:ManufacturingOrder:MO-2024-001"}' | python3 -m json.tool
+
+Expected response:
+
+.. code-block:: json
+
+   {
+     "status": "done",
+     "order_id": "urn:ngsi-ld:ManufacturingOrder:MO-2024-001",
+     "resolved_count": 2,
+     "reservations": [
+       { "reservation_id": "...ElectricMotor", "topped_up_quantity": 10, "reserved_quantity": 10, "shortage_quantity": 0, "state": "reserved" },
+       { "reservation_id": "...SealKit",       "topped_up_quantity": 20, "reserved_quantity": 20, "shortage_quantity": 0, "state": "reserved" }
+     ]
+   }
+
+Both the ElectricMotor and SealKit reservations now show ``state: reserved``
+and ``shortageQuantity: 0`` — the shortage is fully resolved.
+
 ----
 
 Automated assertions
@@ -158,7 +211,7 @@ Automated assertions
 
    make test-05
 
-The test script runs 8 assertions:
+The test script runs 14 assertions:
 
 #. ``inventory-service`` health is ``ok``
 #. Version is ``0.5.0``
@@ -169,11 +222,28 @@ The test script runs 8 assertions:
 #. PumpCasing reservation ``state=reserved``
 #. ElectricMotor reservation ``state=shortage``
 #. PumpCasing ``availableQuantity`` decremented from 50 to 40
+#. ``resolve-shortages`` returns ``status: done``
+#. ``resolve-shortages`` tops up 2 reservations
+#. ElectricMotor reservation ``state=reserved`` after resolve
+#. ElectricMotor reservation ``shortageQuantity=0`` after resolve
+#. SealKit reservation ``state=reserved`` after resolve
 
 ----
 
-Under the hood — NGSI-LD API calls
------------------------------------
+NGSI-LD patterns
+-----------------
+
+PATCH is correct here — the attributes already exist
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^~
+
+Unlike ``confirm-manufacturing-order`` (Tutorial 04) or
+``acknowledge-quality-alert`` (Tutorial 09), which POST brand-new attributes,
+``resolve-shortages`` only ever adjusts ``reservedQuantity``,
+``shortageQuantity`` and ``state`` — all three were already set by the
+original ``reserve-components`` call. Because the attributes already exist
+on the entity, ``PATCH /entities/{id}/attrs`` is the right call here; it
+would be wrong for a first-time attribute (see Tutorial 04's NGSI-LD
+patterns section for that case).
 
 .. list-table::
    :header-rows: 1
@@ -197,10 +267,23 @@ Under the hood — NGSI-LD API calls
    * - 5
      - ``PATCH /ngsi-ld/v1/entities/{ib_id}/attrs`` (×2)
      - Decrement availableQuantity; increment reservedQuantity for stocked components
+   * - 6
+     - ``POST /commands/resolve-shortages``
+     - Re-check shortage/partial reservations and top up from newly-received stock
+   * - 7
+     - ``PATCH /ngsi-ld/v1/entities/{ir_id}/attrs`` + ``.../{ib_id}/attrs``
+     - Move only the delta into reservedQuantity/availableQuantity — never re-add what was already reserved
 
 ----
 
-Next: Tutorial 06 — Work Orders and Finite-Capacity Scheduling *(coming soon)*
+What's next
+-----------
+
+Tutorial 06 introduces the ``scheduler-service``: once components are
+reserved (fully or partially), it reads the confirmed ManufacturingOrder and
+generates three sequential ``WorkOrder`` entities — Assembly, LeakTest, and
+Packaging — establishing the production schedule that Tutorial 07 will
+execute on the shop floor.
 
 
 ----

@@ -31,6 +31,8 @@ What you will build
 Prerequisites
 -------------
 
+Running into trouble? See the :doc:`/troubleshooting` guide.
+
 Tutorials 01–06 delivered and tested.  ``TUTORIAL=07 make seed`` loads
 28 entities (T06 state + 3 WorkOrders in ``planned`` state).
 

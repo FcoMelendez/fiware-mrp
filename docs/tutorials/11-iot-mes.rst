@@ -62,6 +62,8 @@ component: every ``MachineSignal.actualValue`` carries an
 Prerequisites
 -------------
 
+Running into trouble? See the :doc:`/troubleshooting` guide.
+
 Tutorials 01–10 delivered and tested. ``TUTORIAL=11 make seed`` loads
 34 entities: Tutorial 10's 33 entities, plus an Operator (Jane Doe,
 active). MachineSignal, MachineState, and OperatorAssignment are all

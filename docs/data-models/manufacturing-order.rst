@@ -1,12 +1,13 @@
 ManufacturingOrder
 ==================
 
-**Tutorial:** :doc:`Tutorial 04 – Manufacturing Order Confirmation </tutorials/tutorial_04>`
+**Tutorial:** :doc:`Tutorial 04 – Manufacturing Order Confirmation </tutorials/04-manufacturing-orders>`
 
 A ``ManufacturingOrder`` is an instruction to produce a specified quantity of a finished
 product by a planned date.  It links a ``Product`` to its ``BillOfMaterials``, carries
-a state machine (``draft`` → ``confirmed`` → ``in_progress`` → ``completed``), and
-drives component reservation and work-order generation in subsequent tutorials.
+a state machine (``draft`` → ``confirmed`` → ``in_progress`` → ``completed``, with
+``cancelled`` reachable from ``draft`` or ``confirmed``), and drives component
+reservation and work-order generation in subsequent tutorials.
 
 ----
 
@@ -32,7 +33,7 @@ Attribute table
    * - ``state``
      - Property
      - Text enum
-     - ``draft`` | ``confirmed`` | ``in_progress`` | ``completed``
+     - ``draft`` | ``confirmed`` | ``in_progress`` | ``completed`` | ``cancelled``
    * - ``plannedStart``
      - Property
      - DateTime
@@ -53,6 +54,10 @@ Attribute table
      - Property
      - DateTime
      - Timestamp set when the order transitions to ``completed`` (see :doc:`Tutorial 08 </tutorials/08-finished-goods>`)
+   * - ``cancelledAt``
+     - Property
+     - DateTime
+     - Timestamp set when the order transitions to ``cancelled`` (see :doc:`Tutorial 04 </tutorials/04-manufacturing-orders>`)
    * - ``product``
      - Relationship
      - Product

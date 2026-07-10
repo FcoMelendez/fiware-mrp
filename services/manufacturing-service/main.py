@@ -38,6 +38,10 @@ class ConfirmOrderRequest(BaseModel):
     order_id: str
 
 
+class CancelOrderRequest(BaseModel):
+    order_id: str
+
+
 @app.get("/health", tags=["system"])
 def health() -> dict:
     return {"status": "ok", "service": "manufacturing-service", "version": "0.4.0"}
@@ -160,4 +164,64 @@ async def confirm_manufacturing_order(body: ConfirmOrderRequest) -> dict:
         "status": "confirmed",
         "order_id": body.order_id,
         "confirmed_at": now,
+    }
+
+
+@app.post("/commands/cancel-manufacturing-order", tags=["commands"])
+async def cancel_manufacturing_order(body: CancelOrderRequest) -> dict:
+    """
+    Cancel a ManufacturingOrder.
+
+    Allowed from draft or confirmed (no components consumed yet). Transitions
+    state to cancelled and records a cancelledAt timestamp. Orders already
+    in_progress, completed, or cancelled cannot be cancelled.
+    """
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{ORION_URL}/ngsi-ld/v1/entities/{body.order_id}",
+            headers=HEADERS_READ,
+            timeout=10,
+        )
+        if r.status_code == 404:
+            raise HTTPException(status_code=404, detail=f"ManufacturingOrder not found: {body.order_id}")
+        r.raise_for_status()
+        entity = r.json()
+
+        current_state = None
+        for k, v in entity.items():
+            if "state" in k and isinstance(v, dict):
+                current_state = v.get("value")
+                break
+
+        if current_state not in ("draft", "confirmed"):
+            raise HTTPException(
+                status_code=422,
+                detail=f"ManufacturingOrder is in state '{current_state}', expected 'draft' or 'confirmed'",
+            )
+
+        now = _now_iso()
+        patch = {
+            "@context": CONTEXT_URL,
+            "state": {"type": "Property", "value": "cancelled"},
+            "cancelledAt": {"type": "Property", "value": now},
+        }
+
+        # cancelledAt does not yet exist on this entity, so POST (append-or-overwrite)
+        # is required — PATCH /attrs only updates attributes that already exist.
+        patch_r = await client.post(
+            f"{ORION_URL}/ngsi-ld/v1/entities/{body.order_id}/attrs",
+            json=patch,
+            headers={"Content-Type": "application/ld+json"},
+            timeout=10,
+        )
+        if patch_r.status_code not in (204, 207):
+            raise HTTPException(
+                status_code=502,
+                detail=f"Broker error: {patch_r.status_code} — {patch_r.text}",
+            )
+
+    return {
+        "status": "cancelled",
+        "order_id": body.order_id,
+        "cancelled_at": now,
     }

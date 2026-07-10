@@ -51,6 +51,15 @@
           },
           "required": ["type", "value"]
         },
+        "completedAt": {
+          "type": "object",
+          "description": "Timestamp at which the rework was completed (ISO 8601)",
+          "properties": {
+            "type":  { "type": "string", "const": "Property" },
+            "value": { "type": "string", "format": "date-time" }
+          },
+          "required": ["type", "value"]
+        },
         "originWorkOrder": {
           "type": "object",
           "description": "The WorkOrder whose failed units this rework order corrects",

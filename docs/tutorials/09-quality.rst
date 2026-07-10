@@ -42,6 +42,8 @@ this stack.
 Prerequisites
 -------------
 
+Running into trouble? See the :doc:`/troubleshooting` guide.
+
 Tutorials 01–08 delivered and tested.  ``TUTORIAL=09 make seed`` loads
 the same 30 entities as Tutorial 08 — MO-2024-001 with all 3 WorkOrders
 completed. No new seed entities are needed; QualityCheck, ReworkOrder,

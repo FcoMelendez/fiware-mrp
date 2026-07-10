@@ -44,6 +44,10 @@ Attribute reference
      - Property
      - ISO-8601 datetime
      - When the rework order was created
+   * - ``completedAt``
+     - Property
+     - ISO-8601 datetime
+     - When the rework was completed (see :doc:`Tutorial 09 </tutorials/09-quality>`); absent until ``complete-rework-order`` is called
    * - ``originWorkOrder``
      - Relationship
      - → WorkOrder

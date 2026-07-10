@@ -43,6 +43,8 @@ Orion-LD.
 Prerequisites
 -------------
 
+Running into trouble? See the :doc:`/troubleshooting` guide.
+
 Tutorials 01–09 delivered and tested. ``TUTORIAL=10 make seed`` loads
 33 entities: Tutorial 09's 30 entities, plus a 5 EA ``InventoryBalance``
 for HydraulicPump-P100 at WH-FINISHED, a ``DemandForecast`` of 12 EA for

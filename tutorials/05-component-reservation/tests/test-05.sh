@@ -103,6 +103,67 @@ print('-1')
 " 2>/dev/null || echo "-1")
 check "PumpCasing availableQuantity decremented to 40" "40" "$pc_avail"
 
+# ── 9. Receive the shortaged components into stock ───────────────────────────
+curl -s -X POST "${INV}/commands/receive-material" \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": "urn:ngsi-ld:Product:ElectricMotor", "location_id": "urn:ngsi-ld:StockLocation:WH-STOCK", "quantity": 10, "unit": "EA"}' \
+  > /dev/null
+curl -s -X POST "${INV}/commands/receive-material" \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": "urn:ngsi-ld:Product:SealKit", "location_id": "urn:ngsi-ld:StockLocation:WH-STOCK", "quantity": 20, "unit": "EA"}' \
+  > /dev/null
+
+# ── 10. resolve-shortages tops up both shortaged reservations ────────────────
+resolve_response=$(curl -s -X POST "${INV}/commands/resolve-shortages" \
+  -H "Content-Type: application/json" \
+  -d "{\"order_id\": \"${ORDER_ID}\"}")
+resolve_status=$(echo "$resolve_response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status',''))" 2>/dev/null || echo "error")
+check "resolve-shortages returns status=done" "done" "$resolve_status"
+
+resolved_count=$(echo "$resolve_response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('resolved_count',''))" 2>/dev/null || echo "")
+check "resolve-shortages tops up 2 reservations" "2" "$resolved_count"
+
+# ── 11. ElectricMotor reservation is now state=reserved with no shortage ─────
+em_state_after=$(curl -s "${ORION}/ngsi-ld/v1/entities/urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-ElectricMotor" \
+  -H "Accept: application/ld+json" \
+  | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for k, v in d.items():
+    if 'state' in k and isinstance(v, dict):
+        print(v.get('value', ''))
+        sys.exit(0)
+print('')
+" 2>/dev/null || echo "")
+check "ElectricMotor reservation state=reserved after resolve" "reserved" "$em_state_after"
+
+em_shortage_after=$(curl -s "${ORION}/ngsi-ld/v1/entities/urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-ElectricMotor" \
+  -H "Accept: application/ld+json" \
+  | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for k, v in d.items():
+    if 'shortageQuantity' in k and isinstance(v, dict):
+        print(int(v.get('value', -1)))
+        sys.exit(0)
+print('-1')
+" 2>/dev/null || echo "-1")
+check "ElectricMotor reservation shortageQuantity=0 after resolve" "0" "$em_shortage_after"
+
+# ── 12. SealKit reservation is now state=reserved with no shortage ───────────
+sk_state_after=$(curl -s "${ORION}/ngsi-ld/v1/entities/urn:ngsi-ld:InventoryReservation:IR-MO-2024-001-SealKit" \
+  -H "Accept: application/ld+json" \
+  | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for k, v in d.items():
+    if 'state' in k and isinstance(v, dict):
+        print(v.get('value', ''))
+        sys.exit(0)
+print('')
+" 2>/dev/null || echo "")
+check "SealKit reservation state=reserved after resolve" "reserved" "$sk_state_after"
+
 # ── Results ───────────────────────────────────────────────────────────────────
 echo ""
 echo "Results: $PASS passed, $FAIL failed."

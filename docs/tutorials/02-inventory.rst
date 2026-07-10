@@ -124,8 +124,11 @@ Prerequisites
 
 ----
 
+Step-by-step
+------------
+
 Step 1 — Start the full stack
-------------------------------
+-----------------------------
 
 If the core stack is not already running:
 
@@ -165,7 +168,7 @@ Expected:
 ----
 
 Step 2 — Query initial inventory
----------------------------------
+--------------------------------
 
 Before any receipts the inventory is empty:
 
@@ -182,7 +185,7 @@ Expected:
 ----
 
 Step 3 — Receive PumpCasing (no lot)
---------------------------------------
+------------------------------------
 
 .. code-block:: bash
 
@@ -215,7 +218,7 @@ The service has created two NGSI-LD entities in Orion-LD:
 ----
 
 Step 4 — Receive Impeller with lot tracking
---------------------------------------------
+-------------------------------------------
 
 .. code-block:: bash
 
@@ -239,7 +242,7 @@ The response includes a ``lot_id``.  The service created three entities:
 ----
 
 Step 5 — Query and inspect balances
--------------------------------------
+-----------------------------------
 
 Query all balances
 ~~~~~~~~~~~~~~~~~~
@@ -280,7 +283,7 @@ Inspect entities directly in Orion-LD
 ----
 
 Step 6 — Verify balance accumulation
---------------------------------------
+------------------------------------
 
 Receive more PumpCasing:
 
@@ -303,7 +306,7 @@ entity appears in Orion-LD.  The ``InventoryBalance`` entity is patched in place
 ----
 
 Step 7 — Run automated tests
-------------------------------
+----------------------------
 
 .. code-block:: bash
 
@@ -501,8 +504,8 @@ Stop containers **and** remove all volumes (clean slate):
 
 ----
 
-What comes next
----------------
+What's next
+-----------
 
 **Tutorial 03 — Bill of Materials and BoM explosion.**
 

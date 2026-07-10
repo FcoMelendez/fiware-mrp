@@ -5,17 +5,36 @@ Tutorial 06 – Work Orders and Finite-Capacity Scheduling
 **New service:** ``scheduler-service`` (port 8084)
 **New entity:** ``WorkOrder``
 
-In this tutorial the confirmed manufacturing order from Tutorial 04 drives automatic
+Business goal
+-------------
+
+Turn a confirmed manufacturing order into a concrete production schedule.
+The confirmed manufacturing order from Tutorial 04 drives automatic
 work-order generation.  The ``scheduler-service`` reads the confirmed MO, applies a
 hardcoded routing (Assembly → LeakTest → Packaging), and creates three ``WorkOrder``
 entities with back-to-back planned timestamps.  No shift calendars or infinite-capacity
 relaxations are used — Tutorial 06 establishes the scheduling skeleton; T07 will
 execute it on the shop floor.
 
+What you will build
+--------------------
+
+* ``scheduler-service`` (FastAPI, port 8084) — one command:
+
+  - ``POST /commands/create-work-orders`` — reads a confirmed
+    ``ManufacturingOrder``, applies a fixed Assembly → LeakTest → Packaging
+    routing, and creates three sequential ``WorkOrder`` entities.
+
+* **WorkOrder** — the new NGSI-LD entity type introduced in this tutorial,
+  one per routing operation, each carrying its own planned start/end and a
+  ``workCenter`` Relationship.
+
 ----
 
 Prerequisites
 -------------
+
+Running into trouble? See the :doc:`/troubleshooting` guide.
 
 * Tutorials 01–05 understood (master data, inventory, BoM, MO confirmation, component reservation).
 * This tutorial's seed file is self-contained — it includes all T01–T05 entities
@@ -37,8 +56,8 @@ Quick start
 
 ----
 
-Step-by-step walkthrough
--------------------------
+Step-by-step
+-------------
 
 Step 1 — Verify the scheduler service
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -135,7 +154,7 @@ Step 5 — Inspect a work order in Orion-LD
 Automated assertions
 --------------------
 
-``tutorials/06-work-orders/tests/test-06.sh`` runs 7 assertions:
+``tutorials/06-work-orders/tests/test-06.sh`` runs 8 assertions:
 
 .. list-table::
    :header-rows: 1
@@ -162,8 +181,20 @@ Automated assertions
 
 ----
 
-NGSI-LD API call table
------------------------
+NGSI-LD patterns
+-----------------
+
+One command, three related entities
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``create-work-orders`` is the first command in the series that creates more
+than one entity per call, and the entities it creates are chained to each
+other in time (each ``WorkOrder``'s ``plannedStart`` equals the previous
+one's ``plannedEnd``) as well as to the ``ManufacturingOrder`` and
+``WorkCenter`` they belong to. Getting that chaining right in a single
+batch upsert — rather than three separate round-trips that could partially
+fail — is why all three ``WorkOrder`` entities are POSTed to Orion-LD
+together via ``/ngsi-ld/v1/entityOperations/upsert``.
 
 .. list-table::
    :header-rows: 1

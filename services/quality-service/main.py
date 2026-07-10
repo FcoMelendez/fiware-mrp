@@ -71,6 +71,14 @@ def _rel_obj(entity: dict, attr: str) -> Optional[str]:
     return None
 
 
+class CompleteReworkOrderRequest(BaseModel):
+    rework_order_id: str
+
+
+class AcknowledgeQualityAlertRequest(BaseModel):
+    alert_id: str
+
+
 class InspectWorkOrderRequest(BaseModel):
     work_order_id: str
     check_type: str
@@ -275,6 +283,103 @@ async def inspect_work_order(req: InspectWorkOrderRequest) -> dict:
             response["severity"] = severity
 
         return response
+
+
+@app.post("/commands/complete-rework-order", tags=["commands"])
+async def complete_rework_order(req: CompleteReworkOrderRequest) -> dict:
+    """
+    Complete a ReworkOrder.
+
+    Transitions state from planned to completed and records a completedAt
+    timestamp. Only planned rework orders can be completed.
+    """
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{ORION_URL}/ngsi-ld/v1/entities/{req.rework_order_id}",
+            headers=HEADERS_READ,
+            timeout=10,
+        )
+        if r.status_code != 200:
+            raise HTTPException(status_code=404, detail=f"ReworkOrder not found: {req.rework_order_id}")
+        rw = r.json()
+
+        state = _extract_str(rw, "state")
+        if state != "planned":
+            raise HTTPException(
+                status_code=422,
+                detail=f"ReworkOrder must be in planned state to complete, got: {state}",
+            )
+
+        now = _now_iso()
+        patch = {
+            "state": {"type": "Property", "value": "completed"},
+            "completedAt": {"type": "Property", "value": now},
+            "@context": CONTEXT_URL,
+        }
+        # completedAt does not yet exist on this entity, so POST (append-or-overwrite)
+        # is required — PATCH /attrs only updates attributes that already exist.
+        patch_r = await client.post(
+            f"{ORION_URL}/ngsi-ld/v1/entities/{req.rework_order_id}/attrs",
+            json=patch,
+            headers=HEADERS_WRITE,
+            timeout=10,
+        )
+        if patch_r.status_code not in (204, 207):
+            raise HTTPException(status_code=502, detail=f"Broker error: {patch_r.status_code} — {patch_r.text}")
+
+    return {
+        "status": "completed",
+        "rework_order_id": req.rework_order_id,
+        "completed_at": now,
+    }
+
+
+@app.post("/commands/acknowledge-quality-alert", tags=["commands"])
+async def acknowledge_quality_alert(req: AcknowledgeQualityAlertRequest) -> dict:
+    """
+    Acknowledge a QualityAlert.
+
+    Sets status=acknowledged and records an acknowledgedAt timestamp. Alerts
+    already acknowledged cannot be re-acknowledged.
+    """
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{ORION_URL}/ngsi-ld/v1/entities/{req.alert_id}",
+            headers=HEADERS_READ,
+            timeout=10,
+        )
+        if r.status_code != 200:
+            raise HTTPException(status_code=404, detail=f"QualityAlert not found: {req.alert_id}")
+        qa = r.json()
+
+        status = _extract_str(qa, "status")
+        if status == "acknowledged":
+            raise HTTPException(status_code=422, detail="QualityAlert is already acknowledged")
+
+        now = _now_iso()
+        patch = {
+            "status": {"type": "Property", "value": "acknowledged"},
+            "acknowledgedAt": {"type": "Property", "value": now},
+            "@context": CONTEXT_URL,
+        }
+        # status/acknowledgedAt do not yet exist on this entity, so POST
+        # (append-or-overwrite) is required — PATCH /attrs only updates
+        # attributes that already exist.
+        patch_r = await client.post(
+            f"{ORION_URL}/ngsi-ld/v1/entities/{req.alert_id}/attrs",
+            json=patch,
+            headers=HEADERS_WRITE,
+            timeout=10,
+        )
+        if patch_r.status_code not in (204, 207):
+            raise HTTPException(status_code=502, detail=f"Broker error: {patch_r.status_code} — {patch_r.text}")
+
+    return {
+        "status": "done",
+        "alert_id": req.alert_id,
+        "alert_status": "acknowledged",
+        "acknowledged_at": now,
+    }
 
 
 async def _list_entities(entity_type: str, filters: dict) -> list:

@@ -276,6 +276,119 @@ async def reserve_components(body: ReserveComponentsRequest) -> dict:
     }
 
 
+class ResolveShortagesRequest(BaseModel):
+    order_id: str
+
+
+@app.post("/commands/resolve-shortages", tags=["commands"])
+async def resolve_shortages(body: ResolveShortagesRequest) -> dict:
+    """
+    Re-check an order's InventoryReservations left in shortage/partial state
+    and top up reservedQuantity from stock that has arrived since.
+
+    Unlike reserve-components (which creates reservations from scratch),
+    this only ever moves the *delta* between shortageQuantity and current
+    availableQuantity — it never re-adds the quantity a prior
+    reserve-components call already reserved, so it is safe to call
+    repeatedly as more stock arrives. Because reservedQuantity,
+    shortageQuantity and state already exist on these entities (set by the
+    original reserve-components call), this uses PATCH, not POST.
+    """
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{ORION_URL}/ngsi-ld/v1/entities",
+            params={"type": f"{MRP_NS}InventoryReservation"},
+            headers=HEADERS_READ,
+            timeout=10,
+        )
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail="Failed to query InventoryReservations")
+        all_reservations = r.json() if isinstance(r.json(), list) else []
+        reservations = [
+            res for res in all_reservations
+            if _rel_obj(res, "manufacturingOrder") == body.order_id
+            and _extract_str(res, "state") in ("shortage", "partial")
+        ]
+
+        # Fetch current balances up front, indexed by (product, location) — a
+        # shortaged reservation may predate any InventoryBalance for that
+        # component ever existing, so it won't have an inventoryBalance
+        # Relationship yet. Look the balance up fresh instead of trusting it.
+        br = await client.get(
+            f"{ORION_URL}/ngsi-ld/v1/entities",
+            params={"type": f"{MRP_NS}InventoryBalance"},
+            headers=HEADERS_READ,
+            timeout=10,
+        )
+        balances = br.json() if br.status_code == 200 and isinstance(br.json(), list) else []
+        balance_by_key = {
+            (_rel_obj(b, "product"), _rel_obj(b, "location")): b for b in balances
+        }
+
+        resolved = []
+        for res in reservations:
+            ir_id = res["id"]
+            component_id = _rel_obj(res, "product")
+            location_id = _rel_obj(res, "stockLocation")
+            bal = balance_by_key.get((component_id, location_id))
+            if not bal:
+                continue
+            bal_id = bal["id"]
+            available = _extract_qty(bal, "availableQuantity")
+
+            shortage_qty = _extract_qty(res, "shortageQuantity")
+            reserved_qty = _extract_qty(res, "reservedQuantity")
+            delta = min(shortage_qty, available)
+            if delta <= 0:
+                continue
+
+            new_reserved_qty = reserved_qty + delta
+            new_shortage_qty = shortage_qty - delta
+            new_state = "reserved" if new_shortage_qty == 0 else "partial"
+
+            patch_ir = {
+                "reservedQuantity": {"type": "Property", "value": new_reserved_qty, "unitCode": "EA"},
+                "shortageQuantity": {"type": "Property", "value": new_shortage_qty, "unitCode": "EA"},
+                "state": {"type": "Property", "value": new_state},
+                "@context": CONTEXT_URL,
+            }
+            await client.patch(
+                f"{ORION_URL}/ngsi-ld/v1/entities/{ir_id}/attrs",
+                json=patch_ir,
+                headers=HEADERS_WRITE,
+                timeout=10,
+            )
+
+            new_available = max(0.0, available - delta)
+            current_bal_reserved = _extract_qty(bal, "reservedQuantity")
+            patch_bal = {
+                "availableQuantity": {"type": "Property", "value": new_available, "unitCode": "EA"},
+                "reservedQuantity": {"type": "Property", "value": current_bal_reserved + delta, "unitCode": "EA"},
+                "@context": CONTEXT_URL,
+            }
+            await client.patch(
+                f"{ORION_URL}/ngsi-ld/v1/entities/{bal_id}/attrs",
+                json=patch_bal,
+                headers=HEADERS_WRITE,
+                timeout=10,
+            )
+
+            resolved.append({
+                "reservation_id": ir_id,
+                "topped_up_quantity": delta,
+                "reserved_quantity": new_reserved_qty,
+                "shortage_quantity": new_shortage_qty,
+                "state": new_state,
+            })
+
+    return {
+        "status": "done",
+        "order_id": body.order_id,
+        "resolved_count": len(resolved),
+        "reservations": resolved,
+    }
+
+
 @app.get("/inventory-reservations", tags=["query"])
 async def query_reservations(
     order_id: Optional[str] = Query(None, description="Filter by ManufacturingOrder URN"),
